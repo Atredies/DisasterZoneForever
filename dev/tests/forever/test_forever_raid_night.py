@@ -187,20 +187,20 @@ def test_class_planner_messages_wait_for_the_pull_to_end():
 
 
 @case
-def test_no_patch_traffic_while_updates_are_off():
-    # 0.1.0 ships with no update key (Core/PatchKey.lua empty): no announce before, during or after a pull. (The
-    # hold of the patch send path itself is exercised in dev/tests/patch once we have our own key.)
+def test_patch_announce_waits_for_the_pull_to_end():
+    # 0.2.3 ships our in-game update key (Core/PatchKey.lua): the after-login "this is what I have" (CDLp1 "A:") is
+    # not sent into a boss pull's chat lockdown (nothing refused by the client) and goes out once the pull ends.
     w = World(realm=REALM)
     gm = Client(w, "Arakis War", class_file="WARRIOR", guild_rank=0, level=60, forever=True)
     gm.load_addon()
-    assert gm.eval("return ns.Patch._Key()") is None
+    assert gm.eval("return ns.Patch._Key()") is not None
     lock(gm, True)
     w.tick(40)
     assert sent(w, gm, "CDLp1") == []
     assert gm.eval("return __MOCK.lockdown_refused_by['CDLp1']") is None
     lock(gm, False)
-    w.tick(3)
-    assert sent(w, gm, "CDLp1") == []
+    w.tick(5)
+    assert any(txt(e).startswith("A:") for e in sent(w, gm, "CDLp1")), sent(w, gm, "CDLp1")
     no_errors(w)
 
 

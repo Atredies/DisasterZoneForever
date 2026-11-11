@@ -1,6 +1,6 @@
 ---
 tags: [log]
-updated: 2026-11-11
+updated: 2026-11-12
 ---
 
 # Decision Log
@@ -24,6 +24,8 @@ updated: 2026-11-11
 | 2026-11-10 | Player zips go out as full releases marked Latest (0.2.0 switched from pre-release); the README links `/releases/latest` and keeps the rest of the docs in the vault | Guildmates get one link that never goes stale; the README stays short |
 | 2026-11-10 | Recruitment message places: GuildRecruitment off by default (Trade stays on); skip line names `/join <channel>` | A guilded character is not put in GuildRecruitment, so it was skipped on every post |
 | 2026-11-10 | Recruitment message: strip raid icons from channel posts, keep them for Say / Yell | Forever's server flags channel lines so clients don't draw icons; they showed as "{rt1}" |
+| 2026-11-12 | In-game updates on from 0.2.3: the project's own update key ships in `Core/PatchKey.lua`; members install later versions with `/dz update` | 0.2.3 is the last zip members need; later code changes travel in game, signed, and only this key's updates are taken |
+| 2026-11-12 | Forever bots name the season, not TBC's phases (`/bis`: Pre-raid + Season 1) | Forever has one season so far; the addon says Season |
 | 2026-11-09 | Launch zip = DisasterZone + all game packs (Bingo, Azeromon, Hold the Line, Chess); no Bridge | Bridge needs the launcher and the Discord bot |
 | 2026-11-09 | Officer ranks: the GM picks them in Settings (synced, GM-owned); default ranks 0-1 | Replaces the hard-coded rank <= 1 |
 | 2026-11-09 | GM rules move to their own GM-only record; relayed raid plans only from writer / planner | Closes forging by officers and members; trade-off: members need the GM / a planner online once |

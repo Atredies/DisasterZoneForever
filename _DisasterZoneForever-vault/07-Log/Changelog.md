@@ -7,6 +7,15 @@ updated: 2026-11-12
 
 Newest first.
 
+## 2026-11-12 - 0.2.3: in-game updates on, Discord for Forever
+Version 0.2.3 in the six TOCs, What's New, README (updates in game with `/dz update`; Discord with the optional
+launcher), `dev/releases/0.2.3.md` and record. `Core/PatchKey.lua` holds the project's own in-game update key, so
+0.2.3 is the base for in-game updates. Tests that assumed no key: `test_forever_raid_night` now checks that the
+update announce waits for a pull's chat lockdown to end (`test_patch_announce_waits_for_the_pull_to_end`);
+`test_release_tool`'s keyless release uses its own empty key file. Full run: only the failures `main` already had
+(`test_mixed_versions`, `test_changelog` on an upstream 1.6.0 line, `test_boot`, events / games UI suites); the
+60-member scale suite passes.
+
 ## 2026-11-12 - /dz update installs in-game updates; the update suites run on Linux
 `/dz update` (Core/Patch.lua `Patch:Update`) is now what a member types: a downloaded in-game update is installed at
 once (the interface reloads), otherwise the guild is asked right away instead of at the next half-hourly announce;
