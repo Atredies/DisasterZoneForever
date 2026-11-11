@@ -27,5 +27,39 @@
   "time": "2026-11-12 01:14:36",
   "commit": "504c2f33b72296ef75961b15e2a92a3edd0456b3",
   "revoke": false
+ },
+ {
+  "seq": 2,
+  "version": "0.2.5",
+  "base": "0.2.3",
+  "build": "20b0acb6fbbcd27a",
+  "pack": 17,
+  "files": [
+   [
+    "F",
+    "Data/Changelog.lua"
+   ],
+   [
+    "F",
+    "Core/Sync.lua"
+   ],
+   [
+    "F",
+    "UI/GuestBook.lua"
+   ],
+   [
+    "F",
+    "UI/Members.lua"
+   ]
+  ],
+  "sha": {
+   "Data/Changelog.lua": "7ed9fbe5ed6eb7ed42625e26ca9b21e9ae749ce11d5de6e4c1ec8a381be08452",
+   "Core/Sync.lua": "71b3796e8b2ce763850beffcd5977f1f76220d91c125d224047ea37e2f1e0502",
+   "UI/GuestBook.lua": "105f70d450376800f144fd60bcbe38a87e93ada2f23016d9df1e613fda73f2d5",
+   "UI/Members.lua": "9a541bcfd197ff2ee929fa822828332b00b3d4a8aaccdaaf3992fb07420ac00d"
+  },
+  "time": "2026-11-12 01:51:33",
+  "commit": "c9bed830f9101267eeaa367e1a8a5f9e759e4726",
+  "revoke": false
  }
 ]
