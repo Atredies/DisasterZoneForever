@@ -85,7 +85,8 @@ def lua(v):
 
 def use_key(cl):
     k = key()
-    cl.eval("local s, r = ...; ns.BridgeKey = { seed = s, root = r, h = 6 }", k["seed"], k["root"])
+    # (the test key stands in for whatever Core/BridgeKey.lua ships: no per-guild map, one key)
+    cl.eval("local s, r = ...; ns.BridgeKeys = nil; ns.BridgeKey = { seed = s, root = r, h = 6 }", k["seed"], k["root"])
 
 
 def inbox(cl, records, channels=None, user="Tsumi"):
