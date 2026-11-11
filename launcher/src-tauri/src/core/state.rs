@@ -7,6 +7,10 @@ use std::fs;
 use std::path::PathBuf;
 
 /// Where releases are published (the public releases repository). A setting can point elsewhere for testing.
+/// This launcher's own name on the PC (settings folder, credential store): not the TBC original's
+/// "DisasterZoneLauncher", so both can be installed side by side without sharing settings or the Discord link.
+pub const APP_DIR: &str = "DisasterZoneForeverLauncher";
+
 pub const DEFAULT_SOURCE: &str = include_str!("../../../source.txt");
 
 /// The game folder of WoW Forever, the version DisasterZoneForever is made for.
@@ -144,7 +148,7 @@ impl Settings {
 }
 
 fn path() -> PathBuf {
-    dirs::config_dir().unwrap_or_else(std::env::temp_dir).join("DisasterZoneLauncher").join("settings.json")
+    dirs::config_dir().unwrap_or_else(std::env::temp_dir).join(APP_DIR).join("settings.json")
 }
 
 pub fn load() -> Settings {

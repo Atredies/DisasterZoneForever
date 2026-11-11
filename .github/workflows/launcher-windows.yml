@@ -1,0 +1,50 @@
+# Builds the Forever launcher's Windows installer on demand (Actions > Launcher (Windows) > Run workflow).
+# The bot's address comes from the repository secret DZ_BOT_SERVER (written into launcher/server.txt for this build
+# only, never committed). No updater artifacts: this build doesn't update itself yet, and the addon feed for Forever
+# stays off while launcher/source.txt is upstream's (the launcher refuses it).
+name: Launcher (Windows)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "launcher/src-tauri -> target"
+
+      - name: Bot server for this build
+        shell: pwsh
+        env:
+          DZ_BOT_SERVER: ${{ secrets.DZ_BOT_SERVER }}
+        run: |
+          if (-not $env:DZ_BOT_SERVER) { throw "set the repository secret DZ_BOT_SERVER (the bot's https address)" }
+          Set-Content -Path launcher/server.txt -Value $env:DZ_BOT_SERVER.Trim() -NoNewline
+          Set-Content -Path ci-tauri.json -Value '{"bundle":{"createUpdaterArtifacts":false}}' -NoNewline
+
+      - name: npm ci
+        working-directory: launcher
+        run: npm ci
+
+      - name: Build the installer
+        working-directory: launcher
+        run: npx tauri build --bundles nsis --config ${{ github.workspace }}/ci-tauri.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dz-forever-launcher-windows
+          path: launcher/src-tauri/target/release/bundle/nsis/*-setup.exe
+          retention-days: 14
