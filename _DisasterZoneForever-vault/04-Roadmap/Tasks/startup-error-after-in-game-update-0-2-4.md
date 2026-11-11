@@ -1,13 +1,17 @@
 ---
 title: "Startup error after in-game update 0.2.4 (HookScript)"
 tags: [task]
-status: "1 - In progress"
+status: "2 - Next up"
 priority: p1
 effort: M
 updated: 2026-11-12
 ---
 
 # Startup error after in-game update 0.2.4 (HookScript)
+
+**On hold until 2026-11-13** (fresh eyes). The in-game update itself works end to end: signed, sent over the guild
+channel, downloaded, installed with `/dz update`, rolled back with `/dzpatch rollback`. Only this error is open; update
+#1 stays live for testing.
 
 A tester who installed in-game update #1 (0.2.4 on top of 0.2.3, `/dz update`) gets the boot loader's "had 1 error
 while starting" popup at every login. Not seen on 0.2.3 (checked by rolling back with `/dzpatch rollback`): it comes
@@ -31,6 +35,9 @@ What is known:
 - None of the three changed files calls `HookScript` at startup; the new code (`SendVersionTo`) uses `Util.After`
   (`C_Timer`); `UI/Changelog.lua`'s only hook takes an inline function.
 - The publisher's own copy (a development copy: updates never apply) does not show it.
+- The tester runs Windows, the publisher Linux (Proton): not expected to matter (same client and Lua; an applied
+  update runs from saved variables, not disk). What differs: release zip + update through the boot loader vs the
+  development copy from disk; the tester's other addons; their realm.
 
 Next:
 1. The tester's addon list, and BugSack/BugGrabber for a fuller trace.
