@@ -657,7 +657,8 @@ def the_repositorys_release_records_are_ours():
     for log in ("patches.json", "published.json"):
         path = os.path.join(release.RELEASES, log)
         for e in (json.load(open(path, encoding="utf-8")) if os.path.exists(path) else []):
-            assert e.get("base") == "selftest" or release.patchlib_version_le(e["version"], base), (log, e)
+            # (an in-game update on top of the base release is ahead of it by design)
+            assert e.get("base") in ("selftest", base) or release.patchlib_version_le(e["version"], base), (log, e)
     assert os.path.exists(os.path.join(release.RELEASES, "%s.json" % base))
 
 
@@ -668,9 +669,11 @@ def a_release_gives_every_pack_the_addons_version():
         "## Interface: 16001\r\n## Author: Casual Disaster\r\n## Version: 0.1.0\r\n## X-DZ-Kind: game\r\n"
     assert release.stamp_toc_version(release.stamp_toc_version(raw, "0.1.0"), "0.2.0").count("## Version: 0.2.0") == 1
     # the repository's packs and rooms say the addon's version
+    # (or the base release's, while in-game updates sit on top of it: they only change DisasterZone.toc)
     version = release.parse_toc(release.ADDON_DIR)[0]["version"]
+    base = json.load(open(os.path.join(release.RELEASES, "base.json"), encoding="utf-8"))["version"]
     for name, folder in release.pack_dirs(release.ADDON_DIR).items():
-        assert release.parse_toc(folder, name)[0].get("version") == version, name
+        assert release.parse_toc(folder, name)[0].get("version") in (version, base), name
     assert "DisasterZone_Bridge" not in release.pack_dirs(release.ADDON_DIR)
 
 

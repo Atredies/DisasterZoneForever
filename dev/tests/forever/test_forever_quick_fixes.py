@@ -272,5 +272,20 @@ def test_a_member_with_the_addon_is_not_listed_without_it():
     no_errors(w)
 
 
+@case
+def test_a_forever_login_has_no_startup_error():
+    """GuestBook hooked GameTooltip's OnTooltipSetUnit, which the retail engine (Forever) does not have: it raised at every
+    login (caught quietly, so unseen until an in-game update counted it) and stopped GuestUI:OnInit before the player
+    menu entries. The mock's Forever GameTooltip has no OnTooltipSetUnit / OnTooltipSetSpell now, like the client."""
+    w, (gm,) = forever_guild(("Arakis War", "WARRIOR", 0))
+    gm.load_addon()
+    w.tick(5)
+    assert gm.eval("return GameTooltip:HasScript('OnTooltipSetUnit')") is False
+    errs = gm.eval_py("return ns.db.feedbackErrors") or {}
+    errs = list(errs.values()) if isinstance(errs, dict) else list(errs)
+    assert not [e for e in errs if "HookScript" in str(e) or "GuestBook" in str(e)], errs
+    no_errors(w)
+
+
 if __name__ == "__main__":
     run_all(globals())

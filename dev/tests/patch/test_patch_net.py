@@ -135,6 +135,7 @@ def dz_update_asks_the_guild_and_installs_what_arrived():
     a.relog()
     w.tick(3)
     assert boot_state(a)["state"] == "applied"
+    assert boot_state(a)["errors"] == 0, "an applied update must start without errors"
     w.assert_no_errors()
 
 

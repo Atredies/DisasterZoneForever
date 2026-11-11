@@ -650,7 +650,7 @@ M.define("GameTooltip", "Frame", {
     if id then tt_set_item(self, st, id, sfind(link, "|H", 1, true) and link or nil); return end
     tt_clear(self, st)
     local sid = tonumber(smatch(link, "spell:(%d+)"))
-    if sid then st.spell = sid; tt_add(self, st, "Spell " .. sid); call_script(self, "OnTooltipSetSpell"); return end
+    if sid then st.spell = sid; tt_add(self, st, "Spell " .. sid); call_script(self, "OnTooltipSetSpell"); if M.tooltip_post_calls_of then M.tooltip_post_calls_of("Spell", self, { type = 1, id = sid }) end; return end
     tt_add(self, st, link)
   end,
   SetBagItem = function(self, bag, slot)
@@ -684,7 +684,7 @@ M.define("GameTooltip", "Frame", {
     if not tt_owned(self, st, "SetUnit") then return end
     tt_clear(self, st)
     local name = UnitName(unit)
-    if name then st.unit = unit; tt_add(self, st, name); call_script(self, "OnTooltipSetUnit") end
+    if name then st.unit = unit; tt_add(self, st, name); call_script(self, "OnTooltipSetUnit"); if M.tooltip_post_calls_of then M.tooltip_post_calls_of("Unit", self, { type = 2 }) end end
   end,
   SetSpellByID = function(self, id)
     local st = S(self)
@@ -693,6 +693,7 @@ M.define("GameTooltip", "Frame", {
     st.spell = id
     tt_add(self, st, "Spell " .. tostring(id))
     call_script(self, "OnTooltipSetSpell")
+    if M.tooltip_post_calls_of then M.tooltip_post_calls_of("Spell", self, { type = 1, id = id }) end   -- (Forever)
   end,
   GetItem = function(self)
     local st = S(self)

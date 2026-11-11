@@ -7,6 +7,17 @@ updated: 2026-11-12
 
 Newest first.
 
+## 2026-11-13 - 0.2.5 (update #2): GuestBook's tooltip hook, the cause of the startup error
+Confirmed in game: `GameTooltip:HasScript("OnTooltipSetUnit")` is false on Forever (retail engine). `UI/GuestBook.lua`
+hooked it unguarded in `GuestUI:OnInit`: it raised at every login (caught quietly; an applied in-game update counts
+startup errors, so update #1 showed it) and stopped `OnInit` before the player-menu entries. Now the guard
+`UI/Tooltip.lua` has (`HasScript`, else TooltipDataProcessor's Unit post-call; the unit read with `Compat.Plain`).
+The mock's Forever GameTooltip has no `OnTooltipSetUnit` / `OnTooltipSetSpell` and runs the Unit / Spell post-calls
+(`dev/tools/wowmock/forever.lua`, `ui.lua`); with the old GuestBook every Forever case of `test_forever_quick_fixes`
+fails. New `test_a_forever_login_has_no_startup_error`; the `/dz update` test asserts 0 startup errors. Release
+checks accept the in-update state (packs and rooms on the base release's version, an update record ahead of its
+base: `release.check_tree`, `test_release_tool`). Card [[startup-error-after-in-game-update-0-2-4]] done.
+
 ## 2026-11-12 - In-game update #1 (0.2.4) published; a startup error found; connected realms
 Update #1 reached a tester through `/dz update`; at login the boot loader reports one startup error that 0.2.3 does
 not have (a `HookScript` with a nil script in an event handler; trace in [[startup-error-after-in-game-update-0-2-4]]).

@@ -2,7 +2,7 @@
 ## Title: |cffff8000Disaster|rZone
 ## Notes: Loot council, raid plans, guild members and games for <Casual Disaster> on WoW Forever. Formerly CDLoot.
 ## Author: Casual Disaster
-## Version: 0.2.4
+## Version: 0.2.5
 ## X-CDL-Protocol: 1
 ## SavedVariables: DisasterZoneDB, DisasterZonePatchDB, DisasterZoneLogDB, DisasterZoneMeterDB, DisasterZoneBossLearnDB, DisasterZoneBridgeDB
 ## LoadSavedVariablesFirst: 1
