@@ -7,6 +7,12 @@ updated: 2026-11-12
 
 Newest first.
 
+## 2026-11-12 - In-game update #1 (0.2.4) published; a startup error found; connected realms
+Update #1 reached a tester through `/dz update`; at login the boot loader reports one startup error that 0.2.3 does
+not have (a `HookScript` with a nil script in an event handler; trace in [[startup-error-after-in-game-update-0-2-4]]).
+Kept live for testing. Also found: members from other connected realms compute another guild key
+([[connected-realms-guild-key]]).
+
 ## 2026-11-12 - 0.2.4 (first in-game update): the roster knows who has DisasterZone
 Two things seen in the first guild session on 0.2.3. (1) A guildmate saw the GM on 0.2.2 after he had updated:
 versions only travel in the login HELLO, so whoever logs in later keeps the version they saved before. Each client
