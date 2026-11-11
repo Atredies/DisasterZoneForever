@@ -3,6 +3,8 @@
 //!   POST /api/link  { code }   a /launcher code -> the launcher's member key
 //!   POST /api/sync             (Bearer key) the game's last save in, the signed records + channels + links out
 //!   GET  /api/presence         (Bearer key) who of the guild is in game, when the others last were (presence.rs)
+//!   POST /api/interactions     Discord itself (the Developer Portal's Interactions Endpoint URL): every slash
+//!                              command, button and form, signed by Discord (Ed25519, the app's public key)
 //! Behind a TLS proxy (Caddy) on the server; plain HTTP on 127.0.0.1 when testing at home.
 
 use crate::bridge;
@@ -29,6 +31,7 @@ pub fn router() -> Router {
         .route("/api/link", post(link))
         .route("/api/sync", post(sync))
         .route("/api/presence", get(presence))
+        .route("/api/interactions", post(interactions))
         .layer(axum::extract::DefaultBodyLimit::max(MAX_BODY))
 }
 
@@ -91,11 +94,7 @@ async fn sync(headers: HeaderMap, body: Bytes) -> Result<Json<SyncDown>, Fail> {
     if let Some(db) = up.bridge.as_ref() {
         // what the game took leaves the queue; refusals go to whoever made them
         match bridge::take_applied(db.get("applied")) {
-            Ok(failed) if !failed.is_empty() => {
-                if let Some(http) = crate::bot::http() {
-                    tokio::spawn(async move { crate::bot::tell(&http, &failed).await });
-                }
-            }
+            Ok(failed) if !failed.is_empty() => crate::jobs::submit(crate::jobs::Job::Tell { failed }),
             Ok(_) => {}
             Err(e) => eprintln!("sync: queue: {e}"),
         }
@@ -131,35 +130,103 @@ fn answer_hash(d: &SyncDown) -> String {
 /// Fold a member's snapshot into the guild's; when it changed, the raid posts follow.
 pub async fn take_snapshot(snap: &Value, who: &str) {
     let _g = MERGING.lock().await;
-    let cur = crate::signup::current_snap();
     let guild = crate::config().guild.clone().filter(|g| !g.is_empty());
-    let merged = match crate::merge::merge(cur.as_ref(), snap, guild.as_deref()) {
-        crate::merge::Outcome::Merged(v) => v,
-        crate::merge::Outcome::OtherGuild(g) => {
+    // (read, merge, write back only if no other copy of the bot merged meanwhile: else merge again into theirs)
+    let res = crate::store::update(crate::signup::SNAP_KEY, |cur: &mut Option<Value>| {
+        match crate::merge::merge(cur.as_ref(), snap, guild.as_deref()) {
+            crate::merge::Outcome::Merged(v) => {
+                let changed = cur.as_ref() != Some(&v);
+                *cur = Some(v);
+                Ok(changed)
+            }
+            crate::merge::Outcome::OtherGuild(g) => Err(g),
+        }
+    });
+    let merged = match res {
+        Ok(Ok(true)) => match crate::store::load_opt::<Value>(crate::signup::SNAP_KEY) {
+            Some(v) => v,
+            None => return,
+        },
+        Ok(Ok(false)) => return,
+        Ok(Err(g)) => {
             eprintln!("sync: {who}'s snapshot is for another guild ({g}): ignored");
             return;
         }
+        Err(e) => {
+            eprintln!("sync: could not save merged.json: {e}");
+            return;
+        }
     };
-    if cur.as_ref() == Some(&merged) {
-        return;
+    crate::signup::set_snap(merged);
+    crate::posts::request_refresh();
+}
+
+// ------------------------------------------------------------------------------------------------------------------
+// Discord over HTTP
+// ------------------------------------------------------------------------------------------------------------------
+
+/// Is this request from Discord: the app's Ed25519 signature over timestamp + body (Discord sends a bad one now and
+/// then on purpose and turns the endpoint off if it is accepted). A timestamp far from our clock is refused too.
+pub fn from_discord(public_key_hex: &str, headers: &HeaderMap, body: &[u8], now: u64) -> bool {
+    use ed25519_dalek::{Signature, Verifier, VerifyingKey};
+    let h = |n: &str| headers.get(n).and_then(|v| v.to_str().ok());
+    let (Some(sig), Some(ts)) = (h("x-signature-ed25519"), h("x-signature-timestamp")) else { return false };
+    let Some(key) = hex::decode(public_key_hex.trim()).ok().and_then(|k| <[u8; 32]>::try_from(k).ok()) else { return false };
+    let Ok(key) = VerifyingKey::from_bytes(&key) else { return false };
+    let Some(sig) = hex::decode(sig).ok().and_then(|s| <[u8; 64]>::try_from(s).ok()) else { return false };
+    if ts.parse::<u64>().map_or(true, |t| t.abs_diff(now) > 600) {
+        return false;
     }
-    if let Err(e) = bridge::save_json(&bridge::path("merged.json"), &merged) {
-        eprintln!("sync: could not save merged.json: {e}");
+    let mut msg = ts.as_bytes().to_vec();
+    msg.extend_from_slice(body);
+    key.verify(&msg, &Signature::from_bytes(&sig)).is_ok()
+}
+
+async fn interactions(headers: HeaderMap, body: Bytes) -> Result<Json<Value>, Fail> {
+    let key = crate::config().public_key.clone();
+    if key.is_empty() || !from_discord(&key, &headers, &body, crate::bot::unix_now()) {
+        return Err(fail(StatusCode::UNAUTHORIZED, "bad signature"));
     }
-    crate::signup::set_snap(merged.clone());
-    if let Some(http) = crate::bot::http() {
-        tokio::spawn(async move {
-            // (icons the exported art lacks: fetched once, before the pictures are drawn)
-            crate::render::fetch::ensure_items(crate::render::fetch::snapshot_items(&merged)).await;
-            crate::posts::update(&http, &merged).await;
-        });
+    let v: Value = serde_json::from_slice(&body).map_err(|_| fail(StatusCode::BAD_REQUEST, "not JSON"))?;
+    // PING: Discord checking the endpoint
+    if v.get("type").and_then(|t| t.as_u64()) == Some(1) {
+        return Ok(Json(json!({ "type": 1 })));
     }
+    let i: twilight_model::application::interaction::Interaction =
+        serde_json::from_value(v).map_err(|e| fail(StatusCode::BAD_REQUEST, &format!("not an interaction: {e}")))?;
+    if let Some(resp) = crate::bot::immediate(&i) {
+        return Ok(Json(serde_json::to_value(resp).unwrap_or_default()));
+    }
+    crate::jobs::submit(crate::jobs::Job::Interaction { raw: String::from_utf8_lossy(&body).into_owned() });
+    Ok(Json(serde_json::to_value(crate::bot::deferral(&i)).unwrap_or_default()))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::io::Write;
+
+    #[test]
+    fn only_discord_signed_requests_get_in() {
+        use ed25519_dalek::{Signer, SigningKey};
+        let sk = SigningKey::from_bytes(&[7u8; 32]);
+        let pk = hex::encode(sk.verifying_key().to_bytes());
+        let body = br#"{"type":1}"#;
+        let signed = |ts: &str, body: &[u8]| {
+            let mut m = ts.as_bytes().to_vec();
+            m.extend_from_slice(body);
+            let mut h = HeaderMap::new();
+            h.insert("x-signature-ed25519", hex::encode(sk.sign(&m).to_bytes()).parse().unwrap());
+            h.insert("x-signature-timestamp", ts.parse().unwrap());
+            h
+        };
+        assert!(from_discord(&pk, &signed("1000", body), body, 1000));
+        assert!(!from_discord(&pk, &signed("1000", body), br#"{"type":2}"#, 1000), "another body");
+        assert!(!from_discord(&pk, &signed("1000", body), body, 5000), "an old timestamp");
+        assert!(!from_discord(&hex::encode([9u8; 32]), &signed("1000", body), body, 1000), "another key");
+        assert!(!from_discord(&pk, &HeaderMap::new(), body, 1000), "no signature");
+        assert!(!from_discord("", &signed("1000", body), body, 1000), "no key set");
+    }
 
     #[test]
     fn uploads_may_be_gzipped() {

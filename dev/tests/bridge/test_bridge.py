@@ -165,6 +165,49 @@ def unsigned_or_altered_records_do_nothing():
 
 
 @case
+def each_guild_trusts_only_its_own_bots_key():
+    """Core/BridgeKey.lua lists a key per guild (ns.BridgeKeys): the PvP and PvE realms' guilds each run a bot with its
+    own key. A record signed for another guild is left alone (not applied, not marked refused); mine applies."""
+    w, c = solo()
+    mine = c.eval("return ns.Guild:GetGuildKey()")
+    assert mine, "the solo client is in a guild"
+    k = key()
+    other = patchlib.keygen(height=6, secret=b"\x03" * 32, seed=b"\x04" * 16)
+    # the map holds my bot's key under another guild's name only: nothing it signed applies here
+    c.eval("local s, r, s2, r2 = ...; ns.BridgeKey = nil; ns.BridgeKeys = { ['Other Guild-OtherRealm'] = { seed = s, root = r, h = 6 },"
+           " ['Casual Disaster-Elsewhere'] = { seed = s2, root = r2, h = 6 } }", k["seed"], k["root"], other["seed"], other["root"])
+    c.eval("DZBridge = { v = 2, written = 1000, user = 'Tsumi', records = %s, channels = {} }"
+           % lua([signed("g1", "test", {"text": "not for this guild"})]))
+    n0 = len(c.chat_frame)
+    c.eval("ns.Bridge:OnLogin()")
+    settle(w)
+    assert not any("not for this guild" in l for l in printed_since(c, n0))
+    assert not c.eval_py("return DisasterZoneBridgeDB.applied.g1"), "left alone, not refused"
+    # my guild's entry: it applies
+    c.eval("local g, s, r = ...; ns.BridgeKeys[g] = { seed = s, root = r, h = 6 }", mine, k["seed"], k["root"])
+    c.eval("DZBridge = { v = 2, written = 1001, user = 'Tsumi', records = %s, channels = {} }"
+           % lua([signed("g2", "test", {"text": "for my guild"})]))
+    n1 = len(c.chat_frame)
+    c.eval("ns.Bridge:OnLogin()")
+    settle(w)
+    assert any("Discord test from Tsumi: for my guild" in l for l in printed_since(c, n1))
+    assert c.eval_py("return DisasterZoneBridgeDB.applied.g2")["ok"] is True
+    assert c.eval("return ns.Bridge.KeyFor(...) == nil", "Nobody-Nowhere")
+    no_errors(w)
+
+
+@case
+def a_single_key_file_still_works():
+    """An older Core/BridgeKey.lua (ns.BridgeKey, no map) keeps working for whichever guild loads it."""
+    w, c = solo()
+    c.eval("ns.BridgeKeys = nil")
+    inbox(c, [signed("s1", "test", {"text": "single"})])
+    settle(w)
+    assert c.eval_py("return DisasterZoneBridgeDB.applied.s1")["ok"] is True
+    no_errors(w)
+
+
+@case
 def failing_handler_is_marked_not_taken():
     w, c = solo()
     c.eval("ns.Bridge:RegisterType('boom', function() error('broken') end)")

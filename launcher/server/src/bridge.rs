@@ -1,36 +1,101 @@
-//! The bot's own files (in the data folder) and the signed queue of changes made in Discord.
+//! The bot's state about Discord changes for the game, and the signed queue of them (in the store, store.rs):
 //!
 //!   bridge_queue.json     records the game has not taken yet (each signed when it is made: dz_proto::Record)
 //!   bridge_profiles.json  the characters each Discord user made in Discord
 //!   bridge_channels.json  the server's text channels (for the addon's Settings > Discord dropdowns)
-//!   bridge_key.json(+.leaves)  the signing key (dz-server keygen)
+//!   bridge_links.json     the hash and revision of the badge list last sent
+//!   bridge_key.json(+.leaves)  the signing key (dz-server keygen); on AWS its secret is a parameter and the used
+//!                         leaves are a counter in the store (signer_next), see [`set_counted_signer`]
 //!
 //! A record leaves the queue once any member's game marked it applied (DisasterZoneBridgeDB.applied, uploaded by
 //! their launcher after the save).
 
 use crate::core::error::Result;
+use crate::store;
 use dz_proto::wots::Signer;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 pub use dz_proto::{Channel, Record};
 
-static SIGNER: Mutex<Option<Signer>> = Mutex::new(None);
-/// (one writer of the queue at a time: answers run on their own tasks)
-static QUEUE_LOCK: Mutex<()> = Mutex::new(());
+/// How the bot signs: with the key file it saves after each signature (one server), or with a key whose leaves are
+/// handed out by the store's atomic counter (many copies at once, on AWS).
+enum Signing {
+    File(Signer),
+    Counted(Signer),
+}
 
+static SIGNER: Mutex<Option<Signing>> = Mutex::new(None);
+
+/// The store's counter of used leaves (a Counted key).
+pub const SIGNER_COUNTER: &str = "signer_next";
+
+/// Sign with this key file (saved as used before each signature).
 pub fn set_signer(s: Signer) {
-    *SIGNER.lock().unwrap() = Some(s);
+    *SIGNER.lock().unwrap() = Some(Signing::File(s));
 }
 
-/// Signatures the key has left (None: no key loaded).
+/// Sign with this key, taking each leaf from the store's counter (it starts at the key file's `next`).
+pub fn set_counted_signer(s: Signer) {
+    // (what a copy without the key needs to say how many are left: /api/health on the api function)
+    let info = SignerInfo { capacity: s.capacity(), first: s.first_unused() as u64 };
+    if let Err(e) = store::save(SIGNER_INFO, &info) {
+        eprintln!("bridge: signer info: {e}");
+    }
+    *SIGNER.lock().unwrap() = Some(Signing::Counted(s));
+}
+
+const SIGNER_INFO: &str = "signer_info.json";
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+struct SignerInfo {
+    capacity: u64,
+    first: u64,
+}
+
+/// Signatures the key has left (None: no key known).
 pub fn signatures_left() -> Option<u64> {
-    SIGNER.lock().unwrap().as_ref().map(|s| s.left())
+    let g = SIGNER.lock().unwrap();
+    let Some(signing) = g.as_ref() else {
+        // no key here (the api function): the worker's counted key, if it said what it is
+        let info: SignerInfo = store::load_opt(SIGNER_INFO)?;
+        let next = store::backend().peek(SIGNER_COUNTER).ok().flatten().unwrap_or(info.first).max(info.first);
+        return Some(info.capacity.saturating_sub(next));
+    };
+    match signing {
+        Signing::File(s) => Some(s.left()),
+        Signing::Counted(s) => {
+            let next = store::backend().peek(SIGNER_COUNTER).ok().flatten().unwrap_or(s.first_unused() as u64);
+            Some(s.capacity().saturating_sub(next.max(s.first_unused() as u64)))
+        }
+    }
 }
 
+/// The public half of the key in use (tests, /api/health).
+pub fn public_key() -> Option<dz_proto::wots::PublicKey> {
+    SIGNER.lock().unwrap().as_ref().map(|s| match s {
+        Signing::File(s) | Signing::Counted(s) => s.public(),
+    })
+}
+
+fn sign(message: &[u8]) -> Result<Vec<u8>> {
+    let err = |e: &dyn std::fmt::Display| crate::core::Error::Msg(e.to_string());
+    let mut g = SIGNER.lock().unwrap();
+    match g.as_mut().ok_or_else(|| crate::core::Error::Msg("the bot has no signing key (dz-server keygen)".into()))? {
+        Signing::File(s) => s.sign(message).map_err(|e| err(&e)),
+        Signing::Counted(s) => {
+            // (the leaf is ours alone once the counter handed it out: nothing else can sign with it)
+            let leaf = store::backend()
+                .take(SIGNER_COUNTER, s.first_unused() as u64, s.capacity())?
+                .ok_or_else(|| err(&dz_proto::wots::KeyError::Spent))?;
+            s.sign_leaf(leaf as u32, message).map_err(|e| err(&e))
+        }
+    }
+}
+
+/// A file in the data folder (the files that are not the bot's state: the key, BridgeKey.lua, the art).
 pub fn path(name: &str) -> PathBuf {
     crate::data_dir().join(name)
 }
@@ -56,18 +121,34 @@ pub struct Char {
 /// Discord user id -> their characters (the first is their main)
 pub type Profiles = std::collections::BTreeMap<String, Vec<Char>>;
 
-pub fn load_profiles_at(p: &Path) -> Profiles {
-    fs::read(p).ok().and_then(|d| serde_json::from_slice(&d).ok()).unwrap_or_default()
-}
+const PROFILES: &str = "bridge_profiles.json";
+const QUEUE: &str = "bridge_queue.json";
+const CHANNELS: &str = "bridge_channels.json";
+const LINKS: &str = "bridge_links.json";
 
 pub fn load_profiles() -> Profiles {
-    load_profiles_at(&path("bridge_profiles.json"))
+    store::load(PROFILES)
 }
 
 /// Save the characters made in Discord; the game's badges follow (a new signed "links" record).
 pub fn save_profiles(p: &Profiles) -> Result<()> {
-    save_json(&path("bridge_profiles.json"), p)?;
+    store::save(PROFILES, p)?;
     push_links(p)
+}
+
+/// Change the characters made in Discord in one step (nobody else's change in between is lost); the badges follow.
+pub fn update_profiles<R>(f: impl FnMut(&mut Profiles) -> R) -> Result<R> {
+    let r = store::update(PROFILES, f)?;
+    push_links(&load_profiles())?;
+    Ok(r)
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+struct LinksState {
+    #[serde(default)]
+    hash: String,
+    #[serde(default)]
+    rev: u64,
 }
 
 /// The badges as a signed record { rev, l = { [character] = Discord name } } (addon Core/Bridge.lua "links"); an
@@ -75,25 +156,19 @@ pub fn save_profiles(p: &Profiles) -> Result<()> {
 pub fn push_links(p: &Profiles) -> Result<()> {
     let l: serde_json::Map<String, Value> = links(p).into_iter().map(|k| (k.name, Value::String(k.discord))).collect();
     let hash = hex::encode(<sha2::Sha256 as sha2::Digest>::digest(serde_json::to_vec(&l).unwrap_or_default()));
-    let state = path("bridge_links.json");
-    let last: Value = fs::read(&state).ok().and_then(|d| serde_json::from_slice(&d).ok()).unwrap_or(Value::Null);
-    if last.get("hash").and_then(|h| h.as_str()) == Some(hash.as_str()) {
-        return Ok(());
-    }
     let now = crate::bot::unix_now();
-    // (a rev above the last one even if the clock stepped back: the game keeps the higher)
-    let rev = now.max(last.get("rev").and_then(|r| r.as_u64()).unwrap_or(0) + 1);
-    {
-        let _g = QUEUE_LOCK.lock().unwrap();
-        let q = path("bridge_queue.json");
-        let mut all = load_queue_at(&q);
-        let before = all.len();
-        all.retain(|r| r.kind != "links");
-        if all.len() != before {
-            save_json(&q, &all)?;
+    // (claim the new revision first: two copies of the bot sending the same list at once send it once)
+    let claimed = store::update(LINKS, |st: &mut LinksState| {
+        if st.hash == hash {
+            return None;
         }
-    }
-    push(Record {
+        // (a rev above the last one even if the clock stepped back: the game keeps the higher)
+        st.rev = now.max(st.rev + 1);
+        st.hash = hash.clone();
+        Some(st.rev)
+    })?;
+    let Some(rev) = claimed else { return Ok(()) };
+    let mut r = Record {
         id: format!("ln_{rev}"),
         kind: "links".into(),
         at: now,
@@ -101,8 +176,17 @@ pub fn push_links(p: &Profiles) -> Result<()> {
         body: serde_json::json!({ "rev": rev, "l": l }),
         discord: String::new(),
         sig: String::new(),
+    };
+    r.sig = hex::encode(sign(&r.message().map_err(|e| crate::core::Error::Msg(e.to_string()))?)?);
+    store::update(QUEUE, |q: &mut Vec<Record>| {
+        // (an older list still waiting is replaced; a newer one, sent meanwhile, wins)
+        if q.iter().any(|x| x.kind == "links" && x.body.get("rev").and_then(|v| v.as_u64()).unwrap_or(0) > rev) {
+            return;
+        }
+        q.retain(|x| x.kind != "links");
+        q.push(r.clone());
     })?;
-    save_json(&state, &serde_json::json!({ "hash": hash, "rev": rev }))
+    Ok(())
 }
 
 /// The characters made in Discord, for the addon's badges.
@@ -143,20 +227,21 @@ pub fn tidy_name(name: &str) -> String {
 // Files
 // ------------------------------------------------------------------------------------------------------------------
 
+/// A file in the data folder written whole (not the bot's state: that is in the store).
 pub fn save_json<T: Serialize + ?Sized>(p: &Path, v: &T) -> Result<()> {
-    fs::create_dir_all(p.parent().unwrap())?;
+    std::fs::create_dir_all(p.parent().unwrap())?;
     let tmp = p.with_extension("tmp");
-    fs::write(&tmp, serde_json::to_vec_pretty(v).unwrap())?;
-    fs::rename(&tmp, p)?;
+    std::fs::write(&tmp, serde_json::to_vec_pretty(v).unwrap())?;
+    std::fs::rename(&tmp, p)?;
     Ok(())
 }
 
 pub fn load_channels() -> Vec<Channel> {
-    fs::read(path("bridge_channels.json")).ok().and_then(|d| serde_json::from_slice(&d).ok()).unwrap_or_default()
+    store::load(CHANNELS)
 }
 
 pub fn save_channels(c: &[Channel]) -> Result<()> {
-    save_json(&path("bridge_channels.json"), c)
+    store::save(CHANNELS, c)
 }
 
 /// A Lua array as the launcher uploads it (an object with keys "1", "2", ...) in order; any other value: empty.
@@ -171,31 +256,21 @@ pub fn lua_list(v: Option<&Value>) -> Vec<&Value> {
 // The queue
 // ------------------------------------------------------------------------------------------------------------------
 
-pub fn load_queue_at(p: &Path) -> Vec<Record> {
-    fs::read(p).ok().and_then(|d| serde_json::from_slice(&d).ok()).unwrap_or_default()
-}
-
 pub fn load_queue() -> Vec<Record> {
-    load_queue_at(&path("bridge_queue.json"))
+    store::load(QUEUE)
 }
 
 /// Sign a record and queue it for the game. Returns the records now waiting.
 pub fn push(mut r: Record) -> Result<Vec<Record>> {
     let message = r.message().map_err(|e| crate::core::Error::Msg(e.to_string()))?;
-    {
-        let mut g = SIGNER.lock().unwrap();
-        let s = g.as_mut().ok_or_else(|| crate::core::Error::Msg("the bot has no signing key (dz-server keygen)".into()))?;
-        r.sig = hex::encode(s.sign(&message).map_err(|e| crate::core::Error::Msg(e.to_string()))?);
-    }
-    let _g = QUEUE_LOCK.lock().unwrap();
-    let p = path("bridge_queue.json");
-    let mut q = load_queue_at(&p);
+    r.sig = hex::encode(sign(&message)?);
     // (a record nobody could take in two weeks - a guest when no raid leader syncs - is dropped)
     let cut = r.at.saturating_sub(MAX_AGE);
-    q.retain(|x| x.at >= cut);
-    q.push(r);
-    save_json(&p, &q)?;
-    Ok(q)
+    store::update(QUEUE, |q: &mut Vec<Record>| {
+        q.retain(|x| x.at >= cut && x.id != r.id);
+        q.push(r.clone());
+        q.clone()
+    })
 }
 
 /// How long a record waits for a game to take it.
@@ -205,26 +280,22 @@ const MAX_AGE: u64 = 14 * 86400;
 /// Returns the ones it refused, with why (told to whoever made them).
 pub fn take_applied(applied: Option<&Value>) -> Result<Vec<(Record, String)>> {
     let Some(Value::Object(applied)) = applied else { return Ok(Vec::new()) };
-    let _g = QUEUE_LOCK.lock().unwrap();
-    let p = path("bridge_queue.json");
-    let all = load_queue_at(&p);
-    let before = all.len();
-    let (mut keep, mut failed) = (Vec::new(), Vec::new());
-    for r in all {
-        match applied.get(&r.id) {
-            None => keep.push(r),
-            Some(m) => {
-                if m.get("ok").and_then(|x| x.as_bool()) != Some(true) {
-                    let why = m.get("why").and_then(|x| x.as_str()).unwrap_or("refused").to_string();
-                    failed.push((r, why));
+    store::update(QUEUE, |all: &mut Vec<Record>| {
+        let (mut keep, mut failed) = (Vec::new(), Vec::new());
+        for r in all.drain(..) {
+            match applied.get(&r.id) {
+                None => keep.push(r),
+                Some(m) => {
+                    if m.get("ok").and_then(|x| x.as_bool()) != Some(true) {
+                        let why = m.get("why").and_then(|x| x.as_str()).unwrap_or("refused").to_string();
+                        failed.push((r, why));
+                    }
                 }
             }
         }
-    }
-    if keep.len() != before {
-        save_json(&p, &keep)?;
-    }
-    Ok(failed)
+        *all = keep;
+        failed
+    })
 }
 
 #[cfg(test)]
@@ -239,6 +310,7 @@ pub(crate) mod tests {
         let g = ONE.lock().unwrap_or_else(|e| e.into_inner());
         let dir = tempfile::tempdir().unwrap();
         crate::set_data_dir(dir.path().to_path_buf());
+        store::set(std::sync::Arc::new(store::FileStore::new(dir.path().to_path_buf())));
         set_signer(Signer::create(&dir.path().join("bridge_key.json"), 3, &[5u8; 48]).unwrap());
         (dir, g)
     }
@@ -253,7 +325,7 @@ pub(crate) mod tests {
         push(rec("dc_1")).unwrap();
         let q = push(rec("dc_2")).unwrap();
         assert_eq!(q.len(), 2);
-        let pk = SIGNER.lock().unwrap().as_ref().unwrap().public();
+        let pk = public_key().unwrap();
         for r in &q {
             assert!(dz_proto::wots::verify(&pk, &r.message().unwrap(), &hex::decode(&r.sig).unwrap()));
         }
@@ -262,6 +334,33 @@ pub(crate) mod tests {
         assert_eq!(failed.len(), 1);
         assert_eq!(failed[0].1, "over");
         assert_eq!(failed[0].0.discord, "42");
+    }
+
+    #[test]
+    fn a_counted_key_uses_each_leaf_once_and_stops_when_spent() {
+        let (d, _g) = scratch();
+        // a key whose file says leaf 2 is next (two were used before it moved to the store's counter)
+        let p = d.path().join("k.json");
+        let mut s = Signer::create(&p, 3, &[9u8; 48]).unwrap();
+        s.sign(b"a").unwrap();
+        s.sign(b"b").unwrap();
+        let leaves = std::fs::read(d.path().join("k.json.leaves")).unwrap();
+        let counted = Signer::from_parts(&std::fs::read(&p).unwrap(), &leaves).unwrap();
+        let pk = counted.public();
+        set_counted_signer(counted);
+        assert_eq!(signatures_left(), Some(6));
+        let mut used = Vec::new();
+        for n in 0..6 {
+            let q = push(rec(&format!("c{n}"))).unwrap();
+            let r = q.last().unwrap();
+            let sig = hex::decode(&r.sig).unwrap();
+            assert!(dz_proto::wots::verify(&pk, &r.message().unwrap(), &sig));
+            used.push(u32::from_be_bytes(sig[..4].try_into().unwrap()));
+        }
+        assert_eq!(used, vec![2, 3, 4, 5, 6, 7]);
+        assert_eq!(signatures_left(), Some(0));
+        assert!(push(rec("one-too-many")).is_err(), "a spent key refuses");
+        assert_eq!(load_queue().len(), 6);
     }
 
     #[test]

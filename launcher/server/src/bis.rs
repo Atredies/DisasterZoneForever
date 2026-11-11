@@ -260,16 +260,28 @@ pub fn button(user: &str, custom: &str) -> Reply {
     }
 }
 
-/// A choice in the slot menu or the matches menu.
-pub fn select(user: &str, by: &str, custom: &str, values: &[String]) -> Reply {
-    let v = values.first().map(String::as_str).unwrap_or("");
+/// The choices that open the item form (answered at once: bot::immediate).
+pub fn modal_for(custom: &str, values: &[String]) -> Option<Reply> {
+    let v = values.first()?;
     let parts: Vec<&str> = custom.split(':').collect();
     match parts[..] {
-        ["bq", p, l, name] => Reply::Modal {
+        ["bq", p, l, name] => Some(Reply::Modal {
             custom_id: format!("bm:{p}:{l}:{v}:{name}"),
             title: format!("{} · {}", SLOTS.get(v.parse::<usize>().unwrap_or(1).saturating_sub(1)).unwrap_or(&"Slot"), name),
             components: item_form(),
-        },
+        }),
+        _ => None,
+    }
+}
+
+/// A choice in the slot menu or the matches menu.
+pub fn select(user: &str, by: &str, custom: &str, values: &[String]) -> Reply {
+    if let Some(m) = modal_for(custom, values) {
+        return m;
+    }
+    let v = values.first().map(String::as_str).unwrap_or("");
+    let parts: Vec<&str> = custom.split(':').collect();
+    match parts[..] {
         ["bi", p, l, sid, w, name] => apply(user, by, p, l, sid, w, name, v),
         _ => private("Unknown menu."),
     }

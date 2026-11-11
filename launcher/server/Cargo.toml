@@ -16,6 +16,7 @@ dz-proto = { path = "../proto" }
 flate2 = "1.1.10"
 futures = "0.3.34"
 getrandom = "0.3"
+ed25519-dalek = "2.2"
 hex = "0.4.3"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 imageproc = { version = "0.25", default-features = false }
@@ -30,6 +31,15 @@ twilight-gateway = { version = "0.17.1", default-features = false, features = ["
 twilight-http = { version = "0.17.1", default-features = false, features = ["rustls-webpki-roots", "decompression"] }
 twilight-model = "0.17.1"
 twilight-util = { version = "0.17", features = ["builder"] }
+aws-config = { version = "1.13.2", default-features = false, features = ["rt-tokio", "behavior-version-latest"], optional = true }
+aws-sdk-dynamodb = { version = "1.139.0", default-features = false, features = ["rt-tokio", "behavior-version-latest"], optional = true }
+aws-sdk-s3 = { version = "1.159.0", default-features = false, features = ["rt-tokio", "behavior-version-latest"], optional = true }
+aws-sdk-sqs = { version = "1.121.0", default-features = false, features = ["rt-tokio", "behavior-version-latest"], optional = true }
+aws-sdk-ssm = { version = "1.136.0", default-features = false, features = ["rt-tokio", "behavior-version-latest"], optional = true }
+aws-smithy-http-client = { version = "1.5.2", features = ["rustls-ring"], optional = true }
+lambda_http = { version = "1.3.2", optional = true }
+lambda_runtime = { version = "1.5.0", optional = true }
+aws-smithy-types = { version = "1.9.4", optional = true }
 
 [target."cfg(windows)".dependencies]
 keyring = { version = "3", features = ["windows-native"] }
@@ -45,3 +55,17 @@ strip = true
 # (the bot's pictures: image decoding and scaling are many times slower unoptimized)
 [profile.dev.package."*"]
 opt-level = 2
+
+[features]
+# The bot on AWS Lambda (aws.rs): DynamoDB / S3 state, the SQS job queue, SSM secrets. `cargo build --features aws`
+aws = [
+    "dep:aws-config",
+    "dep:aws-sdk-dynamodb",
+    "dep:aws-sdk-s3",
+    "dep:aws-sdk-sqs",
+    "dep:aws-sdk-ssm",
+    "dep:aws-smithy-http-client",
+    "dep:aws-smithy-types",
+    "dep:lambda_http",
+    "dep:lambda_runtime",
+]

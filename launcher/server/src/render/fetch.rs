@@ -52,8 +52,11 @@ pub async fn ensure_items(ids: impl IntoIterator<Item = u32>) {
         for (id, png) in chunk.iter().zip(got) {
             if let Some(png) = png {
                 let name = format!("item_{id}.png");
-                if std::fs::write(art.dir().join(&name), png).is_ok() {
+                if std::fs::write(art.dir().join(&name), &png).is_ok() {
                     art.forget(&name);
+                    // (on AWS the art folder is a cold start's copy: the icon is kept for the next one)
+                    #[cfg(feature = "aws")]
+                    crate::aws::publish_asset(&format!("bot_art/{name}"), &png).await;
                 }
             }
         }

@@ -12,12 +12,15 @@
 //! The bot's pictures use the machine's clock for days and times: set TZ to the realm's time zone.
 
 mod api;
+#[cfg(feature = "aws")]
+mod aws;
 mod bis;
 mod bot;
 pub mod bridge;
 mod core;
 mod emoji;
 mod items;
+mod jobs;
 mod members;
 mod merge;
 mod posts;
@@ -25,6 +28,7 @@ mod presence;
 mod remind;
 mod render;
 mod signup;
+pub mod store;
 
 use serde::Deserialize;
 use std::path::PathBuf;
@@ -53,6 +57,33 @@ pub struct Config {
     pub listen: String,
     /// the WoW guild this bot serves ("Guild Name-Realm" as the addon writes it); empty = the first one that syncs
     pub guild: Option<String>,
+    /// Developer Portal > General Information > Public Key: checks that /api/interactions requests are Discord's
+    /// (only needed when Discord calls the bot over HTTP)
+    pub public_key: String,
+}
+
+impl Config {
+    /// Settings from the environment win over server.json (the bot on AWS has no data folder to keep them in):
+    /// DZ_APP_ID, DZ_GUILD_ID, DZ_LISTEN, DZ_GUILD, DZ_PUBLIC_KEY.
+    fn with_env(mut self) -> Config {
+        let env = |k: &str| std::env::var(k).ok().filter(|v| !v.trim().is_empty());
+        if let Some(v) = env("DZ_APP_ID") {
+            self.app_id = v;
+        }
+        if let Some(v) = env("DZ_GUILD_ID") {
+            self.guild_id = v;
+        }
+        if let Some(v) = env("DZ_LISTEN") {
+            self.listen = v;
+        }
+        if let Some(v) = env("DZ_GUILD") {
+            self.guild = Some(v);
+        }
+        if let Some(v) = env("DZ_PUBLIC_KEY") {
+            self.public_key = v;
+        }
+        self
+    }
 }
 
 static CONFIG: OnceLock<Config> = OnceLock::new();
@@ -60,13 +91,14 @@ static CONFIG: OnceLock<Config> = OnceLock::new();
 pub fn config() -> &'static Config {
     CONFIG.get_or_init(|| {
         let p = data_dir().join("server.json");
-        match std::fs::read(&p) {
+        let c: Config = match std::fs::read(&p) {
             Ok(d) => serde_json::from_slice(&d).unwrap_or_else(|e| {
                 eprintln!("{} is not valid: {e}", p.display());
                 std::process::exit(2)
             }),
             Err(_) => Config::default(),
-        }
+        };
+        c.with_env()
     })
 }
 
@@ -90,6 +122,44 @@ fn launcher_token() -> Option<String> {
     None
 }
 
+/// The addon's Core/BridgeKey.lua for this public key. With the guild this bot serves (server.json / DZ_GUILD,
+/// "Guild Name-Realm" as the addon writes it) it is that guild's entry of ns.BridgeKeys: the addon trusts a key only
+/// for its own guild (Core/Bridge.lua Bridge.KeyFor). Another guild's bot adds its own entry to the same file.
+pub fn bridge_key_lua(k: &dz_proto::wots::PublicKey) -> String {
+    bridge_key_lua_for(k, config().guild.as_deref())
+}
+
+fn bridge_key_lua_for(k: &dz_proto::wots::PublicKey, guild: Option<&str>) -> String {
+    let head = "if DisasterZoneBoot and DisasterZoneBoot.Run(\"Core/BridgeKey.lua\", ...) then return end -- DisasterZone: public keys Discord bridge records are verified with (written by dz-server keygen).\n\
+         -- The private halves live only with each guild's bot. Core/Bridge.lua explains the scheme.\n\
+         local addonName, ns = ...\n\n";
+    match guild.filter(|g| !g.is_empty()) {
+        Some(g) => format!(
+            "{head}ns.BridgeKeys = ns.BridgeKeys or {{}}\n\n-- {g}\nns.BridgeKeys[{}] = {{\n    seed = \"{}\",\n    root = \"{}\",\n    h = {},\n}}\n",
+            lua_string(g),
+            k.seed,
+            k.root,
+            k.h
+        ),
+        None => format!("{head}{}", k.lua()),
+    }
+}
+
+/// A Lua string literal (a guild name may hold quotes or backslashes).
+fn lua_string(s: &str) -> String {
+    let mut out = String::from("\"");
+    for c in s.chars() {
+        match c {
+            '\\' => out.push_str("\\\\"),
+            '"' => out.push_str("\\\""),
+            '\n' => out.push_str("\\n"),
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
+}
+
 fn keygen(height: u8) {
     let p = data_dir().join("bridge_key.json");
     if p.exists() {
@@ -103,18 +173,39 @@ fn keygen(height: u8) {
         eprintln!("could not make the key: {e}");
         std::process::exit(2)
     });
-    let lua = format!(
-        "if DisasterZoneBoot and DisasterZoneBoot.Run(\"Core/BridgeKey.lua\", ...) then return end -- DisasterZone: public key Discord bridge records are verified with (written by dz-server keygen).\n\
-         -- The private half lives only on the bot's server. Core/Bridge.lua explains the scheme.\n\
-         local addonName, ns = ...\n\n{}",
-        s.public().lua()
-    );
+    let lua = bridge_key_lua(&s.public());
     let _ = std::fs::write(data_dir().join("BridgeKey.lua"), &lua);
     print!("{lua}");
 }
 
+/// The bot without a gateway connection: Discord calls /api/interactions; the jobs run here.
+async fn run_http_only() {
+    let Some(token) = token() else {
+        eprintln!("no bot token: Discord can't be answered");
+        let _ = tokio::signal::ctrl_c().await;
+        return;
+    };
+    bot::init_http(&token);
+    jobs::submit(jobs::Job::Setup);
+    let mut tick = tokio::time::interval(std::time::Duration::from_secs(60));
+    loop {
+        tokio::select! {
+            _ = tick.tick() => jobs::submit(jobs::Job::Tick),
+            _ = tokio::signal::ctrl_c() => { eprintln!("stopping"); return; }
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() {
+    #[cfg(feature = "aws")]
+    if let Ok(role) = std::env::var("DZ_LAMBDA") {
+        if let Err(e) = aws::lambda_main(&role).await {
+            eprintln!("lambda: {e}");
+            std::process::exit(1);
+        }
+        return;
+    }
     let args: Vec<String> = std::env::args().skip(1).collect();
     match args.first().map(String::as_str) {
         Some("keygen") => return keygen(args.get(1).and_then(|h| h.parse().ok()).unwrap_or(16).clamp(4, 20)),
@@ -132,15 +223,18 @@ async fn main() {
         }
         Err(e) => eprintln!("no signing key ({e}): Discord changes can't reach the game. Run dz-server keygen."),
     }
-    if let Some(v) = std::fs::read(bridge::path("merged.json")).ok().and_then(|d| serde_json::from_slice(&d).ok()) {
-        signup::set_snap(v);
-    }
+    members::import_legacy();
     // (the game's Discord badges: a signed list, sent again if it changed while the bot was off)
     let profiles = bridge::load_profiles();
     if !profiles.is_empty() {
         if let Err(e) = bridge::push_links(&profiles) {
             eprintln!("could not queue the badges: {e}");
         }
+    }
+    if std::env::var_os("DZ_HTTP_INTERACTIONS").is_some() {
+        // Discord calls /api/interactions (the Developer Portal's Interactions Endpoint URL): no gateway; the
+        // reminder tick runs here every minute and the setup once
+        return run_http_only().await;
     }
     let listen = if cfg.listen.is_empty() { "127.0.0.1:8787" } else { cfg.listen.as_str() };
     let socket = tokio::net::TcpListener::bind(listen).await.unwrap_or_else(|e| {
@@ -167,5 +261,22 @@ async fn main() {
     tokio::select! {
         _ = bot::run_forever(token, cfg.app_id.clone(), cfg.guild_id.clone()) => {}
         _ = tokio::signal::ctrl_c() => eprintln!("stopping"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_key_file_names_its_guild() {
+        let k = dz_proto::wots::PublicKey { seed: "ab".into(), root: "cd".into(), h: 16 };
+        let lua = bridge_key_lua_for(&k, Some("Casual \"Disaster\"-CAMWOWEU4Realm4PvP"));
+        assert!(lua.contains("ns.BridgeKeys = ns.BridgeKeys or {}"), "{lua}");
+        assert!(lua.contains(r#"ns.BridgeKeys["Casual \"Disaster\"-CAMWOWEU4Realm4PvP"] = {"#), "{lua}");
+        assert!(lua.contains("root = \"cd\"") && lua.contains("h = 16"), "{lua}");
+        // no guild known: the older single key
+        assert!(bridge_key_lua_for(&k, None).contains("ns.BridgeKey = {"));
+        assert!(bridge_key_lua_for(&k, Some("")).contains("ns.BridgeKey = {"));
     }
 }

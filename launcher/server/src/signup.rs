@@ -20,20 +20,27 @@ use twilight_model::channel::message::component::{
 /// Wowhead's WoW Forever item page (its site has a /forever/ section: "<item> - Item - Forever", checked 2026-11-09).
 pub const WOWHEAD_ITEM: &str = "https://www.wowhead.com/forever/item=";
 
-static SNAP: Mutex<Option<Value>> = Mutex::new(None);
-static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+/// (read again after 5 s: another copy of the bot may have merged a newer one)
+static SNAP: crate::store::Cached<Value> = crate::store::Cached::new(SNAP_KEY, 5_000);
+pub const SNAP_KEY: &str = "merged.json";
 
+/// This process merged a new one (already saved): use it at once.
 pub fn set_snap(v: Value) {
-    *SNAP.lock().unwrap() = Some(v);
+    SNAP.put(v);
 }
 
-/// The last snapshot, when the bot has read one.
+/// The last snapshot, when the bot has one.
 pub fn current_snap() -> Option<Value> {
-    SNAP.lock().unwrap().clone()
+    SNAP.get().map(|v| (*v).clone())
 }
 
 fn snap() -> Value {
-    SNAP.lock().unwrap().clone().unwrap_or(Value::Null)
+    current_snap().unwrap_or(Value::Null)
+}
+
+/// A record id no other copy of the bot makes at the same moment.
+fn uniq() -> String {
+    format!("{:08x}", crate::store::rand_u64() as u32)
 }
 
 /// The classes and their specs, in the addon's order (ns.SPECS: the spec index is the same number).
@@ -218,8 +225,25 @@ fn accept_menu(raid: &str, chars: &[Char], snap: &Value) -> Answer {
     Answer::Text(format!("**{}**: which character and spec?", raid_name(snap, raid)), vec![menu(format!("sp:{raid}"), "Character and spec", options)])
 }
 
+/// The clicks that open the character form (they must be answered at once: bot::immediate). The same rules
+/// [`button`] and [`select`] follow.
+pub fn modal_for(user: &str, custom: &str, values: &[String]) -> Option<Answer> {
+    let parts: Vec<&str> = custom.split(':').collect();
+    let no_chars = || bridge::load_profiles().get(user).is_none_or(|c| c.is_empty());
+    match parts[..] {
+        ["ch", "add"] if values.is_empty() => Some(form("-", "-")),
+        ["mr", raid, st] if values.is_empty() && no_chars() => Some(form(raid, st)),
+        ["su", raid, st] if values.is_empty() && no_chars() => Some(form(raid, if st == "S" { "A" } else { st })),
+        ["sp", raid] if values.first().map(String::as_str) == Some("new") => Some(form(raid, "A")),
+        _ => None,
+    }
+}
+
 /// A raid post's button: custom id "su:<raid>:<A|T|X>".
 pub fn button(user: &str, name: &str, custom: &str, now: u64) -> Answer {
+    if let Some(m) = modal_for(user, custom, &[]) {
+        return m;
+    }
     let parts: Vec<&str> = custom.splitn(3, ':').collect();
     if custom == "ch:add" {
         return form("-", "-");
@@ -285,6 +309,9 @@ pub fn button(user: &str, name: &str, custom: &str, now: u64) -> Answer {
 
 /// A menu choice.
 pub fn select(user: &str, name: &str, custom: &str, values: &[String], now: u64) -> Answer {
+    if let Some(m) = modal_for(user, custom, values) {
+        return m;
+    }
     let v = values.first().map(String::as_str).unwrap_or("");
     let parts: Vec<&str> = custom.split(':').collect();
     let snap = snap();
@@ -469,7 +496,7 @@ fn queue(raid: &str, c: &Char, sp: Option<u32>, st: &str, user: &str, name: &str
     let sp = sp.unwrap_or(c.spec);
     let r = bridge::Record {
         // (two clicks in one second are two records)
-        id: format!("su_{now}_{user}_{}", NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)),
+        id: format!("su_{now}_{user}_{}", uniq()),
         kind: "signup".into(),
         at: now,
         by: name.to_string(),
@@ -839,7 +866,7 @@ pub fn bis_set(user: &str, name: &str, sid: i64, item: &str, who: Option<&str>, 
     let snap = snap();
     let phase = phase.unwrap_or_else(|| snap.get("phase").and_then(|p| p.as_i64()).unwrap_or(1)).clamp(0, 5);
     let r = bridge::Record {
-        id: format!("bis_{now}_{user}_{}", NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)),
+        id: format!("bis_{now}_{user}_{}", uniq()),
         kind: "bis".into(),
         at: now,
         by: name.to_string(),

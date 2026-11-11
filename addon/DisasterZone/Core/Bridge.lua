@@ -158,13 +158,30 @@ local function Job(fn)
     Step(coroutine.create(fn))
 end
 
+-- The bridge key of a guild. Core/BridgeKey.lua lists one per guild (ns.BridgeKeys, by guild key "Guild Name-Realm"
+-- as Guild:GetGuildKey makes it): each guild's bot signs with its own key, so a record one guild's bot signed does
+-- nothing in another guild (the PvP and PvE realms' guilds run a bot each), not even through a player with characters
+-- in both. A file with the older single ns.BridgeKey still works, for whichever guild loads it.
+function Bridge.KeyFor(guildKey)
+    local keys = ns.BridgeKeys
+    if type(keys) == "table" then
+        return type(guildKey) == "string" and keys[guildKey] or nil
+    end
+    return ns.BridgeKey
+end
+
+local function CurrentKey()
+    local G = ns.Guild
+    return Bridge.KeyFor(G and G.GetGuildKey and G:GetGuildKey() or nil)
+end
+
 -- Is `sig` (binary) the bot's signature over `message`? Spread over frames (the check is ~1000 hashes).
 local function Verify(message, sig, done)
-    local key = ns.BridgeKey
+    local key = CurrentKey()
     local P = ns.Patch
     if not (key and P and P.VerifySignature) or type(sig) ~= "string" then return done(false) end
     if P.IsUntrustedKey and P.IsUntrustedKey(key) then return done(false) end   -- the TBC original's bot key
-    local id = message .. "\0" .. sig
+    local id = tostring(key.root) .. "\0" .. message .. "\0" .. sig
     if checked[id] ~= nil then return done(checked[id]) end
     Job(function()
         local ok = P.VerifySignature(message, sig, key, Breathe) ~= nil
