@@ -1424,7 +1424,11 @@ end
 local function OnTooltipSetUnit(tt)
     if not (tt and tt.GetUnit) then return end
     local _, unit = tt:GetUnit()
-    if not unit or not (UnitIsPlayer and UnitIsPlayer(unit)) then return end
+    -- (Forever: the unit can be a secret value in combat; plain values only)
+    local C = ns.Compat
+    local plain = C and C.Plain or function(v) return v end
+    unit = plain(unit)
+    if type(unit) ~= "string" or not UnitIsPlayer or plain(UnitIsPlayer(unit)) ~= true then return end
     local key = ns.Util.UnitKey and ns.Util.UnitKey(unit)
     if key and GuestUI:AddUnitLines(tt, key) then tt:Show() end
 end
@@ -1483,7 +1487,19 @@ function GuestUI:OnInit()
                            "ROSTER_UPDATED", "RAIDLOG_CHANGED", "LEDGER_UPDATED", "ITEMINFO_READY" }) do
         ns:On(msg, function() GuestUI:RequestRefresh() end)
     end
-    if GameTooltip and GameTooltip.HookScript then GameTooltip:HookScript("OnTooltipSetUnit", OnTooltipSetUnit) end
+    -- WoW Forever runs the retail engine: GameTooltip has no OnTooltipSetUnit (hooking it raised at every login and
+    -- stopped this OnInit before the player menu entries below); the Unit post-call instead, as UI/Tooltip.lua does
+    if GameTooltip and GameTooltip.HookScript then
+        if not GameTooltip.HasScript or GameTooltip:HasScript("OnTooltipSetUnit") then
+            GameTooltip:HookScript("OnTooltipSetUnit", OnTooltipSetUnit)
+        else
+            local P, E = _G.TooltipDataProcessor, _G.Enum
+            local t = E and E.TooltipDataType and E.TooltipDataType.Unit
+            if type(P) == "table" and type(P.AddTooltipPostCall) == "function" and t ~= nil then
+                P.AddTooltipPostCall(t, function(tt) if tt == GameTooltip then OnTooltipSetUnit(tt) end end)
+            end
+        end
+    end
     if Menu and type(Menu.ModifyMenu) == "function" then
         for _, tag in ipairs(MENU_TAGS) do
             Menu.ModifyMenu(tag, function(_, root, contextData) GuestUI:ModifyPlayerMenu(root, contextData) end)

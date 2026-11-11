@@ -631,6 +631,16 @@ TooltipDataProcessor = {
 -- (the GameTooltip script list loses OnTooltipSetItem: HasScript says false, SetScript / HookScript error like the
 -- client; ui.lua's item tooltips call the Item post-calls instead)
 if not F.onTooltipSetItem then M.SCRIPTS.GameTooltip.OnTooltipSetItem = nil end
+-- (the retail engine has no OnTooltipSetUnit / OnTooltipSetSpell either: hooking them errors, as in game 2026-11-12,
+-- GameTooltip:HasScript("OnTooltipSetUnit") = false; the Unit and Spell post-calls run instead, M.tooltip_post_calls_of)
+if not F.onTooltipSetUnit then M.SCRIPTS.GameTooltip.OnTooltipSetUnit = nil end
+if not F.onTooltipSetSpell then M.SCRIPTS.GameTooltip.OnTooltipSetSpell = nil end
+function M.tooltip_post_calls_of(kind, tooltip, data)
+  local t = Enum.TooltipDataType[kind]
+  local l = t ~= nil and M.tooltip_post_calls[t]
+  if not l then return end
+  for i = 1, #l do M.safecall("TooltipDataProcessor " .. kind .. " post-call", l[i], tooltip, data) end
+end
 function M.tooltip_item_post_calls(tooltip, itemID)
   local l = M.tooltip_post_calls[Enum.TooltipDataType.Item]
   if not l then return end

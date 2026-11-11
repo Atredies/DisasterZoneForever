@@ -327,6 +327,14 @@ def build_info_lua(bid, pack, stamps=None):
             "DisasterZoneBuild = {\n    id = \"%s\",\n    assetPack = %d,\n%s}\n" % (bid, pack, rows))
 
 
+def _base_version():
+    """The version of the base release (dev/releases/base.json), or None."""
+    try:
+        return json.load(open(os.path.join(RELEASES, "base.json"), encoding="utf-8")).get("version")
+    except (OSError, ValueError):
+        return None
+
+
 def patch_key_lua(key):
     return ('if DisasterZoneBoot and DisasterZoneBoot.Run("Core/PatchKey.lua", ...) then return end '
             "-- DisasterZone: public key in-game updates are verified with (written by dev/tools/release.py keygen).\n"
@@ -506,7 +514,9 @@ def check_tree(addon_dir):
     rdir = rooms_dir(addon_dir)
     if rdir:
         rheaders = parse_toc(rdir, ROOMS_NAME)[0]
-        if rheaders.get("version") != headers.get("version"):
+        # (between full releases the rooms keep the base release's version: an in-game update only changes
+        # DisasterZone.toc; 'full' stamps every pack with the new version)
+        if rheaders.get("version") not in (headers.get("version"), _base_version()):
             problems.append("%s.toc says version %s, %s.toc %s: give both the same" % (
                 ROOMS_NAME, rheaders.get("version"), ADDON_NAME, headers.get("version")))
         if rheaders.get("loadondemand") not in ("1", "true"):

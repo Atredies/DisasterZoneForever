@@ -1,7 +1,8 @@
 ---
 title: "Startup error after in-game update 0.2.4 (HookScript)"
 tags: [task]
-status: "2 - Next up"
+status: "5 - Done"
+completed: 2026-11-13
 priority: p1
 effort: M
 updated: 2026-11-12

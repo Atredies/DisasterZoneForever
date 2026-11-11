@@ -8,6 +8,14 @@ if DisasterZoneBoot and DisasterZoneBoot.Run("Data/Changelog.lua", ...) then ret
 local addonName, ns = ...
 
 ns.CHANGELOG = {
+    { version = "0.2.5", date = "13 November 2026", title = "Guest book menu, and a clean start after updates",
+      sections = {
+          { heading = "Guest book", area = "other", kind = "fixed", hi = true,
+            lead = "The guest book's entries in a player's right-click menu work again.", lines = {
+              "A tooltip hook from the TBC version failed at every login on Forever and stopped them.",
+              "In-game updates no longer report an error while starting.",
+          } },
+      } },
     { version = "0.2.4", date = "12 November 2026", title = "Who has DisasterZone, shown right",
       sections = {
           { heading = "Guild roster", area = "other", kind = "fixed", hi = true,
