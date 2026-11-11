@@ -3,7 +3,8 @@ if DisasterZoneBoot and DisasterZoneBoot.Run("Core/OfficerNotes.lua", ...) then 
 -- (the Guild Master and the rank below, per the live guild roster) read and write them, and they travel only as
 -- whispers between officers: a note is sent to officers, and taken from officers, never over a channel.
 --
--- Data (SavedVariables: db.officerNotes[guildKey][charKey]) = { t = text ("" = removed), rev, by }; the newer rev wins.
+-- Data (SavedVariables: db.officerNotes[guildKey][charKey]) = { t = text ("" = removed), rev, by, rb }; the newer rev
+-- wins. rb (2026-11-09, local, never sent): the officer who passed the note on when it did not come from its writer.
 -- The developer's debug role (/dz role gm | officer) shows the notes UI to a character that is no officer: such a
 -- character's notes are kept apart (db.officerNotes["debug " .. guildKey]) and never sent, and it takes none: the
 -- network side always goes by the real rank.
@@ -108,7 +109,7 @@ function Notes:Get(key)
     local b = Store(false)
     local rec = b and type(key) == "string" and b[key]
     if not Valid(rec) or rec.t == "" then return nil end
-    return { text = rec.t, rev = rec.rev, by = rec.by }
+    return { text = rec.t, rev = rec.rev, by = rec.by, via = rec.rb }
 end
 
 -- Saves (text "" removes) a character's note and sends it to the officers online. Returns ok, err.
@@ -156,11 +157,21 @@ local function OnNote(sender, msg, dist)
     local text = Clean(msg.n)
     if not key or not text or #text > MAX_LEN or not IsInt(msg.v, 1, Now() + FUTURE_SLACK) then return end
     local by = msg.by ~= nil and WireKey(msg.by) or sender
+    -- 2026-11-09 (authority holes, round 2): who wrote the note (by) is the sender's word. Taken as it is only from
+    -- the writer (a character of theirs); passed on by another officer, the note keeps their name apart (rb, local,
+    -- shown "relayed by"), and the same note later from its writer clears it.
+    local G = Guild()
+    local rb = not (by == sender or (G and G.SameAccount and G:SameAccount(by, sender))) and sender or nil
     local b = Store(true)
     if not b then return end
     local old = Valid(b[key]) and b[key] or nil
+    if old and old.rev == msg.v and old.t == text and old.by == by and old.rb and not rb then
+        old.rb = nil
+        ns:Fire("OFFICER_NOTES_UPDATED", key)
+        return
+    end
     if old and (old.rev > msg.v or (old.rev == msg.v and old.t >= text)) then return end
-    b[key] = { t = text, rev = msg.v, by = by }
+    b[key] = { t = text, rev = msg.v, by = by, rb = rb }
     ns.AuditSaw("on.N", old, b[key], { key = key, via = sender })
     ns:Fire("OFFICER_NOTES_UPDATED", key)
 end

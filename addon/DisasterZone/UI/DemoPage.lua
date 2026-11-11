@@ -178,12 +178,16 @@ local PAGES = {
     { key = "map", label = "Guild map", icon = 7, line = "Who is where right now" },
     { key = "events", label = "Events", icon = 51, line = "Library, duel cup, season" },
     { key = "polls", label = "Polls", icon = 55, line = "Open and closed polls" },
-    { key = "dungeons", label = "Groups", icon = 46, line = "Dungeon runs, quests" },
+    { key = "dungeons", label = "Groups", icon = 46,
+      line = (ns.Compat and ns.Compat.isForever) and "Dungeon runs, raids, PvP" or "Dungeon runs, quests" },
     { key = "recruit", label = "Recruitment", icon = 39, line = "Recruits at each stage" },
     { key = "feedback", label = "Feedback", icon = 42, line = "Bugs and ideas, the plan" },
     { key = "mylog", label = "My Log", icon = 58, line = "Six weeks of your pulls" },
     { key = "wardrobe", label = "Wardrobe", icon = 40, line = "Four Retribution outfits" },
 }
+for i = #PAGES, 1, -1 do   -- (WoW Forever: pages it hides, e.g. My Log: Core/Constants.lua FOREVER_HIDDEN)
+    if ns.FOREVER_HIDDEN and ns.FOREVER_HIDDEN[PAGES[i].key] then table.remove(PAGES, i) end
+end
 
 -- The classes that have class tools, in the parts' order.
 local function ToolClasses()
@@ -327,7 +331,7 @@ function SettingsUI:BuildDemo(sec)
     gc.art = gc:CreateTexture(nil, "BACKGROUND", nil, 1)
     gc.art:SetPoint("TOPLEFT", 1, -1)
     gc.art:SetPoint("BOTTOMRIGHT", -1, 1)
-    UI:SetArtTexture(gc.art, "Karazhan", 544, GUILD_H - 2)
+    UI:SetArtTexture(gc.art, (ns.Compat and ns.Compat.isForever) and "Onyxia" or "Karazhan", 544, GUILD_H - 2)
     gc.shade = gc:CreateTexture(nil, "BACKGROUND", nil, 2)
     gc.shade:SetPoint("TOPLEFT", 1, -1)
     gc.shade:SetPoint("BOTTOMRIGHT", -1, 1)

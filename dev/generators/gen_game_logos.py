@@ -368,7 +368,7 @@ def azeromon():
 
 LOGOS = {"bingo": (bingo_A, bingo_B), "trainer": (trainer_A, trainer_B), "chess": (chess_A, chess_B),
          "illidan": (illidan_A, illidan_B), "azeromon": (azeromon, azeromon)}
-SHIP = {"bingo": bingo_A, "trainer": trainer_A, "chess": chess_A, "illidan": illidan_A}
+SHIP = {"bingo": bingo_A, "chess": chess_A}
 TEX_W, TEX_H = 512, 256
 
 

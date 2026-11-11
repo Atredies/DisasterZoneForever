@@ -70,25 +70,16 @@ function ClassKit:MyClass()
     return cls
 end
 
--- Points spent in a talent tab. 2.5.6: C_SpecializationInfo.GetSpecializationInfo (points are the 7th return);
--- GetTalentTabInfo is the fallback (id, name, desc, icon, points; the old 2.4 order had points 3rd).
+-- Points spent in a talent tab (ns.Compat.TalentTabPoints: 2.5.6's C_SpecializationInfo, the old GetTalentTabInfo,
+-- or Forever's trait groups); nil when the client can't tell.
 local function TabPoints(tab)
-    local C = C_SpecializationInfo
-    if C and C.GetSpecializationInfo then
-        local ok, _, _, _, _, _, _, points = pcall(C.GetSpecializationInfo, tab, false, false, nil, nil, nil)
-        if ok and tonumber(points) then return tonumber(points) end
-    end
-    if GetTalentTabInfo then
-        local r1, _, r3, _, r5 = GetTalentTabInfo(tab)
-        return (type(r1) == "string") and tonumber(r3) or tonumber(r5)
-    end
-    return nil
+    return ns.Compat.TalentTabPoints(tab)
 end
 ClassKit.TabPoints = TabPoints
 
 -- The talent tab with the most points (nil with no points spent).
 function ClassKit:MyTab()
-    local n = (GetNumTalentTabs and GetNumTalentTabs()) or 3
+    local n = ns.Compat.NumTalentTabs()
     local best, bestTab = 0, nil
     for tab = 1, n do
         local p = TabPoints(tab)
@@ -106,6 +97,37 @@ function ClassKit:MySpecs()
         if s.tab == tab then out[#out + 1] = s.label end
     end
     return out
+end
+
+-- My role, best guess: "tank" | "healer" | "dps" | nil (no idea). In order: the guild's tank list (ns.Tanks); the
+-- talents (the tree with the most points, ns.SPECS' role; Feral by form); the stance or form (a warrior in Defensive
+-- Stance, a druid in Bear Form); the group role picked in the client; the spec's role (WoW Forever: one spec per
+-- class with a fixed role, a warrior is DAMAGER, so it says little and comes last). Every role-aware tool asks here.
+local function RoleWord(r)
+    if r == "tank" or r == "TANK" then return "tank" end
+    if r == "healer" or r == "HEALER" then return "healer" end
+    if r == "melee" or r == "ranged" or r == "caster" or r == "dps" or r == "DAMAGER" then return "dps" end
+    return nil
+end
+ClassKit.RoleWord = RoleWord
+
+local function FormID() return GetShapeshiftFormID and GetShapeshiftFormID() or nil end
+local function BearForm() local f = FormID(); return f == 5 or f == 8 end
+
+function ClassKit:MyRole()
+    if ns.Tanks and ns.Tanks.IsMe and ns.Tanks:IsMe() then return "tank" end
+    local cls, tab = self:MyClass(), self:MyTab()
+    if cls and tab and ns.SPECS and ns.SPECS[cls] then
+        local roles = {}
+        for _, s in ipairs(ns.SPECS[cls]) do if s.tab == tab then roles[#roles + 1] = s.role end end
+        if #roles == 1 then return RoleWord(roles[1]) end
+        if #roles > 1 then return BearForm() and "tank" or "dps" end   -- (Feral: bear form tanks)
+    end
+    if cls == "WARRIOR" and GetShapeshiftForm and GetShapeshiftForm() == 2 then return "tank" end
+    if cls == "DRUID" and BearForm() then return "tank" end
+    local picked = UnitGroupRolesAssigned and UnitGroupRolesAssigned("player")
+    if picked and picked ~= "NONE" then return RoleWord(picked) end
+    return RoleWord(ns.Compat.SpecRole())
 end
 
 -- Demo (Core/DemoParts.lua): a class tool plays with made-up data while its part is picked on the Demo page
@@ -131,7 +153,11 @@ local function RealMine(self, k)
     if k.class ~= self:MyClass() then return false end
     if not k.specs then return true end
     local mine = self:MySpecs()
-    if #mine == 0 then return k.fallback and k.fallback() and true or false end
+    if #mine == 0 then
+        if k.fallback then return k.fallback() and true or false end
+        -- (WoW Forever: when the trait tree can't be read the tool is for the whole class, never for nobody)
+        return ns.Compat.isForever and true or false
+    end
     for _, want in ipairs(k.specs) do
         for _, have in ipairs(mine) do
             if want == have then return true end
@@ -182,10 +208,11 @@ end
 -- Lifecycle
 -- ---------------------------------------------------------------------------------------------------------------
 function ClassKit:OnLogin()
-    local function changed() ns:Fire("CLASSKIT_CHANGED") end
+    local function changed() ns.Compat.TalentsChanged(); ns:Fire("CLASSKIT_CHANGED") end
     ns:RegisterEvent("PLAYER_TALENT_UPDATE", changed)
     ns:RegisterEvent("CHARACTER_POINTS_CHANGED", changed)
     ns:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED", changed)   -- skipped where the client has no dual spec
+    if ns.Compat.isForever then ns:RegisterEvent("TRAIT_CONFIG_UPDATED", changed) end   -- (Forever's talents)
     ns:On("DEMO_TOGGLED", changed)
     -- (a tool's part picked or put away, a class picked, a demo pull starting or over: the timers follow it)
     ns:On("DEMO_PARTS_CHANGED", changed)

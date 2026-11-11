@@ -41,6 +41,7 @@ local TILE_W, TILE_H = 84, 76
 local DISC = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 local CHECK = "Interface\\RAIDFRAME\\ReadyCheck-Ready"
 local BANNER_ART = 131832      -- Serpentshrine Cavern's loading screen
+if ns.Compat and ns.Compat.isForever then BANNER_ART = 131824 end   -- (Forever: Blackrock Depths')
 
 local GOLD = S.C.GOLD
 local GREEN = { 0.56, 0.89, 0.62 }
@@ -908,7 +909,9 @@ local function RenderDetail()
     b.icon.ring:SetColorTexture(kc[1], kc[2], kc[3], 0.55)
     local label = item.kind == "bug" and "Something broke" or info.short
     b:SetTitle(UI():Colorize(label, kc) .. (item.no and ("  " .. S:Wrap("SUB", "#" .. item.no)) or ""))
-    b:SetSub(FaceText(item.author) .. " " .. UI():ColoredName(item.author) .. S:Wrap("SUB", "  ·  " .. Ago(item.at)))
+    -- (a copy passed on by someone else than its author, not confirmed yet: who passed it on)
+    local via = item.via and ("  ·  passed on by " .. Short(item.via) .. ", not confirmed") or ""
+    b:SetSub(FaceText(item.author) .. " " .. UI():ColoredName(item.author) .. S:Wrap("SUB", "  ·  " .. Ago(item.at) .. via))
     local pillText, pillKind = Pill(item)
     b:SetPill(pillKind, pillText)
     local inbox = state.tab == "inbox"

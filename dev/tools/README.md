@@ -1,5 +1,10 @@
 # DisasterZone offline test toolchain
 
+> **DisasterZoneForever note (2026-11-09):** this file was written for the TBC Anniversary original and its
+> Windows set-up. The mock now also has a **WoW Forever** profile (`Client(w, name, forever=True)`, client 1.60.1,
+> Interface 16001); the default profile is still TBC, for the upstream suites. Linux set-up and the Forever profile:
+> `_DisasterZoneForever-vault/06-Operations/Linux Dev Setup.md` and `Testing with Forever Data.md`.
+
 Static checks and a mocked WoW TBC Anniversary client (2.5.x, Interface 20506, Lua 5.1) for the `DisasterZone` addon.
 Nothing here touches the WoW folder; the addon is only read.
 

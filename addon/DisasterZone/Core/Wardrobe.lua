@@ -43,6 +43,9 @@ local FITS = {
 }
 W.FITS = FITS
 local ARTS = { "Karazhan", "GruulsLair", "SerpentshrineCavern", "nagrand", "TempestKeep", "MagtheridonsLair" }
+if ns.Compat and ns.Compat.isForever then   -- (WoW Forever: its raids, then the old world's art keys)
+    ARTS = { "HyjalForever", "Onyxia", "BarrowDeeps", "kalimdor", "ek", "wsg" }
+end
 -- fishing poles (their item subclass where the client tells it; these ids where it doesn't)
 local POLES = { [6256] = true, [6365] = true, [6366] = true, [6367] = true, [12225] = true, [19022] = true,
     [19970] = true, [25978] = true }
@@ -902,7 +905,7 @@ end
 
 function W:CheckTarget()
     if Demo() then return end
-    local name = UnitName and UnitName("target")
+    local name = ns.Compat.Name("target")      -- (WoW Forever: nil while an NPC's name is secret, in an instance)
     if not name or (UnitIsDead and UnitIsDead("target")) then return end
     local o = RuleOutfit("boss", function(v) return v.kind ~= "zone" and v.name == name end)
     if o then Begin("boss", o) end
@@ -929,7 +932,7 @@ function W:CheckBossDead()
     local a = W.active.boss
     if not a then return end
     local b = a.o.rules and a.o.rules.boss
-    if b and UnitName and UnitName("target") == b.name and UnitIsDead and UnitIsDead("target") then Finish("boss") end
+    if b and ns.Compat.Name("target") == b.name and UnitIsDead and UnitIsDead("target") then Finish("boss") end
 end
 
 function W:CheckPole()
@@ -970,6 +973,13 @@ local I = "Interface\\Icons\\"
 W.DEMO_WORN = { [1] = 29073, [2] = 28745, [3] = 29075, [15] = 24259, [5] = 29071, [9] = 28795, [10] = 30644,
     [6] = 28779, [7] = 30538, [8] = 28608, [11] = 28757, [12] = 30834, [13] = 29383, [14] = 28830, [16] = 28429,
     [17] = false, [18] = 27484 }
+-- WoW Forever: level-60 dungeon gear (every id in Data/Dungeons.lua or checked against Wowhead Forever)
+local FOREVER = ns.Compat and ns.Compat.isForever
+if FOREVER then
+    W.DEMO_WORN = { [1] = 22411, [2] = 280009, [3] = 13405, [15] = 13340, [5] = 11926, [9] = 22204, [10] = 13344,
+        [6] = 11783, [7] = 18739, [8] = 11731, [11] = 22257, [12] = 11669, [13] = 11815, [14] = 13213, [16] = 13983,
+        [17] = false, [18] = 23201 }
+end
 
 -- (a demo outfit's slots as W:Resolve gives them, from its made-up bank / missing marks)
 function W.DemoResolve(o)
@@ -1007,6 +1017,27 @@ end
 local demoList
 function W:DemoList()
     if demoList then return demoList end
+    if FOREVER then
+        demoList = {
+            DemoOutfit({ id = "ret", name = "Raid \226\128\148 Retribution", icon = I .. "Spell_Holy_AuraOfLight",
+                art = "HyjalForever", wearing = true, rules = { spec = "Retribution" } }, {}),
+            DemoOutfit({ id = "prot", name = "Tank \226\128\148 Protection", icon = I .. "Spell_Holy_DevotionAura",
+                art = "BarrowDeeps", rules = { spec = "Protection" }, demoBank = { [16] = true } },
+                { [1] = 16727, [3] = 16729, [15] = 13376, [5] = 16726, [9] = 16722, [10] = 16724, [6] = 16723,
+                  [7] = 16728, [8] = 16725, [12] = 18522, [13] = 13164, [14] = "keep", [16] = 11817, [17] = 11785,
+                  [18] = 22400 }),
+            DemoOutfit({ id = "onyxia", name = "Onyxia \226\128\148 Fire res", icon = I .. "Spell_Fire_FireArmor",
+                art = "Onyxia", rules = { boss = { kind = "boss", name = "Onyxia" } },
+                demoMissing = { [3] = true } },
+                { [3] = 15051, [10] = 12631, [11] = 22255, [15] = 11812, [13] = "keep", [14] = "keep" }),
+            DemoOutfit({ id = "fish", name = "Fishing", icon = I .. "Trade_Fishing", art = "ek",
+                rules = { pole = true } },
+                { [2] = "keep", [3] = "keep", [15] = "keep", [5] = "keep", [9] = "keep", [10] = "keep", [6] = "keep",
+                  [7] = "keep", [8] = "keep", [11] = "keep", [12] = "keep", [13] = "keep", [14] = "keep", [18] = "keep",
+                  [1] = 19972, [16] = 19970, [17] = false }),
+        }
+        return demoList
+    end
     demoList = {
         DemoOutfit({ id = "ret", name = "Raid \226\128\148 Retribution", icon = I .. "Spell_Holy_AuraOfLight",
             art = "Karazhan", wearing = true, rules = { spec = "Retribution" } }, {}),

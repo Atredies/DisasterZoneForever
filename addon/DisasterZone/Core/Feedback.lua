@@ -1,5 +1,5 @@
 if DisasterZoneBoot and DisasterZoneBoot.Run("Core/Feedback.lua", ...) then return end -- DisasterZone: feedback to the developer.
--- Members tell the addon's developer (DEV_NAME, Tsumil) about bugs, ideas, changes they want and things they love. A
+-- Members tell the addon's developer (DEV_KEY, Util.DEV_KEY: Arakis War) about bugs, ideas, changes they want and things they love. A
 -- WoW addon can't reach the internet, so feedback travels inside the guild: every client keeps the guild's feedback
 -- and passes it on, so an item reaches the developer the next time the developer and anyone who holds it are online
 -- together. Everyone in the guild sees every item and may add a "me too"; the developer, the Guild Master and the
@@ -21,8 +21,9 @@ if DisasterZoneBoot and DisasterZoneBoot.Run("Core/Feedback.lua", ...) then retu
 --   seq = { [author] = last n }   numbers of my characters' items and replies
 --   no  = last item number given (the developer's account only)
 -- A record is replaced only by one with a higher rv (ties: the larger canonical text), so every client ends with the
--- same set. Items, me-toos and replies come from anyone; a status, a number and a staff member's reply are taken only
--- from staff (they could be made up by anyone passing them on). An item closed (or withdrawn) long ago is "archived":
+-- same set. Items, me-toos and replies are believed from their author or staff; passed on by anyone else, a new one is
+-- kept marked rb = who passed it on (shown on the item) and never changes or withdraws one I hold (Put); a status, a
+-- number and a staff member's reply are taken only from staff (they could be made up by anyone passing them on). An item closed (or withdrawn) long ago is "archived":
 -- out of the sync, and dropped except on the developer's account (dev/tools/feedback.py reads the developer's file).
 --
 -- Messages (prefix CDLb, class "fb"):
@@ -47,8 +48,10 @@ local strlower, strsub, strfind, strmatch, strgsub = string.lower, string.sub, s
 -- Constants
 ---------------------------------------------------------------------------
 
-local DEV_NAME = "Tsumil"
-Feedback.DEV_NAME = DEV_NAME
+-- (name and realm: a character of the same name on another realm is not the developer; Core/Util.lua)
+local DEV_KEY = Util.DEV_KEY
+local DEV_NAME = DEV_KEY:match("^([^%-]+)")
+Feedback.DEV_KEY, Feedback.DEV_NAME = DEV_KEY, DEV_NAME
 
 local KINDS = { "bug", "idea", "change", "love" }
 local KIND_OK = { bug = true, idea = true, change = true, love = true }
@@ -128,22 +131,13 @@ local function Jitter(span, salt) return Util.Jitter(salt, span) end
 -- Who is who
 ---------------------------------------------------------------------------
 
--- The developer's character in the guild roster (DEV_NAME on my realm), or nil.
-local function DevKey()
-    local key = Util.NormalizeName(DEV_NAME)
-    local Guild = G()
-    if Guild and Guild.IsInGuild and key and Guild:IsInGuild(key, true) then return key end
-    return key
-end
-
--- Is key the developer (DEV_NAME, or a character the developer's account vouches for)?
+-- Is key the developer (DEV_KEY: that name on that realm, never the name alone; or a character the developer's own
+-- client vouches for, Guild:SameAccount)?
 function Feedback:IsDev(key)
     if type(key) ~= "string" then return false end
-    local name = strmatch(key, "^([^%-]+)")
-    if name == DEV_NAME then return true end
-    local dev = DevKey()
+    if Util.IsDevKey(key) then return true end
     local Guild = G()
-    return (dev and Guild and Guild.SameAccount and Guild:SameAccount(key, dev)) and true or false
+    return (Guild and Guild.SameAccount and Guild:SameAccount(key, DEV_KEY)) and true or false
 end
 
 function Feedback:AmIDev()
@@ -153,7 +147,7 @@ function Feedback:AmIDev()
     -- another character of my account is the developer (the saved data is account wide)
     local db = ns.db
     for key in pairs(db and type(db.chars) == "table" and db.chars or {}) do
-        if type(key) == "string" and strmatch(key, "^([^%-]+)") == DEV_NAME then return true end
+        if Util.IsDevKey(key) then return true end
     end
     return false
 end
@@ -301,6 +295,63 @@ local function Newer(a, b)
     return Util.Canonical(a) > Util.Canonical(b)
 end
 
+-- 2026-11-09 (authority holes 4): who vouches for a record's author (rec.a). Its author's own client (another
+-- character of theirs) and mine do; staff do too (they keep only copies vouched for: everything they hold came
+-- through this check). A copy passed on by anybody else is believed about nothing but that it was passed on: a new
+-- record is kept marked with who passed it on (rb, shown on the item; feedback has to travel through whoever is
+-- online, so the developer still gets what a member wrote while nobody else was there), and it never changes or
+-- withdraws a record I hold (that waits for the author's or a staff member's copy, asked for at once: AskAuthor).
+-- An unconfirmed copy (rb) never replaces one I hold, from anybody; the author's or staff's plain copy of the same
+-- version replaces it (the mark goes).
+local function SameWriter(a, b)
+    if a == b then return true end
+    local Guild = G()
+    return (Guild and Guild.SameAccount and Guild:SameAccount(a, b)) and true or false
+end
+
+local askedAuthor = {}  -- [id .. "|" .. member] = rv asked for (once per version and member)
+local askQueue = {}     -- [member] = { id, ... } waiting to go out (one FBQ each, a second later)
+
+local function FlushAsks()
+    local C = ns.Comm
+    for target, ids in pairs(askQueue) do
+        if C and C.Send then C:Send({ t = "FBQ", q = ids }, "WHISPER", target, "fb") end
+    end
+    askQueue = {}
+end
+
+-- A copy I did not take (or took marked) from a relayer: asked for from its author, else a staff member online
+-- (again when someone comes online: RetryAsks).
+local function AskAuthor(id, rec, via)
+    local Guild = G()
+    if not (Guild and Guild:IsReady()) then return end
+    local target
+    for _, m in ipairs(Guild:GetOnlineMembers()) do
+        if m ~= via and not Util.IsMe(m) then
+            if SameWriter(m, rec.a) then target = m break end
+            if not target and Feedback:IsStaff(m) then target = m end
+        end
+    end
+    if not target then return end
+    local k = id .. "|" .. target
+    if askedAuthor[k] and askedAuthor[k] >= rec.rv then return end
+    askedAuthor[k] = rec.rv
+    local list = askQueue[target] or {}
+    askQueue[target] = list
+    if #list >= 100 then return end
+    list[#list + 1] = id
+    Util.Debounce("feedback-ask", 1, FlushAsks)
+end
+
+-- The copies I hold marked as passed on (rb): asked for again from their authors (or staff) who are online now.
+local function RetryAsks()
+    local s = Store(false, true)
+    for id, rec in pairs(s and s.r or {}) do
+        if rec.rb then AskAuthor(id, rec, rec.rb) end
+    end
+end
+Feedback.RetryAsks = RetryAsks
+
 local recordCount = 0
 
 local function CountRecords()
@@ -317,14 +368,28 @@ local function Put(id, rec, sender, real)
     real = real or sender ~= nil or not DemoOn()
     local s = Store(true, real)
     if not s then return false end
+    -- who vouches for it (see SameWriter above)
+    if sender == nil or SameWriter(sender, rec.a) then
+        rec.rb = nil
+    elseif not Feedback:IsStaff(sender) then
+        rec.rb = sender
+    elseif rec.rb ~= nil and WireKey(rec.rb) ~= rec.rb then
+        rec.rb = sender     -- (staff pass on an unconfirmed copy as it is: a malformed mark names them)
+    end
     local old = s.r[id]
+    if old and rec.rb then
+        -- an unconfirmed copy never changes (or withdraws) what I hold: the author's is asked for
+        if Newer(rec, old) and sender ~= nil then AskAuthor(id, rec, sender) end
+        return false
+    end
     if old then
-        if not Newer(rec, old) then return false end
+        if not Newer(rec, old) and not (old.rb and rec.rv == old.rv) then return false end
     elseif real then
         if recordCount >= MAX_RECORDS then return false end
         recordCount = recordCount + 1
     end
     s.r[id] = rec
+    if rec.rb and sender ~= nil then AskAuthor(id, rec, sender) end
     return true
 end
 
@@ -890,7 +955,7 @@ local function Rebuild()
             items[id] = {
                 id = id, author = rec.a, n = rec.n, kind = rec.kd, text = rec.x, about = rec.ab, ref = rec.rf,
                 ctx = rec.c, err = rec.e, at = rec.t, rv = rec.rv, anon = rec.an == 1, gone = rec.d == 1, auto = rec.au == 1,
-                votes = {}, replies = {}, voteCount = 0,
+                via = rec.rb, votes = {}, replies = {}, voteCount = 0,
             }
         end
     end
@@ -901,7 +966,7 @@ local function Rebuild()
                 item.votes[rec.a] = true
                 item.voteCount = item.voteCount + 1
             elseif rec.k == "r" and rec.d ~= 1 and (rec.a == item.author or Feedback:IsStaff(rec.a)) then
-                item.replies[#item.replies + 1] = { id = id, author = rec.a, text = rec.x, at = rec.t,
+                item.replies[#item.replies + 1] = { id = id, author = rec.a, text = rec.x, at = rec.t, via = rec.rb,
                     staff = Feedback:IsStaff(rec.a) and rec.a ~= item.author }
             elseif rec.k == "s" then
                 item.state, item.stateBy, item.stateAt, item.dup, item.shipped = rec.s, rec.a, rec.rv, rec.dp, rec.v
@@ -1491,6 +1556,8 @@ function Feedback:OnInit()
     ns:On("CONFIG_UPDATED", function() Changed() end)
     ns:On("DEMO_TOGGLED", function() Changed() end)
     ns:On("GUILD_KEY_READY", function() cache.dirty = true end)
+    -- (someone came online: the author of a copy passed on to me may confirm it now)
+    ns:On("ROSTER_UPDATED", function() Util.Debounce("feedback-retry-asks", 5, RetryAsks) end)
 end
 
 function Feedback:OnLogin()
@@ -1515,7 +1582,7 @@ function Feedback:DemoStore()
     local realm = Util.GetPlayerRealm()
     local function K(name) return name .. "-" .. realm end
     local me = Me() or K("You")
-    local dev = K(DEV_NAME)
+    local dev = DEV_KEY
     local now = Now()
     local r = demoStore.r
     local function item(author, n, kind, text, ago, about, ctx, no, extra)
@@ -1543,21 +1610,29 @@ function Feedback:DemoStore()
     end
     local v = tostring(ns.version or "1.3.4")
     local function ctx(z, cl, sp) return { v = v, z = z, cl = cl, sp = sp } end
+    -- WoW Forever: its cities and raids (no Strategy board, gems or phase 2 there)
+    local F = ns.Compat and ns.Compat.isForever
+    local CITY = F and "Stormwind City" or "Shattrath City"
+    local RAID = F and "Hyjal Summit" or "Serpentshrine Cavern"
+    local BIG = F and "Onyxia's Lair" or "Black Temple"
+    local BIG_N = F and 40 or 25
 
-    local isolde = item(K("Isolde"), 3, "idea", "Show who still needs a token on the boss tiles of a raid's page.",
-        2 * DEMO_DAY, "Raids › Boss tiles", ctx("Shattrath City", "PRIEST", "Holy"), 14)
+    local isolde = item(K("Isolde"), 3, "idea", F and "Show who still needs an item on the boss tiles of a raid's page."
+        or "Show who still needs a token on the boss tiles of a raid's page.",
+        2 * DEMO_DAY, "Raids › Boss tiles", ctx(CITY, "PRIEST", "Holy"), 14)
     votes(isolde, { "me", "Grimtusk", "Caelith", "Kaelyn", "Quillon", "Elowen" })
     local orinel = item(K("Orinel"), 1, "idea", "Whisper the crafter straight from the Atlas shopping list.",
-        4 * DEMO_DAY, "Atlas › Shopping list", ctx("Shattrath City", "WARLOCK", "Destruction"), 13)
+        4 * DEMO_DAY, "Atlas › Shopping list", ctx(CITY, "WARLOCK", "Destruction"), 13)
     votes(orinel, { "Aldrin", "Brakka", "Isolde", "Kaelyn", "Quillon" })
     status(orinel, dev, "planned", 3 * DEMO_DAY)
-    local elowen = item(K("Elowen"), 2, "love", "The 3D strategy board is amazing. Our raid finally gets Vashj's phases!",
-        5 * DEMO_DAY, "Raids › Strategy board", ctx("Serpentshrine Cavern", "HUNTER", "Beast Mastery"), 9)
+    local elowen = item(K("Elowen"), 2, "love", F and "The raid calendar is amazing. Sign-ups finally in one place!"
+        or "The 3D strategy board is amazing. Our raid finally gets Vashj's phases!",
+        5 * DEMO_DAY, F and "Raids › Calendar" or "Raids › Strategy board", ctx(RAID, "HUNTER", "Beast Mastery"), 9)
     votes(elowen, { "Aldrin", "Caelith", "Isolde", "Orinel" })
     answer(elowen, dev, "That made my week. Thank you!", 4 * DEMO_DAY)
     local grim = item(K("Grimtusk"), 4, "bug", "The roll popup closed by itself when I entered combat, and I missed the "
-        .. "roll on the Belt of Blasting.", 3 * DEMO_DAY, "Roll popup › Need",
-        ctx("Serpentshrine Cavern · Lady Vashj", "ROGUE", "Combat"), 12, {
+        .. (F and "roll on the Hand of Justice." or "roll on the Belt of Blasting."), 3 * DEMO_DAY, "Roll popup › Need",
+        ctx(F and "Onyxia's Lair · Onyxia" or "Serpentshrine Cavern · Lady Vashj", "ROGUE", "Combat"), 12, {
             e = { m = "Interface/AddOns/DisasterZone/UI/RollFrame.lua:412: attempt to index field 'session' (a nil value)",
                   s = "[string \"@Interface/AddOns/DisasterZone/UI/RollFrame.lua\"]:412: in function 'Refresh'\n"
                       .. "[string \"@Interface/AddOns/DisasterZone/UI/RollFrame.lua\"]:388: in function <...>",
@@ -1570,49 +1645,53 @@ function Feedback:DemoStore()
         "[string \"@Interface/AddOns/DisasterZone/UI/Members.lua\"]:233: in function 'SortRows'",
         "[string \"@Interface/AddOns/DisasterZone/UI/Members.lua\"]:301: in function 'Refresh'",
         "[string \"@Interface/AddOns/DisasterZone/UI/MainFrame.lua\"]:540: in function 'ShowTab'",
-        "", "Locals:", "a = <table> {", "  name = \"Brakka\"", "  level = 70", "}", "b = <table> {",
-        "  name = \"Newbie\"", "}", "(*temporary) = nil", "(*temporary) = 70",
+        "", "Locals:", "a = <table> {", "  name = \"Brakka\"", "  level = " .. (F and 60 or 70), "}", "b = <table> {",
+        "  name = \"Newbie\"", "}", "(*temporary) = nil", "(*temporary) = " .. (F and 60 or 70),
         "(*temporary) = \"attempt to compare nil with number\"",
     }, "\n")
     item(K("Caelith"), 3, "bug", "Members tab throws an error when I sort by level.", 5400, "Guild › Members",
-        ctx("Shattrath City", "MAGE", "Arcane"), 19, { e = { m = "1x DisasterZone/UI/Members.lua:233: attempt to "
+        ctx(CITY, "MAGE", "Arcane"), 19, { e = { m = "1x DisasterZone/UI/Members.lua:233: attempt to "
             .. "compare nil with number", p = paste, v = v } })
     -- a Lua error that reported itself, and a me too from another member who hit it
     local report = table.concat({
         "3x DisasterZone/UI/RaidSheet.lua:1087: attempt to perform arithmetic on field 'expires' (a nil value)",
         "[string \"@Interface/AddOns/DisasterZone/UI/RaidSheet.lua\"]:1087: in function 'Refresh'",
         "[string \"@Interface/AddOns/DisasterZone/UI/RaidSheet.lua\"]:960: in function <...>",
-        "", "What was going on:", "Window: open on raids", "In combat: no", "Group: raid of 25",
-        "Instance: Black Temple (25 Player)", "Since login or /reload: 48 min", "Last steps (newest last):",
-        "  6 min before: pull High Warlord Naj'entus", "  4 min before: High Warlord Naj'entus killed",
+        "", "What was going on:", "Window: open on raids", "In combat: no", "Group: raid of " .. BIG_N,
+        "Instance: " .. BIG .. " (" .. BIG_N .. " Player)", "Since login or /reload: 48 min", "Last steps (newest last):",
+        "  6 min before: pull " .. (F and "Onyxia" or "High Warlord Naj'entus"),
+        "  4 min before: " .. (F and "Onyxia" or "High Warlord Naj'entus") .. " killed",
         "  2 min before: loot window", "  40 s before: page raids", "  3 s before: /dz raid",
         "", "Locals:", "self = <table> {", "}", "(*temporary) = nil",
         "", "Other addons (6): BugGrabber, BugSack, DBM-Core, Details, Questie, WeakAuras",
     }, "\n")
     local auto = item(K("Orinel"), 2, "bug", "Lua error: attempt to perform arithmetic on field 'expires' (a nil value)"
-        .. "\n\nIt reported itself when it happened: Raids page open, in a raid of 25.", 2 * 3600, "UI/RaidSheet.lua:1087",
-        ctx("Black Temple", "WARLOCK", "Destruction"), nil, { au = 1, e = { m = "Interface/AddOns/DisasterZone/UI/"
+        .. "\n\nIt reported itself when it happened: Raids page open, in a raid of " .. BIG_N .. ".", 2 * 3600,
+        "UI/RaidSheet.lua:1087",
+        ctx(BIG, "WARLOCK", "Destruction"), nil, { au = 1, e = { m = "Interface/AddOns/DisasterZone/UI/"
             .. "RaidSheet.lua:1087: attempt to perform arithmetic on field 'expires' (a nil value)", n = 3, p = report, v = v } })
     votes(auto, { "Grimtusk" })
-    item(K("Brakka"), 1, "bug", "Atlas shows Sunwell items when I filter by phase 2.", 600, "Atlas",
+    item(K("Brakka"), 1, "bug", F and "Atlas shows Onyxia items before the raid opens."
+        or "Atlas shows Sunwell items when I filter by phase 2.", 600, "Atlas",
         ctx("Ironforge", "WARRIOR", "Protection"), nil)
-    local kaelyn = item(K("Kaelyn"), 2, "bug", "Gems on My BiS reset after a /reload.", 14 * DEMO_DAY, "My BiS › Gems",
-        ctx("Shattrath City", "SHAMAN", "Restoration"), 8)
+    local kaelyn = item(K("Kaelyn"), 2, "bug", F and "Enchants on My BiS reset after a /reload."
+        or "Gems on My BiS reset after a /reload.", 14 * DEMO_DAY, F and "My BiS › Enchants" or "My BiS › Gems",
+        ctx(CITY, "SHAMAN", "Restoration"), 8)
     votes(kaelyn, { "me", "Isolde" })
     status(kaelyn, dev, "done", 6 * DEMO_DAY, v)
     local mine = item(me, 1, "change", "The swing timer bar is too tall for 10-man raids. Could it be thinner?",
-        6 * DEMO_DAY, "Swing timer", ctx("Karazhan", "PALADIN", "Retribution"), 16)
+        6 * DEMO_DAY, "Swing timer", ctx(F and "Barrow Deeps" or "Karazhan", "PALADIN", "Retribution"), 16)
     votes(mine, { "Brakka", "Elowen" })
     status(mine, K("Caelith"), "exists", 5 * DEMO_DAY)
     answer(mine, K("Caelith"), "Settings > Swing timer has a Size option: a smaller size makes the bar thinner.",
         5 * DEMO_DAY)
     local quillon = item(K("Quillon"), 1, "idea", "An attendance chart for each member on the Members page.",
-        21 * DEMO_DAY, "Members", ctx("Shattrath City", "DRUID", "Balance"), 11)
+        21 * DEMO_DAY, "Members", ctx(CITY, "DRUID", "Balance"), 11)
     votes(quillon, { "Aldrin" })
     status(quillon, dev, "notnow", 18 * DEMO_DAY)
     answer(quillon, dev, "Not now: attendance lives in the Raid log for the moment.", 18 * DEMO_DAY)
     local aldrin = item(K("Aldrin"), 1, "change", "Let officers move teams around on the raid calendar.",
-        22 * DEMO_DAY, "Raids › Calendar", ctx("Shattrath City", "WARRIOR", "Arms"), 10)
+        22 * DEMO_DAY, "Raids › Calendar", ctx(CITY, "WARRIOR", "Arms"), 10)
     status(aldrin, dev, "done", 9 * DEMO_DAY, v)
     demoStore.seq[me] = 1
     return demoStore
@@ -1622,7 +1701,7 @@ end
 function Feedback:DemoNumber(id)
     if not (DemoOn() and demoStore and demoStore.r[id]) then return end
     demoStore.no = (demoStore.no or 18) + 1
-    demoStore.r[id .. "="] = { k = "n", i = id, a = DEV_NAME .. "-" .. Util.GetPlayerRealm(), no = demoStore.no,
+    demoStore.r[id .. "="] = { k = "n", i = id, a = DEV_KEY, no = demoStore.no,
         rv = Now() }
     Changed()
 end

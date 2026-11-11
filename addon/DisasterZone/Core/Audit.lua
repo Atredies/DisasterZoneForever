@@ -14,6 +14,8 @@ if DisasterZoneBoot and DisasterZoneBoot.Run("Core/Audit.lua", ...) then return 
 --     s (summary line, optional), b (big change code, optional), sk (sub key, optional), u (the entry a "back"
 --     answers, optional), p (snapshot for Put back, optional) }
 -- id = hash of o, sk, v, t: every client that sees the same change makes the same id, so copies fold into one.
+-- rb (2026-11-09): kept locally on an entry a peer passed on that did not come from its author (w): who passed it on
+-- (shown "relayed by"); never sent on as such, never taken from the wire (OnEntries sets it).
 -- Entries are never edited or removed by anyone; they drop after KEEP_DAYS. Data: db.audit[guild key] =
 -- { since, e = { [id] = entry }, seen = { [char key] = time } }.
 --
@@ -198,11 +200,18 @@ local function Clean(e, checkId, snapMax)
 end
 Audit._Clean = Clean
 
--- Stores a clean entry; true when it is new (or improved a copy that did not know its author).
+-- How well a copy knows its author: 0 none, 1 an author passed on by a peer (rb, their word), 2 my own client saw the
+-- change, or its author sent it.
+local function Attribution(e)
+    if not e.w then return 0 end
+    return e.rb and 1 or 2
+end
+
+-- Stores a clean entry; true when it is new (or improved a copy that knew its author less well).
 local function Insert(b, c)
     local cur = b.e[c.id]
     if cur then
-        if cur.w or not c.w then return false end
+        if Attribution(c) <= Attribution(cur) then return false end
     end
     b.e[c.id] = c
     return true
@@ -240,6 +249,14 @@ local function Record(e, ctx)
     local now = Now()
     if not IsInt(b.since) then b.since = now end
     if ctx.mine then e.w = e.w or Util.PlayerKey() end
+    -- 2026-11-09 (authority holes, round 2): a peer's version names its writer (e.w) in a field the sender controls.
+    -- Unless the sender is that writer, the entry keeps who passed it on (rb), as one taken from a peer (OnEntries).
+    local via = not ctx.mine and type(ctx.via) == "string" and ctx.via or nil
+    local rb = nil
+    if via and not Util.IsMe(via) and not (e.w and (e.w == via or (G() and G().SameAccount
+        and G():SameAccount(e.w, via)))) then
+        rb = via
+    end
     if not IsInt(e.t) then e.t = now end
     if e.t > now + FUTURE_SLACK then e.t = now end
     -- (a change older than my recording: the first sync of a record I never had; a peer may have logged it)
@@ -250,6 +267,7 @@ local function Record(e, ctx)
     end
     local c = Clean(e, false, SNAP_KEEP)
     if not c then return end
+    c.rb = rb
     if Insert(b, c) then
         Changed()
         if ctx.mine then
@@ -532,11 +550,18 @@ local function OnEntries(sender, msg, dist)
     local b = Store(true)
     if not b then return end
     if not IsInt(b.since) then b.since = Now() end
+    local Guild = G()
     local added, n = 0, 0
     for _, e in ipairs(msg.e) do
         n = n + 1
         if n > MAX_TAKE then break end
         local c = Clean(e, true)
+        -- 2026-11-09 (authority holes, round 2): the author (w) is the sender's word. Taken as it is only from the
+        -- author (a character of theirs); from anyone else the entry is marked as passed on by them (rb, shown as
+        -- "relayed by"), and a copy from its author or my own client's replaces it. (A peer's rb is never taken.)
+        if c and not (c.w and (c.w == sender or (Guild and Guild.SameAccount and Guild:SameAccount(c.w, sender)))) then
+            c.rb = sender
+        end
         if c and MayHold(c, Util.PlayerKey()) and Insert(b, c) then
             added = added + 1
             if Audit.OnNew then Audit.OnNew(c, { via = sender }) end

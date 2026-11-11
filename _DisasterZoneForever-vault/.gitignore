@@ -1,0 +1,3 @@
+# the plugin code arrives through scripts/install-all.sh
+.obsidian/plugins/vault-boards/
+.obsidian/workspace*.json

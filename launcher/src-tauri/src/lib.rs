@@ -93,6 +93,12 @@ fn launcher_checked(
     log.note(found, error)
 }
 
+/// Why the window must not look for a new launcher: the update feed is still upstream's (background.rs). None: look.
+#[tauri::command]
+fn launcher_feed_upstream() -> Option<&'static str> {
+    background::launcher_feed_is_upstream().then_some(background::UPSTREAM_FEED_SKIPPED)
+}
+
 #[tauri::command]
 fn open_releases() -> Result<()> {
     tauri_plugin_opener::open_url(RELEASES_PAGE, None::<&str>).map_err(|e| crate::core::Error::Msg(e.to_string()))
@@ -104,7 +110,7 @@ fn set_wow_path(path: String, flavor: Option<String>) -> Result<Settings> {
         Some(x) => x,
         None => {
             return msg(
-                "that folder is not a World of Warcraft install (no _anniversary_, _classic_ or _retail_ folder in it)",
+                "that folder is not a World of Warcraft install (no _forever_, _anniversary_, _classic_ or _retail_ folder in it)",
             )
         }
     };
@@ -281,7 +287,7 @@ fn pack_views(lay: &Layout, m: &Manifest, s: &Settings, plan: &Plan) -> Vec<Pack
 async fn check() -> Result<Check> {
     let s = state::load();
     let lay = layout(&s)?;
-    let src = Source::parse(&s.source())?;
+    let src = Source::parse(&s.release_source()?)?;
     let key = ReleaseKey::builtin();
     let m = src.manifest(&key, &s.channel).await?;
     let plan = install::check_plan(&lay, &m, &install::wanted(&lay, &m, &s.packs))?;
@@ -318,7 +324,7 @@ pub(crate) async fn run_update(app: &AppHandle) -> Result<Outcome> {
     let _guard = busy.0.try_lock().map_err(|_| crate::core::Error::Msg("already working".into()))?;
     let mut s = state::load();
     let lay = layout(&s)?;
-    let src = Source::parse(&s.source())?;
+    let src = Source::parse(&s.release_source()?)?;
     let m = src.manifest(&ReleaseKey::builtin(), &s.channel).await?;
     let seen = s.seen_seq.get(&s.channel).copied().unwrap_or(0);
     if m.seq < seen {
@@ -535,6 +541,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             status,
+            launcher_feed_upstream,
             set_wow_path,
             set_settings,
             check,

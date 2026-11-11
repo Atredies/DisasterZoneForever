@@ -1827,20 +1827,35 @@ end
 -- game is open during the raid. Only boss kills are read: no loot or council data.
 ---------------------------------------------------------------------------
 
-local encounterOf        -- boss key -> encounter ID, from DisasterZone's raid data
+local encounterOf, nameOf -- boss key -> encounter ID / the boss's name (lower case), from DisasterZone's raid data
 
-local function EncounterIDFor(bossKey)
-    if not encounterOf then
-        encounterOf = {}
-        for _, raid in ipairs(ns.Data and ns.Data.Raids or {}) do
-            for _, boss in ipairs(raid.bosses or {}) do
-                if boss.key and boss.encounterID then encounterOf[boss.key] = boss.encounterID end
-            end
+local function IndexBosses()
+    if encounterOf then return end
+    encounterOf, nameOf = {}, {}
+    for _, raid in ipairs(ns.Data and ns.Data.Raids or {}) do
+        for _, boss in ipairs(raid.bosses or {}) do
+            if boss.key and boss.encounterID then encounterOf[boss.key] = boss.encounterID end
+            if boss.key and type(boss.name) == "string" then nameOf[boss.key] = boss.name:lower() end
         end
     end
+end
+
+local function EncounterIDFor(bossKey)
+    IndexBosses()
     return encounterOf[bossKey]
 end
 G.EncounterIDFor = EncounterIDFor
+
+-- True when an ENCOUNTER_END is the kill of raid boss bossKey: by encounter id, or (WoW Forever's raid data has no
+-- encounter ids yet) by the boss's name.
+local function IsKillOf(bossKey, encounterID, encounterName)
+    local id = EncounterIDFor(bossKey)
+    if id then return id == encounterID end
+    local C = ns.Compat
+    if type(encounterName) ~= "string" or (C and C.IsSecret and C.IsSecret(encounterName)) then return false end
+    return nameOf[bossKey] ~= nil and nameOf[bossKey] == encounterName:lower()
+end
+G.IsKillOf = IsKillOf
 
 -- realm time, so a PC clock set back doesn't keep a rare roaming
 local function Now() return (GetServerTime and GetServerTime()) or (time and time()) or 0 end
@@ -1873,7 +1888,7 @@ function G:OnEncounterEnd(encounterID, encounterName, success)
     end
     if not inRaid or itype ~= "raid" then return end
     for _, r in ipairs(D.raidRares) do
-        if EncounterIDFor(r.boss) == encounterID then
+        if IsKillOf(r.boss, encounterID, encounterName) then
             self:RaidRareStore()[r.sp] = Now() + (r.hours or 24) * 3600
             local where = Maps[r.map] and Maps[r.map].name or r.map
             ns:Print("Azeromon: %s has fallen! A rare %s roams %s for the next %d hours.",

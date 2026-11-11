@@ -29,10 +29,25 @@ except Exception:
 
 _CASES = []
 
+# The addon's developer (Core/Util.lua Util.DEV_KEY, owner decision 2026-11-09): the owner's character on the guild's
+# realm. Suites that need the developer give that client this name and realm (dev_client); in a Thunderstrike world it
+# is a member from a connected realm.
+DEV_NAME, DEV_REALM = "Arakis War", "CAMWOW EU4 Realm 4 PvP"
+DEV_KEY = "Arakis War-CAMWOWEU4Realm4PvP"
 
-def toc_version():
-    """'## Version' of the addon under test (the release tool bumps and restores it; tests must not pin it)."""
+
+def dev_client(w, **kw):
+    """The developer's client in world w (Client keyword arguments as usual)."""
+    return Client(w, DEV_NAME, realm=DEV_REALM, **kw)
+
+
+def toc_version(forever=False):
+    """The version a client of the addon under test reports: '## Version' of its TOC for a Forever client (the release
+    tool bumps and restores it; tests must not pin it), the TBC original's (harness.TBC_VERSION) for a TBC-profile
+    client, which runs that original's data (Client.toc)."""
     import harness
+    if not forever:
+        return harness.TBC_VERSION
     for line in open(os.path.join(harness.ADDON_DIR, "DisasterZone.toc"), encoding="utf-8-sig"):
         if line.startswith("## Version:"):
             return line.split(":", 1)[1].strip()

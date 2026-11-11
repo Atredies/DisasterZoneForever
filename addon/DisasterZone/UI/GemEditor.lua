@@ -285,7 +285,7 @@ local function Build()
         if EventValid("GLOBAL_MOUSE_DOWN") then self:RegisterEvent("GLOBAL_MOUSE_DOWN") end
         if not InCombatLockdown() then
             self:EnableKeyboard(true)
-            self:SetPropagateKeyboardInput(true)
+            ns.Util.SetPropagateKeys(self, true)
         end
     end)
     f:SetScript("OnHide", function(self)
@@ -296,7 +296,7 @@ local function Build()
     end)
     f:SetScript("OnKeyDown", function(self, key)
         if key ~= "ESCAPE" then return end
-        if not InCombatLockdown() then self:SetPropagateKeyboardInput(false) end
+        if not InCombatLockdown() then ns.Util.SetPropagateKeys(self, false) end
         self:Hide()
     end)
     f:SetScript("OnEvent", function(self, event)

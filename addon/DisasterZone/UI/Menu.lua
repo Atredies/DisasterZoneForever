@@ -632,7 +632,7 @@ local function LevelFrame(i)
             -- Escape closes the menu only (the key goes no further); keys stay locked in combat
             if not InCombatLockdown() then
                 self:EnableKeyboard(true)
-                self:SetPropagateKeyboardInput(true)
+                ns.Util.SetPropagateKeys(self, true)
             end
         end)
         f:SetScript("OnHide", function(self)
@@ -642,7 +642,7 @@ local function LevelFrame(i)
         end)
         f:SetScript("OnKeyDown", function(self, key)
             if key ~= "ESCAPE" then return end
-            if not InCombatLockdown() then self:SetPropagateKeyboardInput(false) end
+            if not InCombatLockdown() then ns.Util.SetPropagateKeys(self, false) end
             CloseAll()
         end)
         f:SetScript("OnEvent", function(_, event)

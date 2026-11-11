@@ -13,7 +13,8 @@ if DisasterZoneBoot and DisasterZoneBoot.Run("Core/Recruit.lua", ...) then retur
 -- short time text), sd (their words), tg (tags), fu = { at, t } (the follow-up: a day and what), n = { { by, at, t } }
 -- (notes, newest first), lv / la (level last seen, when), ja / jl / jb / tm (joined at, level then, invited by, team),
 -- ck (check-ins done), ms (milestones reached), nn (Not now since), ak (their other characters the record was on
--- before: Move to another character, 1.5.5), rev, by (last writer), at (added).
+-- before: Move to another character, 1.5.5), rev, by (last writer), at (added). rb (2026-11-09, local, never sent; on
+-- a person, a note or a removal): the recruiter who passed it on when its writer did not send it (H.MarkRelayed).
 --
 -- Messages (WHISPER between recruiters only, class "data"; the OfficerNotes model):
 --   RC  { k, r = person, v = rev }   one person, sent to the recruiters online on every change
@@ -50,6 +51,13 @@ Recruit.WANTS = { raid = 1, dungeons = 2, level = 4, social = 8 }
 Recruit.MAX_NOTE, Recruit.MAX_SAID, Recruit.MAX_INTRO = MAX_NOTE, MAX_SAID, MAX_INTRO
 
 local H = {}                      -- the file's helpers (few main-chunk locals)
+-- The level milestones keep their TBC keys (58 = "half way", 70 = "max level") in saved data and on the wire; the
+-- level each one means and its words depend on the client. WoW Forever: 40 (the riding skill) and 60 (the cap).
+local FOREVER = ns.Compat and ns.Compat.isForever
+Recruit.MILESTONE_LEVEL = FOREVER and { [58] = 40, [70] = 60 } or { [58] = 58, [70] = 70 }
+Recruit.MILESTONE_TEXT = FOREVER and { [58] = "Hit level 40 · riding", [70] = "Hit level 60" }
+    or { [58] = "Hit level 58 · off to Outland", [70] = "Hit level 70" }
+Recruit.MAX_LEVEL = Recruit.MILESTONE_LEVEL[70]
 local indexSent = false
 local demo                        -- demo mode's people (memory only)
 
@@ -382,6 +390,10 @@ function H.Save(key, r)
     r.by = Me()
     local clean = Recruit:Clean(r)
     if not clean then return false, "not a valid person" end
+    -- (the notes I had keep who passed them on: H.MarkRelayed)
+    local had = {}
+    for _, n in ipairs(old and old.n or {}) do if n.rb then had[n.by .. "\31" .. n.at .. "\31" .. n.t] = n.rb end end
+    for _, n in ipairs(clean.n or {}) do n.rb = had[n.by .. "\31" .. n.at .. "\31" .. n.t] end
     b.p[key] = clean
     if not H.Pretending() then ns.AuditSaw("rc.P", old, clean, { key = key, mine = true }) end
     b.x[key] = nil
@@ -738,14 +750,48 @@ function H.OnPerson(sender, msg, dist)
     local x = b.x[key]
     if x and x.rev >= r.rev then return end
     local old = b.p[key]
+    local first = H.FromWriter(r.by, sender)
     if old then
         if old.rev > r.rev then return end
+        if old.rev == r.rev and H.Digest(old) == H.Digest(r) and first and old.rb then
+            -- (the same version from its writer: who passed it on before no longer matters)
+            old.rb = nil
+            for _, n in ipairs(old.n or {}) do if H.FromWriter(n.by, sender) then n.rb = nil end end
+            ns:Fire("RECRUIT_UPDATED", key)
+            return
+        end
         if old.rev == r.rev and H.Digest(old) >= H.Digest(r) then return end
     end
+    H.MarkRelayed(r, old, sender, first)
     b.p[key] = r
     b.x[key] = nil
     ns.AuditSaw("rc.P", old, r, { key = key, via = sender })
     ns:Fire("RECRUIT_UPDATED", key)
+end
+
+-- 2026-11-09 (authority holes, round 2): the names in a record (its last writer by, each note's by) are the sender's
+-- word. Did `key` send it themselves (a character of theirs)?
+function H.FromWriter(key, sender)
+    if type(key) ~= "string" then return false end
+    if key == sender then return true end
+    local G = Guild()
+    return (G and G.SameAccount and G:SameAccount(key, sender)) and true or false
+end
+
+-- A version from someone else than its writer keeps who passed it on (rb, local, never sent: Clean drops it); so does
+-- each note new to me that its writer did not send me. A note I had keeps the mark it had.
+function H.MarkRelayed(r, old, sender, first)
+    r.rb = not first and sender or nil
+    local had = {}
+    for _, n in ipairs(old and old.n or {}) do had[n.by .. "\31" .. n.at .. "\31" .. n.t] = n end
+    for _, n in ipairs(r.n or {}) do
+        local o = had[n.by .. "\31" .. n.at .. "\31" .. n.t]
+        if o then
+            n.rb = o.rb
+        elseif not H.FromWriter(n.by, sender) then
+            n.rb = sender
+        end
+    end
 end
 
 function H.OnRemove(sender, msg, dist)
@@ -755,9 +801,17 @@ function H.OnRemove(sender, msg, dist)
     local b = H.Store(true)
     if not b then return end
     local old, x = b.p[key], b.x[key]
+    local by = H.WireKey(msg.by) or sender
+    -- (who removed them is the sender's word: from anyone else, kept with who passed it on, rb; the same removal
+    -- from its writer later clears that)
+    local first = H.FromWriter(by, sender)
+    if x and x.rev == msg.v and x.by == by and x.rb and first then
+        x.rb = nil
+        return
+    end
     if (old and old.rev >= msg.v) or (x and x.rev >= msg.v) then return end
     b.p[key] = nil
-    b.x[key] = { rev = msg.v, by = H.WireKey(msg.by) or sender }
+    b.x[key] = { rev = msg.v, by = by, rb = not first and sender or nil }
     if old then ns.AuditSaw("rc.P", old, nil, { key = key, at = msg.v, who = b.x[key].by, via = sender }) end
     ns:Fire("RECRUIT_UPDATED", key)
 end
@@ -876,6 +930,10 @@ function Recruit:Live(key)
         local on = { Kaelthorn = true, Aurelith = true, Nortok = true, Bramble = true }
         local zones = { Kaelthorn = "Shattrath City", Aurelith = "Hellfire Peninsula", Nortok = "Shattrath City",
                         Bramble = "Terokkar Forest" }
+        if ns.Compat and ns.Compat.isForever then   -- (WoW Forever: the old world)
+            zones = { Kaelthorn = "Stormwind City", Aurelith = "Stranglethorn Vale", Nortok = "Stormwind City",
+                      Bramble = "Tanaris" }
+        end
         if on[n] then return { online = true, zone = zones[n] } end
         return { online = false }
     end
@@ -1011,7 +1069,7 @@ function Recruit:Invite(key, opts)
     end
     H.pending[r.key] = { at = Now(), opts = opts }
     H.Mine().queue[r.key] = nil
-    if GuildInvite then GuildInvite(H.GameName(r.key)) end
+    if GuildInvite then GuildInvite(H.GameName(r.key)) end      -- (Forever: C_GuildInfo.Invite, Core/Compat.lua)
     Util.After(INVITE_WAIT, function()
         local p = H.pending[r.key]
         if p and p.at <= Now() - INVITE_WAIT + 1 then
@@ -1225,7 +1283,8 @@ function H.CheckSettling()
                 local reached = Util.CopyTable(r.ms or {})
                 local changed = false
                 for _, at in ipairs({ 58, 70 }) do
-                    if ms[at] ~= false and lv and lv >= at and not reached[at] and (r.jl or 0) < at then
+                    local need = Recruit.MILESTONE_LEVEL[at]
+                    if ms[at] ~= false and lv and lv >= need and not reached[at] and (r.jl or 0) < need then
                         reached[at], changed = now, true
                         if at == 70 and rules.rl ~= false and Recruit:Wants(r, "raid") then H.TellAt70(key, r) end
                     end
@@ -1251,7 +1310,7 @@ function H.CheckSettling()
     end
 end
 
--- A raider hit 70: a word for the raid leaders, with the team that has a place for them (if any).
+-- A raider hit max level (70; Forever 60): a word for the raid leaders, with the team that has a place for them (if any).
 function H.TellAt70(key, r)
     local _, best = Recruit:Fits(r)
     local team = best and best.team or { id = r.tm or "" }
@@ -1288,22 +1347,25 @@ function Recruit:BuildDemo()
     local team1 = (Recruit:GetTeams()[1] or {}).id
     local p = {}
     p[key("Kaelthorn")] = { st = "talk", c = "PALADIN", sp = 1, w = m(2), src = "trade", wa = 9, ni = { 4, 7 },
-        nt = "from 19:00", sd = "SSC 4/6 and TK 1/4 before my guild broke up. Want a steady group that doesn't take itself too seriously.",
-        tg = { "Chill" }, fu = { at = floor(now + 0.5 * DAY), t = "bring him to SSC as a guest" }, lv = 70, la = now, at = floor(d(2)),
-        n = { note(m(2), 1, "Lovely chat. Calm, explains his healing well, wants a relaxed SSC group. Thursdays and Sundays both fine.") } }
+        nt = "from 19:00", sd = FOREVER and "Cleared Barrow Deeps with a pug. Want a steady group that doesn't take itself too seriously."
+            or "SSC 4/6 and TK 1/4 before my guild broke up. Want a steady group that doesn't take itself too seriously.",
+        tg = { "Chill" }, fu = { at = floor(now + 0.5 * DAY), t = FOREVER and "bring him to Hyjal as a guest" or "bring him to SSC as a guest" }, lv = Recruit.MAX_LEVEL, la = now, at = floor(d(2)),
+        n = { note(m(2), 1, FOREVER and "Lovely chat. Calm, explains his healing well, wants a relaxed raid group. Thursdays and Sundays both fine."
+            or "Lovely chat. Calm, explains his healing well, wants a relaxed SSC group. Thursdays and Sundays both fine.") } }
     p[key("Aurelith")] = { st = "talk", c = "PALADIN", sp = 1, w = me, src = "whisper", wa = 14,
-        sd = "Not thinking about raids yet. Would love to see Karazhan one day.", tg = { "New to WoW", "Chill" },
+        sd = FOREVER and "Not thinking about raids yet. Would love to see Onyxia one day."
+            or "Not thinking about raids yet. Would love to see Karazhan one day.", tg = { "New to WoW", "Chill" },
         fu = { at = floor(now + 2 * DAY), t = "she wants to try a dungeon with us first" }, lv = 13, la = now, at = floor(d(4)),
         n = { note(m(1), 1, "Took her through Ramparts with three guildies. Asked lots of good questions."),
               note(me, 3, "Started a month ago with her partner. Loves questing, a bit nervous about dungeons.") } }
     p[key("Darkstalkerr")] = { st = "talk", c = "HUNTER", sp = 3, w = m(1), src = "guest", wa = 9, ni = { 4, 5, 6 },
         nt = "late, from 21:00", sd = "Works some Sundays. Thursdays always free.", tg = { "Chill" },
-        fu = { at = floor(now), t = "after Thursday's raid" }, lv = 70, la = d(2), at = floor(d(21)),
+        fu = { at = floor(now), t = "after Thursday's raid" }, lv = Recruit.MAX_LEVEL, la = d(2), at = floor(d(21)),
         n = { note(m(1), 5, "Great guy in voice, plays late, wants a home guild after his old one stopped.") } }
     p[key("Thalric")] = { st = "talk", c = "WARRIOR", sp = 3, src = "intro", ib = m(3), wa = 12, lv = 34, la = d(2), at = floor(d(2)),
         it = "My cousin, played vanilla, coming back after 15 years. Very chill, wants to level with us.",
         tg = { "Returning", "Has friends here" } }
-    p[key("Nortok")] = { st = "joined", c = "SHAMAN", sp = 3, src = "whisper", wa = 1, ni = { 4, 7 }, lv = 70, la = now,
+    p[key("Nortok")] = { st = "joined", c = "SHAMAN", sp = 3, src = "whisper", wa = 1, ni = { 4, 7 }, lv = Recruit.MAX_LEVEL, la = now,
         ja = floor(d(15)), jl = 52, jb = m(2), tm = team1, tg = { "Returning" }, at = floor(d(24)), ms = { [58] = floor(d(12)), [70] = floor(d(1)), r = floor(d(4)) },
         ck = { w = true }, n = { note(m(2), 22, "Met him in a Ramparts pug, healed it like a champ at 52. Came back after 10 years away.") } }
     p[key("Bramble")] = { st = "joined", c = "DRUID", sp = 4, src = "whisper", wa = 10, lv = 48, la = now,
@@ -1311,7 +1373,7 @@ function Recruit:BuildDemo()
         n = { note(me, 9, "Came back after Wrath. Loves healing, wants to learn TBC dungeons.") } }
     p[key("Fennick")] = { st = "joined", c = "ROGUE", sp = 2, src = "name", wa = 4, lv = 61, la = d(16), ja = floor(d(25)),
         jl = 55, jb = m(1), ck = { w = true }, at = floor(d(28)) }
-    p[key("Stabbystab")] = { st = "notnow", c = "ROGUE", sp = 2, src = "trade", wa = 1, lv = 70, la = d(13), nn = floor(d(13)),
+    p[key("Stabbystab")] = { st = "notnow", c = "ROGUE", sp = 2, src = "trade", wa = 1, lv = Recruit.MAX_LEVEL, la = d(13), nn = floor(d(13)),
         n = { note(m(1), 13, "Only wants loot, not the group. Maybe later.") } }
     for _, r in pairs(p) do
         r.rev, r.by, r.at = floor(now), me, r.at or floor(d(20))
@@ -1336,8 +1398,11 @@ function Recruit:OnInit()
     local ev = CreateFrame("Frame")
     ev:RegisterEvent("FRIENDLIST_UPDATE")
     ev:RegisterEvent("CHAT_MSG_SYSTEM")
-    ev:SetScript("OnEvent", function(_, event, text)
-        if event == "CHAT_MSG_SYSTEM" then H.OnSystem(text)
+    ev:SetScript("OnEvent", function(_, event, text, ...)
+        if event == "CHAT_MSG_SYSTEM" then
+            -- (secret during a boss pull on Forever: skipped, see Core/Compat.lua CanAccess)
+            if ns.Compat and not ns.Compat.CanAccess(text, ...) then return end
+            H.OnSystem(text)
         else Util.Debounce("recruit-friends", 0.5, H.ScanFriends) end
     end)
     ns:On("RECRUIT_UPDATED", function() Util.Debounce("recruit-reconcile", 3, H.Reconcile) end)

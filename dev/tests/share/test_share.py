@@ -395,12 +395,12 @@ def share_icons_on_raids_members_strategies_boards_and_games():
     rita.eval("ns.ShareWindow:Close(); ns.MainFrame:Open('games')")
     w.tick(0.3)
     refs = []
-    for gid in ("bingo", "trainer", "azeromon"):
+    for gid in ("bingo", "chess", "azeromon"):
         rita.eval("ns.GamesUI:Select(...)", gid)
         w.tick(0.3)
         refs += rita.eval_py(FIND_SHARE + "local out = {}; for _, b in ipairs(find(ns.MainFrame:GetFrame(), 'Share this game')) "
                              "do b:Click(); out[#out + 1] = ns.ShareWindow:GetRef(); ns.ShareWindow:Close() end; return out")
-    assert refs == ["game:bingo", "game:trainer", "game:azeromon"], refs
+    assert refs == ["game:bingo", "game:chess", "game:azeromon"], refs
     w.assert_no_errors()
 
 

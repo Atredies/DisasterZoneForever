@@ -226,7 +226,7 @@ async fn try_tick(app: &AppHandle, manual: bool) -> Result<()> {
         set_tooltip(app, "DisasterZone · development copy");
         return Ok(());
     }
-    let src = Source::parse(&s.source())?;
+    let src = Source::parse(&s.release_source()?)?;
     let m = src.manifest(&ReleaseKey::builtin(), &s.channel).await?;
     if m.seq < s.seen_seq.get(&s.channel).copied().unwrap_or(0) {
         return Ok(()); // a stale copy of the release list: the next check gets the current one
@@ -287,9 +287,32 @@ async fn try_tick(app: &AppHandle, manual: bool) -> Result<()> {
     Ok(())
 }
 
+/// The updater's settings as built in (tauri.conf.json), to see where its feed points.
+const TAURI_CONF: &str = include_str!("../tauri.conf.json");
+
+/// Settings > About's line while the launcher's update feed is still upstream's.
+pub const UPSTREAM_FEED_SKIPPED: &str =
+    "launcher update check skipped: the update feed is still upstream's (tsumilo/DisasterZone-releases)";
+
+/// Does an updater endpoint in this tauri.conf.json point at upstream's releases? Then this launcher never updates
+/// itself: upstream's build would silently replace ours. (Falls away once the endpoint names our own repository.)
+fn feed_is_upstream(conf: &str) -> bool {
+    let v: serde_json::Value = serde_json::from_str(conf).unwrap_or_default();
+    v.pointer("/plugins/updater/endpoints")
+        .and_then(|e| e.as_array())
+        .is_some_and(|e| e.iter().filter_map(|u| u.as_str()).any(state::is_upstream_source))
+}
+
+pub fn launcher_feed_is_upstream() -> bool {
+    feed_is_upstream(TAURI_CONF)
+}
+
 /// A new launcher: it installs itself (decide_launcher), or the window's bar shows it at once and the user hears of
 /// it once per version. Every result, a failure too, goes to Settings > About.
 async fn check_launcher(app: &AppHandle) {
+    if launcher_feed_is_upstream() {
+        return log_launcher_check(app, None, Some(UPSTREAM_FEED_SKIPPED.into()));
+    }
     let found = match app.updater() {
         Ok(updater) => updater.check().await.map_err(|e| e.to_string()),
         Err(e) => Err(e.to_string()),
@@ -406,6 +429,16 @@ mod tests {
         assert_eq!(v["found"], "0.4.2");
         assert!(v["error"].is_null());
         assert!(v["at"].as_u64().unwrap() > 1_700_000_000);
+    }
+
+    #[test]
+    fn the_launcher_never_updates_from_upstreams_feed() {
+        let conf = |url: &str| format!(r#"{{"plugins":{{"updater":{{"endpoints":["{url}"]}}}}}}"#);
+        assert!(feed_is_upstream(&conf("https://github.com/tsumilo/DisasterZone-releases/releases/download/launcher-latest/latest.json")));
+        assert!(!feed_is_upstream(&conf("https://github.com/Atredies/DisasterZoneForever-releases/releases/download/launcher-latest/latest.json")));
+        assert!(!feed_is_upstream("{}"));
+        // (as built today: the endpoint is still upstream's)
+        assert_eq!(launcher_feed_is_upstream(), TAURI_CONF.contains("tsumilo/DisasterZone-releases/releases"));
     }
 
     #[test]

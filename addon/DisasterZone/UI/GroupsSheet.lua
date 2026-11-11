@@ -34,13 +34,15 @@ local STAR_TEX = "Interface\\AddOns\\DisasterZone\\Media\\Icons\\bis"
 local HEROIC_TEX = "Interface\\LFGFrame\\UI-LFG-ICON-HEROIC"
 local HEROIC_ICON = "|T" .. HEROIC_TEX .. ":13:10:0:0:32:32:0:16:0:20|t"
 local DAILY_ICON = "|TInterface\\GossipFrame\\DailyQuestIcon:12:12:0:0|t"
-local TILE_W, TILE_H, TILE_GAP = 130, 34, 5          -- a dungeon tile
+local TILE_W, TILE_H, TILE_GAP = 130, 34, 5          -- a dungeon tile (at most TILE_W wide)
+local TILES_X = 180                                  -- a complex row's picture and title, left of its tiles
 local ROW_H, ROW_GAP = S.ROW.art, 6                  -- a complex row
 local FORM_LABEL_W, FORM_W = 62, 286                 -- the dungeon form
 local DAYS_AHEAD = 6
 
 local KINDS = { { "dungeon", "Dungeon" }, { "raid", "Raid" }, { "quest", "Quest" }, { "pvp", "PvP" },
                 { "other", "Other" } }
+if ns.Compat and ns.Compat.isForever then table.remove(KINDS, 3) end   -- (no Quest kind on Forever: Data/GroupKinds.lua)
 local WHEN = { { key = "now", text = "Now" }, { key = "30", text = "In 30 min" }, { key = "60", text = "In 1 h" },
                { key = "later", text = "Later" } }
 local LOOT_ITEMS = { { key = "roll", label = "Rolls" }, { key = "sr", label = "Soft reserve" },
@@ -50,6 +52,16 @@ local PVP_MODES = {
     { key = "bg", title = "Battlegrounds", sub = "4 battlegrounds", art = "eots", icon = "towers" },
     { key = "world", title = "World PvP", sub = "Halaa · Spirit Towers", art = "halaa", icon = "halaa" },
 }
+-- the band's art before a pick: a raid, PvP
+local BAND_RAID, BAND_PVP = "Karazhan", "arena3"
+-- WoW Forever: battlegrounds only (no arenas, no Outland world PvP: Data/GroupKinds.lua K.pvp), with Forever's art
+if ns.Compat and ns.Compat.isForever then
+    PVP_MODES = {
+        { key = "bg", title = "Battlegrounds", sub = "Warsong · Arathi · Alterac · Darkspear", art = "wsg", icon = "wsg" },
+    }
+    BAND_RAID, BAND_PVP = "Onyxia", "wsg"
+end
+local PVP_DEFAULT = PVP_MODES[1].key
 
 local state = ns.GroupsCard.state
 local sh   -- the sheet (one, made on the first open)
@@ -306,10 +318,10 @@ local function RaidTileTip(key, size)
     return function()
         local info = RaidInfo(key)
         local lines = { { info and info.name or key, S:Color("GOLD") },
-            size .. " players" .. (info and info.phase and (" · Phase " .. info.phase) or "") }
+            size .. " players" .. (info and info.phase and (" · " .. ns.PHASE_WORD .. " " .. info.phase) or "") }
         local why, attune = RaidState(key)
         if why == "phase" then
-            lines[#lines + 1] = S:Wrap("WARN", "Not open yet: your guild is in phase " .. GuildPhase() .. ".")
+            lines[#lines + 1] = S:Wrap("WARN", "Not open yet: your guild is in " .. ns.PHASE_WORD:lower() .. " " .. GuildPhase() .. ".")
         end
         local untilT, done, total = R():GetRaidSaved(key)
         if untilT then
@@ -825,7 +837,7 @@ local function LayoutRaidTiles(s, y)
         t:SetPoint("TOPLEFT", sh, "TOPLEFT", PAD + ((i - 1) % per) * (tw + gap), y - floor((i - 1) / per) * (th + gap))
         local info = RaidInfo(r.key)
         local why, attune = RaidState(r.key)
-        local sub = r.size .. " player" .. ((why == "saved" and " · saved") or (why == "phase" and (" · phase "
+        local sub = r.size .. " player" .. ((why == "saved" and " · saved") or (why == "phase" and (" · " .. ns.PHASE_WORD:lower() .. " "
             .. (info and info.phase or "?"))) or (attune and " · attune") or "")
         local needers = R():GetRaidNeeders(r.key)
         FillArtTile(t, { k = "raid", a = { r.key } }, info and info.name or r.key, sub, picked[r.key], why ~= nil,
@@ -1248,8 +1260,8 @@ end
 local function LayoutPvP(s, y)
     local width = Width() - 2 * PAD
     local gap = 10
-    local tw = floor((width - 2 * gap) / 3)
-    s.pm = s.pm or "arena"
+    local tw = floor((width - (#PVP_MODES - 1) * gap) / #PVP_MODES)
+    s.pm = s.pm or PVP_DEFAULT
     for i, m in ipairs(PVP_MODES) do
         local t = sh.pvpTiles[i]
         if not t then
@@ -1461,6 +1473,9 @@ local function NewTile(parent)
     UI():AddEdges(t, "BORDER")
     t.name = UI():Text(t, "emph", "TEXT")
     t.name:SetPoint("LEFT", 10, 0)
+    t.name:SetPoint("RIGHT", -8, 0)
+    t.name:SetJustifyH("LEFT")
+    t.name:SetWordWrap(false)
     t.count = UI():Text(t, "emph", "GOLD")
     t.count:SetPoint("RIGHT", -9, 0)
     t.star = t:CreateTexture(nil, "OVERLAY")
@@ -1534,9 +1549,15 @@ end
 local function DungeonRows(s, width)
     local y = -HEAD_H - 8
     local rowW = width - 2 * PAD
-    local tilesW = 4 * (TILE_W + TILE_GAP)
+    local complexes = R():GetComplexes()
+    -- the tiles share what the row leaves after its picture and title (Forever's bands hold six; TBC's at most four)
+    local per = 4
+    for _, c in ipairs(complexes) do per = max(per, #c.dungeons) end
+    -- (8: the art row's right inset, where row.right ends)
+    local tileW = min(TILE_W, floor((rowW - 8 - TILES_X - (per - 1) * TILE_GAP) / per))
+    local tilesW = per * tileW + (per - 1) * TILE_GAP
     local ri = 0
-    for _, c in ipairs(R():GetComplexes()) do
+    for _, c in ipairs(complexes) do
         ri = ri + 1
         local r = sh.rows[ri] or NewComplexRow(sh)
         sh.rows[ri] = r
@@ -1552,6 +1573,9 @@ local function DungeonRows(s, width)
             end
         end
         local first = c.dungeons[1] and c.dungeons[1].key
+        for _, d in ipairs(c.dungeons) do   -- (a Forever band may open on a new dungeon with no loading screen)
+            if d.screen then first = d.key break end
+        end
         -- (the picture alone: no icon tile on its corner; cropped under the loading screen's logo band)
         r:SetData({ art = function(tex, w, h)
                 local file, l, rr, t, b = R():GetArt(first, w, h)
@@ -1566,7 +1590,8 @@ local function DungeonRows(s, width)
             local tile = r.tiles[i] or NewTile(r.right)
             r.tiles[i] = tile
             tile:ClearAllPoints()
-            tile:SetPoint("LEFT", r.right, "RIGHT", -tilesW + (i - 1) * (TILE_W + TILE_GAP), 0)
+            tile:SetWidth(tileW)
+            tile:SetPoint("LEFT", r.right, "RIGHT", -tilesW + (i - 1) * (tileW + TILE_GAP), 0)
             tile.name:SetText(info.short)
             local block, kind = R():GetBlocker(info.key, s.h)
             local daily = R():GetMyDaily(info.key, s.h)
@@ -1604,8 +1629,9 @@ end
 local function LayoutDungeon(s, width)
     sh.mode:ClearAllPoints()
     sh.mode:SetPoint("RIGHT", sh.close, "LEFT", -14, 0)
+    if not R().HAS_HEROICS then s.h = nil end   -- (WoW Forever has no heroic dungeons)
     sh.mode:Select(s.h and "heroic" or "normal")
-    sh.mode:Show()
+    sh.mode:SetShown(R().HAS_HEROICS and true or false)
     local y = DungeonRows(s, width)
     if s.d and R():GetBlocker(s.d, s.h) then s.d = nil end
     y = y - 8
@@ -1741,10 +1767,11 @@ function GS:Refresh()
     end
     HideKindParts()
     UI():SetEditPlaceholder(sh.note, s.kind == "raid" and "Optional, e.g. \"Pug fill, no BoE drama\""
-        or "Optional, e.g. \"badge run, fast pulls\"")
+        or ((ns.Compat and ns.Compat.isForever) and "Optional, e.g. \"quick run, fast pulls\""
+            or "Optional, e.g. \"badge run, fast pulls\""))
     -- the pick's art in the band
-    local band = PreviewRun(s) or ({ dungeon = nil, raid = { k = "raid", a = { "Karazhan" } },
-        quest = { k = "quest", a = {} }, pvp = { k = "pvp", a = { "arena3" } }, other = { k = "other", a = { "any" } } })[s.kind]
+    local band = PreviewRun(s) or ({ dungeon = nil, raid = { k = "raid", a = { BAND_RAID } },
+        quest = { k = "quest", a = {} }, pvp = { k = "pvp", a = { BAND_PVP } }, other = { k = "other", a = { "any" } } })[s.kind]
     local file, l, r, t, b
     if band then file, l, r, t, b = R():GetGroupArt(band, width, BAND_H, 1) end
     sh.band:SetTexture(file)
@@ -1837,7 +1864,7 @@ function GS:Open(panel, edit)
             elseif s.kind == "pvp" then
                 s.pa, s.paSet, s.pr, s.mr, s.fc = mine.a[1], true, mine.pr, mine.mr, mine.fc
                 local p = PvPEntry(s.pa)
-                s.pm = p and (p.mode == "arena" and "arena" or (p.mode == "bg" and "bg" or "world")) or "arena"
+                s.pm = p and (p.mode == "arena" and "arena" or (p.mode == "bg" and "bg" or "world")) or PVP_DEFAULT
             else
                 s.oa, s.n = mine.a[1], R():GetSize(mine)
             end

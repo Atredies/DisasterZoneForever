@@ -3,7 +3,8 @@
 
 - The GM picks members (CG on GUILD): every online client sees them as council; an offline member gets the list
   after logging in (CQ: from the GM, or relayed by a council member while the GM is offline, trust on first use).
-- Forged / relayed CG trust rules (§31): GM-direct, relay by a council member of the receiver's current list, TOFU
+- Forged / relayed CG trust rules (§31): GM-direct; a relay by a council member of the receiver's current list only
+  confirms that list (2026-11-09: a newer relayed rev is held back and the GM asked), TOFU
   only when the relayer is on the relayed list, the current GM as `by`, no older revs, no revs > now + 300,
   malformed lists dropped.
 - The GM removes a member: council views and whisper gates close for that member everywhere.
@@ -263,20 +264,20 @@ def forged_and_implausible_council_lists_are_rejected():
     send_as(c["Gina"], {"t": "CG", "rev": rev - 10, "m": [K("Mal")], "ph": 1, "by": K("Gina")}, "GUILD")
     w.tick(2)
     assert revs() == base and council(c["Sam"], "Mal") is False
-    # 6) a relay by a council member of my list (by = the GM, a newer rev) is accepted: this is how the list travels
+    # 6) 2026-11-09 (authority holes, round 3): a relay by a council member of my list (by = the GM, a newer rev) no
+    # longer changes the list (before, it was taken and stood until the GM's own copy came): the list is the GM's
+    # alone, like the GMR record. The receivers ask the GM instead, whose own list stays.
+    mark = len(w.addon_log)
     send_as(c["Rita"], {"t": "CG", "rev": rev + 8, "m": [K("Rita"), K("Sam")], "ph": 2, "by": K("Gina")}, "GUILD")
     w.tick(2)
     for n in ("Mal", "Sam"):
-        assert c[n].eval("return ns.Guild:GetGuildCouncilRev()") == rev + 8, n
-        assert council(c[n], "Sam") is True, n
+        assert c[n].eval("return ns.Guild:GetGuildCouncilRev()") == rev, n
+        assert council(c[n], "Sam") is False, n
+    asks = [m for m in msgs(w, "CQ", mark) if m["_chat_type"] == "WHISPER"]
+    assert asks, "nobody asked the GM"
     # DisasterZone 0.5: the GM's own client never takes a relayed copy of "its" list (it may be forged); only its saves
     assert c["Gina"].eval("return ns.Guild:GetGuildCouncilRev()") == rev, "the GM took a relayed copy of its list"
-    # 1.3: ... and the GM's own CG outranks a relayed copy whatever its rev. Sam, council under the relayed list, says
-    # hello with the newer rev; the GM sees it and shares its own list again, which replaces every relayed copy.
-    mark = len(w.addon_log)
     w.tick(12)
-    reshare = [m for m in msgs(w, "CG", mark) if m["_sender"] == K("Gina") and m["_chat_type"] == "GUILD"]
-    assert reshare and reshare[0]["rev"] == rev, [(m["_sender"], m["rev"]) for m in msgs(w, "CG", mark)]
     assert revs() == base, revs()
     for n in ("Mal", "Sam"):
         assert council(c[n], "Sam") is False, n

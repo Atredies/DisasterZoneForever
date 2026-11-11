@@ -573,6 +573,16 @@ end
 local wcache, wn = {}, 0
 function c:W(font, size, s, ow)
     size = floor(size * 2 + 0.5) / 2
+    if ns.Compat.IsSecret(s) then
+        -- (WoW Forever: a secret text, an NPC's name in an instance: never a cache key, and its width may be secret
+        -- too; then a rough guess)
+        Pen:Overlay()
+        measure:SetFont(FONTS[font] or FRIZ, max(1, size), OW[ow or 0])
+        measure:SetText(s)
+        local w = ns.Compat.Plain((measure.GetUnboundedStringWidth and measure:GetUnboundedStringWidth())
+            or measure:GetStringWidth())
+        return tonumber(w) or size * 6
+    end
     local key = font .. size .. (ow or 0) .. s
     local w = wcache[key]
     if w then return w end

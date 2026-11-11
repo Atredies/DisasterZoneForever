@@ -14,6 +14,8 @@ local Util = ns.Util
 local tonumber, pairs, ipairs, type = tonumber, pairs, ipairs, type
 
 local BRACERS, DST, TOKEN = 30687, 28830, 29767   -- Ravager's Bracers, Dragonspine Trophy, Leggings of the Fallen Defender
+local FOREVER = ns.Compat and ns.Compat.isForever
+if FOREVER then BRACERS, DST = 13969, 11815 end     -- (Loomguard Armbraces, Hand of Justice)
 local VOTERS = { "Aldrin", "Caelith", "Isolde" }   -- the demo's officers and class lead (demo votes always count)
 
 -- cast rows: { name, tier (1 BiS, 2 Alt, 3 OS, 4 not on a list), attendance %, raids since loot, roll (nil = none,
@@ -74,6 +76,13 @@ Demo.SCENARIOS = {
                { "Elowen", 2, 100, 0 } },
       votes = {} },
 }
+-- WoW Forever: no tier tokens (the wrong-class token case) and one season (longest use has nothing to count).
+if FOREVER then
+    for i = #Demo.SCENARIOS, 1, -1 do
+        local k = Demo.SCENARIOS[i].key
+        if k == "class" or k == "longest" then table.remove(Demo.SCENARIOS, i) end
+    end
+end
 
 local active    -- { def, byKey = { [key] = row }, sid }
 

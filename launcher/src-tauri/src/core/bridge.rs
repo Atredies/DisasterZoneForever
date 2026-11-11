@@ -83,12 +83,13 @@ pub fn inbox_lua(down: &SyncDown, written: u64) -> String {
     s
 }
 
-/// The `## Interface:` line of DisasterZone's TOC, so the bridge folder never shows as out of date.
+/// The `## Interface:` line of DisasterZone's TOC, so the bridge folder never shows as out of date. (Fallback: WoW
+/// Forever's 16001.)
 fn interface_of(addons: &Path) -> String {
     fs::read_to_string(addons.join("DisasterZone").join("DisasterZone.toc"))
         .ok()
         .and_then(|t| t.lines().find_map(|l| l.strip_prefix("## Interface:").map(|v| v.trim().to_string())))
-        .unwrap_or_else(|| "20505".into())
+        .unwrap_or_else(|| "16001".into())
 }
 
 fn write_atomic(p: &Path, text: &str) -> Result<()> {

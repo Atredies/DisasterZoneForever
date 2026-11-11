@@ -42,6 +42,16 @@ local IDS = {
     shout = 2048, brage = 2687, ham = 25212, op = 11585, flurry = 12974, sweep = 12328, rend = 25208,
     st1 = 2457, st2 = 71, st3 = 2458, tm = 12295,
 }
+-- WoW Forever (Wowhead's Forever spell database, checked 2026-11-09): the vanilla top ranks, no Rampage; 12328 is
+-- Death Wish there (Sweeping Strikes is 12292); Slam has a 15 s cooldown. Talent 12295 is "Improved Tactical
+-- Mastery" there (the rage a swap keeps, as Tactical Mastery).
+local FOREVER = ns.Compat and ns.Compat.isForever
+if FOREVER then
+    IDS.hs, IDS.cleave, IDS.bt, IDS.ms, IDS.slam, IDS.exe = 25286, 20569, 23894, 21553, 11605, 20662
+    IDS.shout, IDS.ham, IDS.rend, IDS.sweep, IDS.flurry = 25289, 7373, 11574, 12292, 12319
+    IDS.rampage = nil
+end
+War.FOREVER = FOREVER
 War.IDS = IDS
 local ICONS = {
     hs = "Interface\\Icons\\Ability_Rogue_Ambush", cleave = "Interface\\Icons\\Ability_Warrior_Cleave",
@@ -67,6 +77,7 @@ War.STANCE = STANCE
 local OFF_GCD = { brage = true, sweep = true }
 -- Cooldowns the plan keeps (s): Sweeping Strikes 30, Overpower 5 (the TBC tooltips)
 local CD = { bt = 6, ms = 6, ww = 10, sweep = 30, op = 5 }
+if FOREVER then CD.slam = 15 end
 local OP_WINDOW = 5              -- Overpower is usable this long after the target dodges (WoWSims overpower.go)
 local SWAP_KEEP = 10             -- rage a stance swap keeps, + 5 per point of Tactical Mastery (WoWSims stances.go)
 War.OP_WINDOW, War.SWAP_KEEP = OP_WINDOW, SWAP_KEEP
@@ -165,11 +176,10 @@ local demo                           -- { rage, gcd, ready = {}, queued, shout, 
 
 local function Speeds()
     if demo then return DEMO_SPEED, DEMO_SPEED end
-    if UnitAttackSpeed then
-        local mh, oh = UnitAttackSpeed("player")
-        mh, oh = tonumber(mh), tonumber(oh)
-        if mh and mh > 0 then return mh, (oh and oh > 0) and oh or nil end
-    end
+    -- (WoW Forever: secret in combat, then the last known speeds stand)
+    local mh, oh = ns.Compat.AttackSpeed("player")
+    mh, oh = tonumber(mh), tonumber(oh)
+    if mh and mh > 0 then return mh, (oh and oh > 0) and oh or nil end
     return state.mhSpeed, state.ohSpeed
 end
 
@@ -188,7 +198,7 @@ end
 
 local function Rage()
     if demo then return demo.rage end
-    return UnitPower and (tonumber(UnitPower("player", 1)) or 0) or 0
+    return UnitPower and (tonumber(ns.Compat.Plain(UnitPower("player", 1))) or 0) or 0   -- (0 on Forever: secret)
 end
 
 local function Stance()
@@ -202,15 +212,8 @@ local function TacticalMastery()
     if demo then return 0 end
     if tmRank then return tmRank end
     tmRank = 0
-    local want = GetSpellInfo and GetSpellInfo(IDS.tm)
-    if want and GetNumTalentTabs and GetNumTalents and GetTalentInfo then
-        for tab = 1, tonumber(GetNumTalentTabs()) or 0 do
-            for i = 1, tonumber(GetNumTalents(tab)) or 0 do
-                local n, _, _, _, rank = GetTalentInfo(tab, i)
-                if n == want then tmRank = tonumber(rank) or 0 return tmRank end
-            end
-        end
-    end
+    -- (ns.Compat.TalentRank: the old talent tabs, or WoW Forever's trait tree, by spell id or name)
+    tmRank = ns.Compat.TalentRank(IDS.tm) or 0
     return tmRank
 end
 War.TacticalMastery = TacticalMastery
@@ -235,18 +238,21 @@ War.TargetDebuffLeft = TargetDebuffLeft
 local function ExecutePhase()
     if demo then return false end
     if not (UnitExists and UnitExists("target")) or (UnitIsDead and UnitIsDead("target")) then return false end
-    local hp, mx = tonumber(UnitHealth("target")) or 0, tonumber(UnitHealthMax("target")) or 0
-    return mx > 0 and hp / mx < 0.2
+    local pct = ns.Compat.HealthPct("target")             -- (nil on Forever: health is secret)
+    return pct ~= nil and pct < 20
 end
+
+-- when each cooldown ("gcd" or a spell key) was last seen ending (our clock): used while the client keeps it secret
+local cdEnd = {}
 
 -- In the spellbook (any rank: by id, else by name, which a client only answers for spells the character has).
 local function Known(key)
-    if demo then return key ~= "slam" and key ~= "ms" and key ~= "op" end
+    if demo then return IDS[key] ~= nil and key ~= "slam" and key ~= "ms" and key ~= "op" end
     local id = IDS[key]
     if id and IsPlayerSpell and IsPlayerSpell(id) then return true end
     if id and IsSpellKnown and IsSpellKnown(id) then return true end
     local n = NameOf(key)
-    return n ~= nil and GetSpellCooldown ~= nil and GetSpellCooldown(n) ~= nil and IsUsableSpell ~= nil
+    return n ~= nil and select(3, ns.Compat.SpellCooldown(n)) == true and IsUsableSpell ~= nil
         and IsUsableSpell(n) ~= nil
 end
 War.Known = Known
@@ -254,20 +260,22 @@ War.Known = Known
 local function GcdLeft(now)
     if demo then return max(0, demo.gcd - now) end
     local n = NameOf("shout") or NameOf("ham")
-    if not n or not GetSpellCooldown then return 0 end
-    local s, d = GetSpellCooldown(n)
-    s, d = tonumber(s) or 0, tonumber(d) or 0
+    if not n then return 0 end
+    local s, d = ns.Compat.SpellCooldown(n)
+    if s == nil then return max(0, (cdEnd.gcd or 0) - now) end   -- (secret: the end last seen)
     if s == 0 or d > GCD + 0.01 then return 0 end
+    cdEnd.gcd = s + d
     return max(0, s + d - now)
 end
 
 local function CdLeft(key, now)
     if demo then return max(0, (demo.ready[key] or 0) - now) end
     local n = NameOf(key)
-    if not n or not GetSpellCooldown then return 0 end
-    local s, d = GetSpellCooldown(n)
-    s, d = tonumber(s) or 0, tonumber(d) or 0
+    if not n then return 0 end
+    local s, d = ns.Compat.SpellCooldown(n)
+    if s == nil then return max(0, (cdEnd[key] or 0) - now) end   -- (secret: the end last seen)
     if s == 0 or d <= GCD + 0.01 then return 0 end     -- a GCD is not the spell's own cooldown
+    cdEnd[key] = s + d
     return max(0, s + d - now)
 end
 
@@ -356,6 +364,7 @@ function War:Snapshot(now)
     local danceMode = Get("dance", "players")
     local ready = {}
     for _, k in ipairs({ "bt", "ms", "ww", "brage", "sweep", "op" }) do ready[k] = now + CdLeft(k, now) end
+    if CD.slam then ready.slam = now + CdLeft("slam", now) end   -- (Forever: Slam has a cooldown)
     local line = self:Line(spec, twoHand)
     if kind == "pack" and not held then line = tonumber(Get("cleaveLine", 40)) or 40
     elseif kind == "player" then
@@ -499,6 +508,7 @@ function War.Run(snap, count)
                     -- right after a main-hand swing: this one if it just landed, else the next
                     local last = mh - snap.mhSpeed
                     if t <= last + lat + SLAM_AFTER and mh - t >= 0.5 then at = t else at = mh end
+                    if rd.slam and rd.slam > at + 0.001 then at = nil end   -- (Forever: on its cooldown)
                 elseif k == "bt" or k == "ms" then at = max(t, rd[k])
                 elseif k == "ww" then
                     at = max(t, rd.ww)
@@ -605,7 +615,7 @@ War.OnOH = OnOH
 -- The target dodged one of our attacks: Overpower is usable for OP_WINDOW s (SWING_MISSED: missType first;
 -- SPELL_MISSED: after the spell id, name and school).
 local function Dodged(dst, now)
-    if dst and dst == (UnitGUID and UnitGUID("target")) then
+    if dst and dst == ns.Compat.GUID("target") then
         state.opUntil = now + OP_WINDOW
         War:MarkDirty()
     end
@@ -639,7 +649,7 @@ end
 War.OnCombatLog = OnCombatLog
 
 local function StartFight()
-    fight = { start = GetTime(), mh = 0, hs = 0, capped = 0, target = UnitName("target") }
+    fight = { start = GetTime(), mh = 0, hs = 0, capped = 0, target = ns.Compat.Name("target") }
 end
 
 local function EndFight()
@@ -718,6 +728,15 @@ function War:OnLogin()
     ns:RegisterEvent("UNIT_POWER_FREQUENT", function(_, unit)
         if unit == "player" and War.active then War:MarkDirty() end
     end)
+    -- WoW Forever: no combat log; C_SwingTimer's PLAYER_SWING (swingDuration, swingType 0 main hand / 1 off hand)
+    -- is the swing (SwingTimerDocumentation.lua; UNVERIFIED in game that an addon gets it, and whether a Heroic Strike
+    -- counts: the report's Heroic Strikes stay 0 there)
+    if FOREVER then
+        ns:RegisterEvent("PLAYER_SWING", function(_, _, swingType)
+            if not War.active or demo then return end
+            if swingType == 0 then OnMH(GetTime()) elseif swingType == 1 then OnOH(GetTime()) end
+        end)
+    end
     ns:RegisterEvent("PLAYER_REGEN_DISABLED", function()
         if War.active then StartFight() end
     end)

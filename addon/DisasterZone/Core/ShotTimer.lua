@@ -20,6 +20,11 @@ if DisasterZoneBoot and DisasterZoneBoot.Run("Core/ShotTimer.lua", ...) then ret
 -- After each fight a report counts every Auto Shot: on time, clipped (a cast pushed it; the time lost adds up) or
 -- held by moving, plus the shots cast.
 --
+-- WoW Forever (Wowhead's Forever spell database, checked 2026-11-09): no Steady Shot and no Kill Command; Aimed Shot
+-- is a 2 s cast on a 6 s cooldown it shares with Multi-Shot, which is instant; Arcane Shot and Aspect of the Viper are
+-- there. The rotation there (ours, not a sim's): Aimed Shot when its cast fits before the next Auto Shot, else
+-- Multi-Shot, then Arcane Shot; the haste is learned from Aimed Shot's cast.
+--
 -- Settings (ns.DB settings "shot"): see Core/DB.lua defaults.
 local addonName, ns = ...
 
@@ -43,6 +48,19 @@ local IDS = {
     -- (a pack and a player, Core/Situation.lua: rank 1 ids, known by everyone who has the spell)
     volley = 1510, etrap = 13813, conc = 5116, aimed = 19434, vsting = 3034, ssting = 3043, wclip = 2974,
 }
+local FOREVER = ns.Compat and ns.Compat.isForever
+-- The cast whose real cast time teaches the haste, and the GCD probe (a spell with no cooldown of its own).
+local LEARN, GCD_KEY = "steady", "steady"
+if FOREVER then
+    IDS.steady, IDS.kc = nil, nil
+    -- (rank 1 ids: the TBC top ranks are not in the game; a lower rank counts as known by name)
+    IDS.multi, IDS.arcane, IDS.hawk, IDS.serpent = 2643, 3044, 13165, 1978
+    CAST.aimed, CAST.multi = 2.0, nil
+    LEARN, GCD_KEY = "aimed", "serpent"
+end
+ShotTimer.FOREVER, ShotTimer.LEARN = FOREVER, LEARN
+-- Shots that share a cooldown (Forever: Aimed Shot and Multi-Shot)
+local SHARED = FOREVER and { aimed = "multi", multi = "aimed" } or {}
 ShotTimer.IDS = IDS
 local ICONS = {
     auto = "Interface\\Icons\\Ability_Whirlwind", steady = "Interface\\Icons\\Ability_Hunter_SteadyShot",
@@ -57,6 +75,7 @@ local ICONS = {
 -- How long each lasts on the target (the TBC tooltips): Concussive Shot's daze, Aimed Shot's healing cut, the
 -- stings, Wing Clip's slow.
 local LASTS = { conc = 4, aimed = 10, vsting = 8, ssting = 20, wclip = 10 }
+if FOREVER then LASTS.aimed = nil end   -- (Forever's Aimed Shot does not cut healing)
 ShotTimer.LASTS = LASTS
 
 local names = {}                 -- key -> localized spell name
@@ -87,7 +106,7 @@ function ShotTimer:IsEnabled() return Get("enabled", false) and true or false en
 
 -- A class tool (Core/ClassKit.lua) for every Hunter: all three specs live on Steady Shot. Its Settings card comes
 -- from UI/ShotTimerHUD.lua.
-ns.ClassKit:Register({ key = "shot", label = "Shot timer", class = "HUNTER", order = 20, icon = IDS.steady })
+ns.ClassKit:Register({ key = "shot", label = "Shot timer", class = "HUNTER", order = 20, icon = IDS.steady or IDS.aimed })
 
 -- Situations (Core/Situation.lua): a pack from 3 within 28 yards, counted from the plates and from what Multi-Shot
 -- and Volley hit (Multi-Shot already fires on cooldown; a pack adds Volley and Explosive Trap when picked); a player.
@@ -150,10 +169,9 @@ local demo                       -- { gcd, ready = {}, kcUntil } while demo mode
 
 local function RangedSpeed()
     if demo then return DEMO_SPEED end
-    if UnitRangedDamage then
-        local s = UnitRangedDamage("player")
-        if s and s > 0 then return s end
-    end
+    -- (WoW Forever: a secret number, seen in game 2026-11-08: fall back to the speed learned from the casts)
+    local s = ns.Compat.RangedSpeed("player")
+    if s and s > 0 then return s end
     return state.speed
 end
 
@@ -196,12 +214,13 @@ function ShotTimer:Haste(speed)
     return 1
 end
 
--- A Steady Shot just started: its real cast time tells the haste, so the weapon's own speed (kept per weapon).
+-- A Steady Shot (Forever: Aimed Shot) just started: its real cast time tells the haste, so the weapon's own speed
+-- (kept per weapon).
 local function Learn(castTime)
     if demo or not castTime or castTime < 0.4 or castTime > 3 then return end
     local id = GetInventoryItemID and GetInventoryItemID("player", 18)
     if not id then return end
-    local base = floor(RangedSpeed() * CAST.steady / castTime * 100 + 0.5) / 100
+    local base = floor(RangedSpeed() * CAST[LEARN] / castTime * 100 + 0.5) / 100
     local learned = Get("base")
     learned = type(learned) == "table" and learned or {}
     local old = tonumber(learned[id])
@@ -217,7 +236,7 @@ function ShotTimer:Windup() return WINDUP / self:Haste() end
 local function Moving()
     if demo then return false end
     if state.moving then return true end
-    return GetUnitSpeed and (tonumber(GetUnitSpeed("player")) or 0) > 0 or false
+    return (tonumber((ns.Compat.UnitSpeed("player"))) or 0) > 0     -- (secret on Forever: not moving)
 end
 
 -- When the next Auto Shot's windup starts (our clock; the shot leaves a windup later).
@@ -256,13 +275,14 @@ ShotTimer.ScanAspect = ScanAspect
 -- Durations as the client reports them, kept from the last time each was seen running (talents and sets included).
 state.gcd, state.gcdEnd = GCD, 0
 state.cd = { multi = 10, arcane = 6, kc = 5, volley = 60, etrap = 30, conc = 12, aimed = 6, vsting = 15 }
+state.cdEnd = {}                                   -- (when each cooldown was last seen ending: used while secret)
 
 local function GcdLeft(now)
     if demo then state.gcdEnd = demo.gcd return max(0, demo.gcd - now) end
-    local n = NameOf("steady")
-    if not n or not GetSpellCooldown then return 0 end
-    local s, d = GetSpellCooldown(n)
-    s, d = tonumber(s) or 0, tonumber(d) or 0
+    local n = NameOf(GCD_KEY)
+    if not n then return 0 end
+    local s, d = ns.Compat.SpellCooldown(n)
+    if s == nil then return max(0, (state.gcdEnd or 0) - now) end   -- (secret: the end last seen)
     if s == 0 or d > GCD + 0.01 then return 0 end
     state.gcd, state.gcdEnd = d, s + d
     return max(0, s + d - now)
@@ -271,11 +291,11 @@ end
 local function CdLeft(key, now)
     if demo then return max(0, (demo.ready[key] or 0) - now) end
     local n = NameOf(key)
-    if not n or not GetSpellCooldown then return 0 end
-    local s, d = GetSpellCooldown(n)
-    s, d = tonumber(s) or 0, tonumber(d) or 0
+    if not n then return 0 end
+    local s, d = ns.Compat.SpellCooldown(n)
+    if s == nil then return max(0, (state.cdEnd[key] or 0) - now) end   -- (secret: the end last seen)
     if s == 0 or d <= state.gcd + 0.01 then return 0 end   -- a GCD is not the spell's own cooldown
-    state.cd[key] = d
+    state.cd[key], state.cdEnd[key] = d, s + d
     return max(0, s + d - now)
 end
 
@@ -286,7 +306,7 @@ local function Known(key)
     if id and IsPlayerSpell and IsPlayerSpell(id) then return true end
     if id and IsSpellKnown and IsSpellKnown(id) then return true end
     local n = NameOf(key)
-    return n ~= nil and GetSpellCooldown ~= nil and GetSpellCooldown(n) ~= nil and IsUsableSpell ~= nil
+    return n ~= nil and select(3, ns.Compat.SpellCooldown(n)) == true and IsUsableSpell ~= nil
         and IsUsableSpell(n) ~= nil
 end
 
@@ -321,13 +341,15 @@ function ShotTimer:Snapshot(now)
     local sp = RangedSpeed()
     state.speed = sp
     local h = self:Haste(sp)
-    local mana, manaMax = UnitPower("player", 0) or 0, UnitPowerMax("player", 0) or 1
-    if demo then mana, manaMax = 80, 100 end
+    -- (mana in %; nil on WoW Forever, where it is secret: no aspect hints there)
+    local manaPct = demo and 80 or ns.Compat.PowerPct("player", 0)
     local use = {
-        steady = Known("steady"),
+        steady = IDS.steady ~= nil and Known("steady"),
+        -- (Forever: Aimed Shot is the cast between the shots)
+        aimedRot = FOREVER and Get("use.aimed", true) and Known("aimed") or false,
         multi = Get("use.multi", true) and Known("multi"),
         arcane = Get("use.arcane", true) and Known("arcane"),
-        aspect = Get("aspects", true) and Known("viper") and Known("hawk"),
+        aspect = manaPct ~= nil and Get("aspects", true) and Known("viper") and Known("hawk"),
         viperStart = tonumber(Get("viperStart", 5)) or 5, viperStop = tonumber(Get("viperStop", 25)) or 25,
     }
     -- a pack: Volley and Explosive Trap when picked; a player: Concussive Shot before Steady, Aimed Shot, a sting,
@@ -337,7 +359,7 @@ function ShotTimer:Snapshot(now)
     use.volley = kind == "pack" and Get("volley", false) and Known("volley") or false
     use.etrap = kind == "pack" and Get("etrap", false) and Known("etrap") or false
     use.conc = kind == "player" and Get("conc", true) and Known("conc") or false
-    use.aimed = kind == "player" and Get("aimed", true) and Known("aimed") or false
+    use.aimed = (not FOREVER) and kind == "player" and Get("aimed", true) and Known("aimed") or false
     use.wclip = kind == "player" and Get("wclip", true) and Known("wclip") or false
     local sting = kind == "player" and Get("sting", "viper") or "off"
     local manaUser = demo and true or (UnitPowerType and UnitPowerType("target") == 0) or false
@@ -358,7 +380,7 @@ function ShotTimer:Snapshot(now)
     return {
         now = now, nextStart = self:NextStart(now), lastShot = state.last, speed = sp,
         cycle = state.cycle or sp, haste = h, windup = WINDUP / h, buffer = min(0.5, 0.25 * sp),
-        ct = { steady = CAST.steady / h, multi = CAST.multi / h, aimed = aimedCast, volley = CAST.volley },
+        ct = { steady = CAST.steady / h, multi = CAST.multi and CAST.multi / h, aimed = aimedCast, volley = CAST.volley },
         lat = self:Latency(), sit = sit, kind = kind, inMelee = inMelee,
         left = { conc = TargetLeft("conc", now), aimed = TargetLeft("aimed", now), wclip = TargetLeft("wclip", now),
                  sting = use.sting and TargetLeft(use.sting, now) or 0 },
@@ -371,8 +393,8 @@ function ShotTimer:Snapshot(now)
                   volley = now + CdLeft("volley", now), etrap = now + CdLeft("etrap", now),
                   conc = now + CdLeft("conc", now), aimed = now + CdLeft("aimed", now),
                   vsting = now + CdLeft("vsting", now), ssting = now },
-        kc = Get("use.kc", true) and KillCommandUp(now), use = use,
-        mana = manaMax > 0 and mana / manaMax * 100 or 100, aspect = demo and "hawk" or state.aspect,
+        kc = IDS.kc ~= nil and Get("use.kc", true) and KillCommandUp(now), use = use,
+        mana = manaPct or 100, aspect = demo and "hawk" or state.aspect,
     }
 end
 
@@ -441,7 +463,11 @@ function ShotTimer.Run(snap, horizon)
                 act, ct = "aimed", snap.ct.aimed
             elseif use.sting and ends.sting <= t and t >= (rd[use.sting] or t) - 0.001 and inst then act = use.sting
             elseif use.steady and snap.ct.steady <= left then act, ct = "steady", snap.ct.steady
-            elseif use.multi and t >= rd.multi - 0.001 and snap.ct.multi <= left then act, ct = "multi", snap.ct.multi
+            elseif use.aimedRot and t >= rd.aimed - 0.001 and snap.ct.aimed <= left then act, ct = "aimed", snap.ct.aimed
+            elseif use.multi and t >= rd.multi - 0.001 and snap.ct.multi and snap.ct.multi <= left then
+                act, ct = "multi", snap.ct.multi
+            elseif use.multi and not snap.ct.multi and t >= rd.multi - 0.001 and inst then
+                act = "multi"                      -- (Forever: instant)
             elseif use.arcane and t >= rd.arcane - 0.001 and nxt - (t + lat) >= r then
                 act = "arcane"                     -- (instant, but not into the windup: a reaction before it)
             end
@@ -451,6 +477,7 @@ function ShotTimer.Run(snap, horizon)
                 gcd = t + G
                 if act == "viper" or act == "hawk" then aspect = act end
                 if CD[act] then rd[act] = t + CD[act] end
+                if SHARED[act] and CD[act] then rd[SHARED[act]] = t + CD[act] end
                 if act == "vsting" or act == "ssting" then ends.sting = t + LASTS[act]
                 elseif LASTS[act] then ends[act] = t + (ct or 0) + LASTS[act] end
                 if ct then
@@ -464,6 +491,7 @@ function ShotTimer.Run(snap, horizon)
                 local nt = nxt
                 if use.arcane and rd.arcane > t and rd.arcane < nt then nt = rd.arcane end
                 if use.multi and rd.multi > t and rd.multi < nt then nt = rd.multi end
+                if use.aimedRot and rd.aimed > t and rd.aimed < nt then nt = rd.aimed end
                 for _, k in ipairs({ "volley", "etrap", "conc", "aimed" }) do
                     if use[k] and rd[k] > t and rd[k] < nt then nt = rd[k] end
                 end
@@ -524,7 +552,7 @@ end
 ShotTimer.OnShot = OnShot
 
 local function StartFight()
-    fight = { start = GetTime(), shots = {}, lost = 0, casts = {}, target = UnitName("target") }
+    fight = { start = GetTime(), shots = {}, lost = 0, casts = {}, target = ns.Compat.Name("target") }
 end
 
 local function EndFight()
@@ -560,12 +588,12 @@ ShotTimer.SpellKey = SpellKey
 local function OnCastStart(key)
     if not UnitCastingInfo then return end
     local _, _, _, s, e = UnitCastingInfo("player")
-    s, e = tonumber(s), tonumber(e)
+    s, e = tonumber(ns.Compat.Plain(s)), tonumber(ns.Compat.Plain(e))   -- (secret on Forever: no hold)
     if not (s and e) then return end
     local now = GetTime()
     state.castEnd = e / 1000
     if state.castEnd > state.pushTo then state.pushTo = state.castEnd end
-    if key == "steady" then Learn((e - s) / 1000) end
+    if key == LEARN then Learn((e - s) / 1000) end
     local sent = sentAt[key]
     if sent and now - sent < 1.0 then
         local d = now - sent
@@ -680,6 +708,7 @@ local function DemoShots(on)
                 else
                     demo.gcd = now + GCD
                     if state.cd[st.key] then demo.ready[st.key] = now + state.cd[st.key] end
+                    if SHARED[st.key] and state.cd[st.key] then demo.ready[SHARED[st.key]] = now + state.cd[st.key] end
                     if LASTS[st.key] then
                         demo.deb = demo.deb or {}
                         demo.deb[st.key] = now + (st.cast or 0) + LASTS[st.key]
@@ -726,15 +755,18 @@ ns:RegisterSlash("shot", function(rest)
         local c = r.counts
         local total = c.clean + c.clip + c.moved
         local casts = r.casts or {}
-        ns:Print("%s (%ds): %d/%d Auto Shots on time, %d clipped (%.1f s lost), %d held by moving; %d Steady Shots.",
-            r.target or "Last fight", floor(r.dur or 0), c.clean, total, c.clip, r.lost or 0, c.moved, casts.steady or 0)
+        ns:Print("%s (%ds): %d/%d Auto Shots on time, %d clipped (%.1f s lost), %d held by moving; %d %s.",
+            r.target or "Last fight", floor(r.dur or 0), c.clean, total, c.clip, r.lost or 0, c.moved,
+            casts[LEARN] or 0, FOREVER and "Aimed Shots" or "Steady Shots")
     else
         local world, meas, used = ShotTimer:LatencyInfo()
         local h = ShotTimer:Haste()
-        ns:Print("Shot timer is %s%s. Ranged haste %d%%, Steady Shot %.2f s. Latency: world %s ms, measured %s ms, using %d ms.",
+        ns:Print("Shot timer is %s%s. Ranged haste %d%%, %s %.2f s. Latency: world %s ms, measured %s ms, using %d ms.",
             ShotTimer:IsEnabled() and "on" or "off", ShotTimer.active and "" or " (not a Hunter)",
-            floor((h - 1) * 100 + 0.5), CAST.steady / h, tostring(world or "?"), tostring(meas or "-"),
+            floor((h - 1) * 100 + 0.5), FOREVER and "Aimed Shot" or "Steady Shot", CAST[LEARN] / h,
+            tostring(world or "?"), tostring(meas or "-"),
             floor((used or 0) * 1000 + 0.5))
         ns:Print("/dz shot on | off | move | report")
     end
-end, "Auto Shot / Steady Shot timer for Hunters (on | off | move | report)")
+end, FOREVER and "Auto Shot / Aimed Shot timer for Hunters (on | off | move | report)"
+    or "Auto Shot / Steady Shot timer for Hunters (on | off | move | report)")

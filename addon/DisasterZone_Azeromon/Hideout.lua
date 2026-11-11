@@ -17,20 +17,32 @@ local G, D, Maps = ns.Azero, ns.AzeroData, ns.AzeroMaps
 
 H.RAIDS = {}                  -- { key, name, bosses = { { key, name, enc, raid } } } in raid order
 local byEnc = {}
+local byName = {}             -- [lower-case boss name] = boss, for a raid whose data has no encounter ids
+
+-- WoW Forever's raid data (Onyxia's Lair, Barrow Deeps, Hyjal Summit) has no encounter ids yet: a raid without any
+-- gets an id from each boss's name ("n:<name>"), and a raid log kill is matched on the name ENCOUNTER_END gave.
+-- (Forever clients only: the TBC data's world bosses have no encounter ids either and never had plinths.)
+local function NameId(name) return "n:" .. name:lower() end
 
 local function Build()
     if #H.RAIDS > 0 then return end
     for _, raid in ipairs(ns.Data and ns.Data.Raids or {}) do
         local r = { key = raid.key, name = raid.name, bosses = {} }
         local seen = {}
+        local byNames = (ns.Compat and ns.Compat.isForever) and true or false
+        for _, b in ipairs(raid.bosses or {}) do
+            if tonumber(b.encounterID) then byNames = false end
+        end
         for _, b in ipairs(raid.bosses or {}) do
             local enc = tonumber(b.encounterID)
+            if not enc and byNames and type(b.name) == "string" and b.name ~= "" then enc = NameId(b.name) end
             if enc and not b.isTrash and not seen[enc] then
                 seen[enc] = true
                 local e = { key = b.key, name = (enc == 655) and "The Opera Event" or b.name, enc = enc, raid = raid.key,
                             raidName = raid.name }
                 r.bosses[#r.bosses + 1] = e
                 byEnc[enc] = e
+                if type(enc) == "string" then byName[b.name:lower()] = e end
             end
         end
         if #r.bosses > 0 then H.RAIDS[#H.RAIDS + 1] = r end
@@ -94,7 +106,7 @@ function H.Trophies(fresh)
     local raids = RaidLog and RaidLog.GetRaids and RaidLog:GetRaids() or {}
     for _, rec in pairs(raids) do
         for _, b in ipairs(type(rec) == "table" and rec.bosses or {}) do
-            local boss = byEnc[tonumber(b.enc)]
+            local boss = byEnc[tonumber(b.enc)] or (type(b.name) == "string" and byName[b.name:lower()]) or nil
             if boss and GuildKill(b) then
                 local t = out[boss.enc]
                 if not t then
@@ -222,6 +234,7 @@ end
 -- (Ground.lua: hideout; HallArt.lua: its wings, props, fires and lights). A cathedral nave runs from the stairs to
 -- the throne dais; eight raid wings open off it, four a side, and Sunwell's plinths flank the throne. A wing is
 -- shut (dust sheets, scaffolding, a rope across its mouth) until the guild has killed one of its raid's bosses.
+-- On WoW Forever the wings take Forever's raids (FOREVER_WINGS below).
 ---------------------------------------------------------------------------
 
 -- 36 x 34, X solid. The painter's collision grid (the hideout test checks this copy against it).
@@ -269,17 +282,45 @@ Build()
 local raidByKey = {}
 for _, r in ipairs(H.RAIDS) do raidByKey[r.key] = r end
 
--- A wing is open once the guild has killed one of its raid's bosses.
-function H.WingOpen(key)
+-- The hall was built for the TBC original's nine raids (HallArt.lua names its wings after them). WoW Forever has none
+-- of them: its three raids move into wings whose plinths fit them, from the plinth `from` of the raid's bosses on.
+-- Hyjal Summit's 13 bosses fill the Mount Hyjal wing (5) and the one below it (8 of 9). A wing no raid fills shows
+-- no TBC name: it stays roped off, "an unfinished wing".
+-- { wing key (HallArt.lua), the raid's key (Data/Items.lua), its first boss on the wing's plinths }
+local FOREVER_WINGS = {}
+for _, f in ipairs({
+    { "Karazhan", "BarrowDeeps", 1 },           -- 11 plinths, Barrow Deeps' 8 bosses
+    { "MagtheridonsLair", "Onyxia", 1 },        -- 1 plinth, Onyxia
+    { "HyjalSummit", "HyjalForever", 1 },       -- 5 plinths, Hyjal Summit's bosses 1-5
+    { "BlackTemple", "HyjalForever", 6 },       -- 9 plinths, bosses 6-13
+}) do
+    FOREVER_WINGS[f[1]] = { raid = f[2], from = f[3] }
+end
+H.FOREVER_WINGS = FOREVER_WINGS
+local UNFINISHED = "An unfinished wing"
+
+-- The raid a wing holds (nil: none), and where its plinths start in that raid's bosses.
+local function WingRaid(key)
     local r = raidByKey[key]
-    if not r then return true end
+    if r then return r, 1 end
+    local f = FOREVER_WINGS[key]
+    r = f and raidByKey[f.raid]
+    if r then return r, f.from end
+    return nil
+end
+H.WingRaid = WingRaid
+
+-- A wing is open once the guild has killed one of its raid's bosses (a wing no raid fills never opens).
+function H.WingOpen(key)
+    local r = WingRaid(key)
+    if not r then return false end
     for _, b in ipairs(r.bosses) do if H.Trophy(b.enc) then return true end end
     return false
 end
 
 -- trophies standing in a raid's wing / its plinth count
 function H.WingCount(key)
-    local r = raidByKey[key]
+    local r = WingRaid(key)
     if not r then return 0, 0 end
     local n = 0
     for _, b in ipairs(r.bosses) do if H.Trophy(b.enc) then n = n + 1 end end
@@ -288,18 +329,22 @@ end
 
 -- what the wing's banner (and the banner over the screen on walking in) says
 function H.WingLine(key)
-    local r = raidByKey[key]
-    if not r then return "" end
+    local r = WingRaid(key)
+    if not r then
+        -- (a wing no raid of this client fills: WoW Forever has none of the TBC raids the hall was built for)
+        return UNFINISHED .. ": no raid of ours fills it yet"
+    end
     local n, total = H.WingCount(key)
     if n == 0 then return r.name .. ": sealed until the guild's first kill there" end
+    if n == total and total == 1 then return r.name .. ": its trophy stands" end
     if n == total then return string.format("%s: all %d trophies", r.name, total) end
     return string.format("%s: %d of %d trophies", r.name, n, total)
 end
 
 local objects = {}
 for _, p in ipairs(ART.plinths) do
-    local raid = raidByKey[p[1]]
-    local boss = raid and raid.bosses[p[2]]
+    local raid, from = WingRaid(p[1])
+    local boss = raid and raid.bosses[from + p[2] - 1]
     if boss then
         local enc = boss.enc
         objects[#objects + 1] = { x = p[3], y = p[4], boss = boss, theme = p[5],
@@ -348,7 +393,11 @@ npcs[#npcs + 1] = { id = "steward", name = "Steward Marlon", title = "Guild Hall
         local n = 0
         for _ in pairs(H.Trophies()) do n = n + 1 end
         g:Say("Steward Marlon: Welcome to the Guild Hall. Every raid boss has a plinth here; the guild's kills put a trophy on it.")
-        g:Say("Steward Marlon: Each raid has its own wing. A wing stays sealed until the guild draws first blood there, and Sunwell's light waits for the plateau.")
+        if raidByKey.SunwellPlateau then
+            g:Say("Steward Marlon: Each raid has its own wing. A wing stays sealed until the guild draws first blood there, and Sunwell's light waits for the plateau.")
+        else
+            g:Say("Steward Marlon: Each raid has its own wing. A wing stays sealed until the guild draws first blood there; the unfinished ones wait for raids we have not seen yet.")
+        end
         g:Say(string.format("Steward Marlon: The trophies come from the guild's raid log. %s", n == 0 and "None yet. Go kill something." or (n .. " stand here now. Press Space at one to read its plaque.")))
         g:Say("Steward Marlon: The statues are our champions, and the lectern by the east table is what the guild has tamed together.")
     end }
@@ -361,12 +410,15 @@ local function Prepare(def)
     for i, o in ipairs(objects) do objs[i] = o end
     for _, w in ipairs(ART.wings) do
         if w.mouth and not H.WingOpen(w.key) then
-            local name = raidByKey[w.key] and raidByKey[w.key].name or w.name
+            local raid = WingRaid(w.key)
+            local say = raid
+                and string.format("Dust sheets and scaffolding. The %s wing opens when the guild kills one of its bosses.", raid.name)
+                or "Dust sheets and scaffolding. This wing waits for a raid the guild has not seen yet."
             for y = w.y0 + 2, w.y0 + 4 do
                 local r = rows[y + 1]
                 rows[y + 1] = r:sub(1, w.mouth) .. "X" .. r:sub(w.mouth + 2)
                 objs[#objs + 1] = { x = w.mouth, y = y, rope = w.key, hint = "Look at the rope",
-                    script = function(g) g:Say(string.format("Dust sheets and scaffolding. The %s wing opens when the guild kills one of its bosses.", name)) end }
+                    script = function(g) g:Say(say) end }
             end
         end
     end

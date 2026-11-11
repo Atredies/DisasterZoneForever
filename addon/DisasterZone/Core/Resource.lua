@@ -50,7 +50,15 @@ ns.ClassKit:Register({ key = "power", label = "Resource bar", class = ns.ClassKi
                        icon = "Interface\\Icons\\Ability_Warrior_EndlessRage" })
 
 function Res:IsMine() return ns.ClassKit:IsMine("power") end
-function Res:IsLive() return ns.ClassKit:IsLive("power") end
+-- WoW Forever: the player's power is a secret value (UnitPower; measured 2026-11-08), so the bar's arithmetic cannot
+-- run. It stays off there (not live) until it is rebuilt on secret-safe widgets (card "Combat features on Forever
+-- APIs"); the tick tracking skips secret readings.
+local function PowerReadable()
+    local C = ns.Compat
+    return not (C and C.IsSecret(UnitPower and UnitPower("player")))
+end
+Res.PowerReadable = PowerReadable
+function Res:IsLive() return ns.ClassKit:IsLive("power") and PowerReadable() end
 function Res:IsDemo() return ns.ClassKit:IsDemo("power") end
 local function DemoPlaying() return ns.Demo and ns.Demo.IsPlaying and ns.Demo:IsPlaying("power") or false end
 Res.DemoPlaying = DemoPlaying
@@ -72,7 +80,7 @@ local function Known(id)
     if IsPlayerSpell and IsPlayerSpell(id) then return true end
     if IsSpellKnown and IsSpellKnown(id) then return true end
     local n = NameOf(id)
-    return n ~= nil and GetSpellCooldown ~= nil and GetSpellCooldown(n) ~= nil and IsUsableSpell ~= nil
+    return n ~= nil and select(3, ns.Compat.SpellCooldown(n)) == true and IsUsableSpell ~= nil
         and IsUsableSpell(n) ~= nil
 end
 Res.Known = Known
@@ -144,8 +152,15 @@ local function PowerType()
     return pt
 end
 
+-- Power and its maximum; nil power when it is a secret value (WoW Forever).
 local function Power(pt)
-    return tonumber(UnitPower and UnitPower("player", pt)) or 0, max(1, tonumber(UnitPowerMax and UnitPowerMax("player", pt)) or 0)
+    local v = UnitPower and UnitPower("player", pt)
+    local mx = UnitPowerMax and UnitPowerMax("player", pt)
+    local C = ns.Compat
+    if C and C.IsSecret(mx) then mx = nil end
+    mx = max(1, tonumber(mx) or 0)
+    if C and C.IsSecret(v) then return nil, mx end
+    return tonumber(v) or 0, mx
 end
 
 local function HasBuff(id)
@@ -163,7 +178,7 @@ function Res:Seen(pt, now)
     local v, mx = Power(pt)
     local prev = st.last[pt]
     st.last[pt] = v
-    if not prev then return end
+    if not (prev and v) then return end
     local d = v - prev
     if pt == ENERGY then
         -- a tick is +20 (+40 under Adrenaline Rush); less when it hit the top; Thistle Tea / Relentless Strikes give
@@ -196,7 +211,7 @@ end
 -- Druid mana under Bear and Cat, with what a shapeshift costs.
 local function FormMana()
     local v, mx = Power(MANA)
-    if mx <= 1 then return nil end
+    if not v or mx <= 1 then return nil end
     local shift
     for _, id in ipairs(DATA.SHIFTS) do
         if Known(id) then
@@ -247,6 +262,7 @@ function Res:Snapshot(now)
     local pt = st.ptype or PowerType()
     local v, mx = Power(pt)
     local kind = KIND[pt]
+    if not v then return { kind = kind, v = 0, mx = mx, fight = st.fight, marks = {}, rest = true, secret = true } end
     local s = { kind = kind, v = v, mx = mx, fight = st.fight, marks = {} }
     s.rest = not st.fight and AtRest(pt, v, mx)
     if pt == ENERGY or pt == MANA then
@@ -285,7 +301,8 @@ function Res:Snapshot(now)
         end
     end
     if Get("combo", true) and (MyClass() == "ROGUE" or (MyClass() == "DRUID" and pt == ENERGY)) then
-        s.cp = tonumber(GetComboPoints and GetComboPoints("player", "target")) or 0
+        -- (WoW Forever: secret while unit power is restricted: 0 then)
+        s.cp = tonumber(GetComboPoints and ns.Compat.Plain(GetComboPoints("player", "target"))) or 0
     end
     if MyClass() == "DRUID" and pt ~= MANA and Get("formMana", true) then s.mana = FormMana() end
     return s

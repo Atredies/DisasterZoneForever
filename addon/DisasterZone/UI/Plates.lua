@@ -147,7 +147,7 @@ local function IsTankUnit(u)
     if not (UnitExists and UnitExists(u)) then return false end
     if ns.Tanks and ns.Tanks.NumberOfUnit and ns.Tanks:NumberOfUnit(u) then return true end
     if GetPartyAssignment and pcall(GetPartyAssignment, "MAINTANK", u) and GetPartyAssignment("MAINTANK", u) then return true end
-    return UnitGroupRolesAssigned and UnitGroupRolesAssigned(u) == "TANK" or false
+    return UnitGroupRolesAssigned and ns.Compat.Plain(UnitGroupRolesAssigned(u)) == "TANK" or false
 end
 
 -- The threat state of mob unit u for me: tanks mine | slip | lost | tank (another tank holds it); the others
@@ -155,7 +155,12 @@ end
 function P:Threat(u, role)
     if not (UnitAffectingCombat and UnitAffectingCombat(u)) then return nil end
     local isTanking, status, pct = nil, nil, nil
-    if UnitDetailedThreatSituation then isTanking, status, pct = UnitDetailedThreatSituation("player", u) end
+    if UnitDetailedThreatSituation then
+        -- (WoW Forever: secret while threat values are restricted; then no threat colour)
+        local P_ = ns.Compat.Plain
+        isTanking, status, pct = UnitDetailedThreatSituation("player", u)
+        isTanking, status, pct = P_(isTanking), P_(status), P_(pct)
+    end
     if role == "tank" then
         if isTanking then return status == 3 and "mine" or "slip" end
         if IsTankUnit(u .. "target") then return "tank" end
@@ -170,24 +175,37 @@ end
 
 local function Now() return GetTime and GetTime() or 0 end
 
+-- Is plate unit u my target? UnitIsUnit's answer is secret on Forever while unit comparison is restricted; then the
+-- plate the client has for "target" says (UNVERIFIED in game that its token stays plain).
+function P.IsTarget(u)
+    if not UnitIsUnit then return false end
+    local r = UnitIsUnit(u, "target")
+    if not ns.Compat.IsSecret(r) then return r and true or false end
+    local NP = C_NamePlate
+    local plate = NP and NP.GetNamePlateForUnit and NP.GetNamePlateForUnit("target")
+    local token = plate and ns.Compat.Plain(plate.namePlateUnitToken)
+    return token ~= nil and token == u
+end
+
 -- Reads unit token u into plate table p (made once per plate).
 function P:Read(u, p, lookKey)
-    p.name = (UnitName and UnitName(u)) or ""
+    p.name = ns.Compat.Name(u) or ""          -- (WoW Forever: an NPC's name is secret in an instance)
     local lvl = UnitLevel and UnitLevel(u) or 0
     p.lvl = (lvl and lvl > 0) and lvl or "??"
     local cls = UnitClassification and UnitClassification(u) or "normal"
     p.boss = cls == "worldboss" or cls == "elite" or cls == "rareelite" or p.lvl == "??"
-    p.mark = GetRaidTargetIndex and GetRaidTargetIndex(u) or nil
-    local hm = UnitHealthMax and UnitHealthMax(u) or 0
-    p.hpTarget = hm > 0 and max(0, min(1, (UnitHealth(u) or 0) / hm)) or 0
+    p.mark = ns.Compat.RaidMark(u)            -- (secret on Forever: no mark)
+    local pct = ns.Compat.HealthPct(u)        -- (nil on Forever: health is secret, the bar shows full)
+    local hidden = not pct and ns.Compat.IsSecret(UnitHealthMax and UnitHealthMax(u))
+    p.hpTarget = pct and max(0, min(1, pct / 100)) or (hidden and 1 or 0)
     if p.hp == nil then p.hp = p.hpTarget end
     local isPlayer = UnitIsPlayer and UnitIsPlayer(u)
     local class
-    if isPlayer and UnitClass then class = select(2, UnitClass(u)) end
+    if isPlayer and UnitClass then class = ns.Compat.Plain((select(2, UnitClass(u)))) end
     local reaction = UnitReaction and UnitReaction(u, "player") or 4
     local friend = reaction >= 5
     p.friend = friend
-    p.target = UnitIsUnit and UnitIsUnit(u, "target") or false
+    p.target = P.IsTarget(u)
     p.dim = Opt("dim", true) and (UnitExists and UnitExists("target")) and not p.target or false
     p.combat = (UnitAffectingCombat and UnitAffectingCombat(u)) or false
     local kind = friend and "friend" or (reaction <= 3 and "hostile" or "neutral")
@@ -224,11 +242,15 @@ function P:Read(u, p, lookKey)
     if not friend and (Opt("casts", "all") == "all" or p.target) then
         local name, _, tex, st, en, _, _, notInt = nil, nil, nil, nil, nil, nil, nil, nil
         local channel = false
+        -- (WoW Forever: an enemy's cast is secret in a dungeon or in combat: no cast bar then)
+        local secret, P_ = ns.Compat.IsSecret, ns.Compat.Plain
         if UnitCastingInfo then name, _, tex, st, en, _, _, notInt = UnitCastingInfo(u) end
-        if not name and UnitChannelInfo then
+        if not secret(name) and not name and UnitChannelInfo then
             name, _, tex, st, en, _, notInt = UnitChannelInfo(u)
-            channel = name ~= nil
+            channel = not secret(name) and name ~= nil
         end
+        if secret(name) or P_(st) == nil or P_(en) == nil then name = nil end
+        if name then tex, notInt = P_(tex), P_(notInt) end
         if name and st and en and en > st then
             cast = cast or {}
             cast.spell, cast.icon, cast.st, cast.en, cast.kick, cast.channel = name, tex, st / 1000, en / 1000, not notInt, channel
@@ -548,6 +570,15 @@ local DEMO_CASTS = {
     fel = { "Summon Wild Felhunter", I .. "Spell_Shadow_SummonFelHunter", 3, false },
     poly = { "Greater Polymorph", I .. "Spell_Nature_Polymorph", 2, true },
 }
+-- WoW Forever (vanilla content): the Seven of Blackrock Depths instead, with vanilla spells (same keys and moments)
+if ns.Compat and ns.Compat.isForever then
+    local names = { maulgar = "Anger'rel", kiggler = "Seeth'rel", blindeye = "Vile'rel", olm = "Doom'rel",
+                    krosh = "Hate'rel" }
+    for _, m in ipairs(DEMO_MOBS) do m.name = names[m.key] or m.name end
+    DEMO_CASTS.gfb = { "Fireball", I .. "Spell_Fire_FlameBolt", 3, true }
+    DEMO_CASTS.fel = { "Summon Voidwalker", I .. "Spell_Shadow_SummonVoidWalker", 3, false }
+    DEMO_CASTS.poly = { "Polymorph", I .. "Spell_Nature_Polymorph", 2, true }
+end
 local DEMO_AURAS = {
     jotc = { I .. "Spell_Holy_HolySmite", 20, 16, nil, true },
     sunder = { I .. "Ability_Warrior_Sunder", 30, 24, 5 },

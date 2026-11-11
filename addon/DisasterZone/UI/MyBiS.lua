@@ -64,6 +64,10 @@ local KIND_GROUP = {
     pvp = { key = "pvp", label = "PvP", name = "PvP", order = 104, icon = ICON.pvp },
     other = { key = "other", label = "other", name = "Other sources", order = 105, icon = ICON.other },
 }
+-- WoW Forever: no Badges of Justice, no gems (no sockets, no Jewelcrafting: Data/Gems.lua), only enchants
+local FOREVER = ns.Compat and ns.Compat.isForever
+if FOREVER then KIND_GROUP.badge.label, KIND_GROUP.badge.name = "vendors", "Token vendors" end
+local GE = FOREVER and "enchants" or "gems and enchants"
 
 local panel, layout, bar, doll, card
 local phaseButtons = {}
@@ -669,7 +673,8 @@ local function ShowSlotMenu(sid, tile)
                 root:CreateButton("Swap main / alt", function() BiS:SwapMainAlt(phase, sid, list) end)
             end
             if main and tile.strip and tile.strip:IsShown() and ns.GemEditor then
-                root:CreateButton("Gems and enchant...", function() ns.GemEditor:Open(tile, main, phase, list) end)
+                root:CreateButton((ns.Compat and ns.Compat.isForever) and "Enchant..." or "Gems and enchant...",   -- (Forever: no sockets)
+                    function() ns.GemEditor:Open(tile, main, phase, list) end)
             end
         end
         if main then
@@ -713,7 +718,7 @@ local function ShowWornMenu(sid, tile)
             return
         end
         if tile.strip and tile.strip:IsShown() then
-            root:CreateButton("Gems and enchant...", function() OpenWornGems(tile) end)
+            root:CreateButton((ns.Compat and ns.Compat.isForever) and "Enchant..." or "Gems and enchant...", function() OpenWornGems(tile) end)
         end
         local enchant, gems = W:GetPlan(itemID)
         if enchant ~= 0 or next(gems) ~= nil then
@@ -1141,7 +1146,12 @@ end
 local function BuildWornSuggestMenu(root)
     local W, list, phase = Worn(), ListArg(), WornPhase()
     local spec = SelectedSpec() or ""
-    root:CreateTitle("Gems and enchants for your gear")
+    root:CreateTitle(FOREVER and "Enchants for your gear" or "Gems and enchants for your gear")
+    -- (Forever: no gem / enchant guides yet, Data/Gems.lua GemGuides: nothing to fill, so say so)
+    if FOREVER and not next(ns.Data and ns.Data.GemGuides or {}) then
+        root:CreateTitle("No enchant guides yet")
+        return
+    end
     if not (ns.Gems and ns.Gems:GuideFor(W:View(list))) then
         root:CreateTitle(spec == "" and "Choose your spec first" or ("No guide for " .. spec))
         return
@@ -1193,9 +1203,11 @@ local function BuildSuggestMenu(root)
             { phase = phase, list = ListArg() })
     end)
     -- gems and enchants of the phase's picks, from the same guide
-    if ns.Gems and ns.Gems:GuideFor(ns.BiS:GetListView(ListArg())) then
+    -- (Forever: only once there are enchant guides, Data/Gems.lua GemGuides)
+    if ns.Gems and ns.Gems:GuideFor(ns.BiS:GetListView(ListArg()))
+        and not (FOREVER and not next(ns.Data and ns.Data.GemGuides or {})) then
         if root.CreateDivider then root:CreateDivider() end
-        root:CreateTitle("Gems and enchants")
+        root:CreateTitle(FOREVER and "Enchants" or "Gems and enchants")
         AddQualityRadios(root, phase, ListArg())
         local b = root:CreateButton(("Fill empty sockets and enchants (%s)"):format(PL(phase)), function()
             local n = ns.Gems:FillPhase(phase, ListArg(), false)
@@ -1245,21 +1257,24 @@ local function BuildMoreMenu(root)
     -- Equipped: export what I wear, the plan's gems and enchants on the shopping list, forget the plan
     if WornView() then
         local W, list, wp = Worn(), ListArg(), WornPhase()
-        entry(UI.ICON.export, "Export", GOLD, "The gear you wear, for WoWSims (wowsims.com/tbc) or Wowhead's gear "
-            .. "planner.", function() openWindow("export") end)
+        entry(UI.ICON.export, "Export", GOLD, (ns.Compat and ns.Compat.isForever)
+            and "The gear you wear, as text a guildmate can import."     -- (Forever: no WoWSims / Wowhead planner)
+            or "The gear you wear, for WoWSims (wowsims.com/tbc) or Wowhead's gear planner.",
+            function() openWindow("export") end)
         if ns.Shop then
             local needs = W:ShoppingNeeds(list, wp)
-            local b = entry(UI.ICON.bagAdd, "Shopping", GOLD, "Puts the gems and enchants still to apply on your "
+            local b = entry(UI.ICON.bagAdd, "Shopping", GOLD, "Puts the " .. GE .. " still to apply on your "
                 .. "shopping list in the Atlas. It shows who in the guild makes them.", function()
                 local n, other = W:AddToShoppingList(list, wp)
                 ns:Print("Added %d crafts to your shopping list (Atlas).%s", n,
-                    other > 0 and (" %d gems or enchants come from drops, vendors or reputation."):format(other) or "")
+                    other > 0 and ((FOREVER and " %d enchants come from drops, vendors or reputation."
+                        or " %d gems or enchants come from drops, vendors or reputation."):format(other)) or "")
             end)
             if next(needs) == nil and b and b.SetEnabled then b:SetEnabled(false) end
         end
         if #W:Pending() > 0 then
             if root.CreateDivider then root:CreateDivider() end
-            entry(UI.ICON.trash, "Reset plan", RED, "Forgets the gems and enchants you planned for the gear you wear "
+            entry(UI.ICON.trash, "Reset plan", RED, "Forgets the " .. GE .. " you planned for the gear you wear "
                 .. "(what the items have stays).", function() W:ClearAll() end)
         end
         return
@@ -1267,18 +1282,22 @@ local function BuildMoreMenu(root)
     if locked then
         root:CreateTitle(LockLine())
     else
-        entry(UI.ICON.import, "Import", GOLD, "Bring in a BiS list from That's My BiS, Sixty Upgrades, WoWSims, "
-            .. "a Wowhead gear planner link or item links. You see what changes first.", function() openWindow("import") end)
+        entry(UI.ICON.import, "Import", GOLD, ((ns.Compat and ns.Compat.isForever)
+            and "Bring in a BiS list from That's My BiS, Sixty Upgrades, a guildmate's export or item links."
+            or "Bring in a BiS list from That's My BiS, Sixty Upgrades, WoWSims, a Wowhead gear planner link or item "
+            .. "links.") .. " You see what changes first.", function() openWindow("import") end)
     end
-    entry(UI.ICON.export, "Export", GOLD, "Your BiS list or the gear you wear, for WoWSims (wowsims.com/tbc) or "
-        .. "Wowhead's gear planner.", function() openWindow("export") end)
+    entry(UI.ICON.export, "Export", GOLD, (ns.Compat and ns.Compat.isForever)
+        and "Your BiS list or the gear you wear, as text a guildmate can import."
+        or "Your BiS list or the gear you wear, for WoWSims (wowsims.com/tbc) or Wowhead's gear planner.",
+        function() openWindow("export") end)
     -- the phase's gems and enchants on the Atlas shopping list (the crafts; what you wear already is left out)
     if ns.Gems and ns.Shop then
         local needs = ns.Gems:ShoppingNeeds(phase, ListArg())
         local count = 0
         for _, n in pairs(needs) do count = count + n end
         local b = entry(UI.ICON.bagAdd, "Shopping", GOLD, ("Puts what %s still needs crafted on your shopping list in "
-            .. "the Atlas: crafted picks you don't have yet, and the gems and enchants you chose. It shows who in the "
+            .. "the Atlas: crafted picks you don't have yet, and the " .. GE .. " you chose. It shows who in the "
             .. "guild makes them."):format(which), function()
             local n, other = ns.Gems:AddToShoppingList(phase, ListArg())
             ns:Print("Added %d crafts to your shopping list (Atlas).%s", n,
@@ -1378,6 +1397,15 @@ local PHASE_ART = {
     [4] = { "ZulAman" },
     [5] = { "SunwellPlateau" },
 }
+-- WoW Forever: one raid phase (Hyjal Summit, Barrow Deeps, Onyxia's Lair: Data/Raids.lua); Pre-raid = the level-60
+-- dungeons' screens (Blackrock Spire, Scholomance, Stratholme, Dire Maul)
+if ns.Compat and ns.Compat.isForever then
+    DUNGEON_LS = { BlackrockSpire = 131825, Scholomance = 131868, Stratholme = 131871, DireMaul = 131835 }
+    PHASE_ART = {
+        [0] = { "BlackrockSpire", "Scholomance", "Stratholme", "DireMaul" },
+        [1] = { "HyjalForever", "BarrowDeeps", "Onyxia" },
+    }
+end
 local function ArtFile(key)
     if DUNGEON_LS[key] then return DUNGEON_LS[key] end
     local file = ns.ItemDB and ns.ItemDB:RaidArt(key)
@@ -1842,10 +1870,11 @@ local function UpdateWornCard(view, phase)
         elseif placed < all or ench < enchAll then
             es.glyph = ns.UI.ICON.notes
             es.title = "Nothing to apply yet"
-            es.text = "Let Suggest pick gems and enchants for your gear, or click a slot's gems."
+            es.text = (ns.Compat and ns.Compat.isForever) and "Let Suggest pick enchants for your gear, or click a slot's enchant."
+                or "Let Suggest pick gems and enchants for your gear, or click a slot's gems."
         else
             es.icon = ns.UI:Tex("check")
-            es.title = Green("Every gem and enchant is on")
+            es.title = Green((ns.Compat and ns.Compat.isForever) and "Every enchant is on" or "Every gem and enchant is on")
         end
         card.empty:SetContent(es)
         card.empty:Show()
@@ -1954,6 +1983,13 @@ end
 
 -- The page's toolbar (the layout's): the phases (or the page's title) and the spec tabs on its row on the left, the
 -- lock pill / Suggest (its filters) and More on the right.
+-- More's tip on a BiS phase (Forever: no WoWSims / Wowhead planner, UI/ImportExport.lua)
+local MORE_TIP = (ns.Compat and ns.Compat.isForever)
+    and "Import a BiS list from another site, export yours for a guildmate, copy another phase or list, or clear "
+        .. "this phase's picks."
+    or "Import a BiS list from another site, export yours to WoWSims or Wowhead, copy another phase or list, or "
+        .. "clear this phase's picks."
+
 local function CreateTopBar(p, toolbar)
     local UI = ns.UI
     bar = toolbar
@@ -1977,8 +2013,11 @@ local function CreateTopBar(p, toolbar)
     if wornTab then
         UI:AttachTooltip(wornTab, function(_, tt)
             tt:AddLine("Equipped", S:RGB("GOLD"))
-            tt:AddLine("The gear you wear, with the gems and enchants it has. Suggest fills empty sockets and missing "
-                .. "enchants from your spec's guide; what you plan shows with a gold dot until it is on the item.",
+            tt:AddLine((ns.Compat and ns.Compat.isForever)
+                and ("The gear you wear, with the enchants it has. Suggest fills missing enchants from your spec's "
+                    .. "guide; what you plan shows with a gold dot until it is on the item.")
+                or ("The gear you wear, with the gems and enchants it has. Suggest fills empty sockets and missing "
+                    .. "enchants from your spec's guide; what you plan shows with a gold dot until it is on the item."),
                 1, 1, 1, true)
         end, nil, { anchor = "ANCHOR_BOTTOM" })
     end
@@ -2004,8 +2043,7 @@ local function CreateTopBar(p, toolbar)
     CreateSpecRow(bar):SetPoint("LEFT", bar.lastTab, "RIGHT", 22, 0)
 
     -- More: the toolbar's "···" (its tip follows the page: LayoutBar)
-    moreBtn = bar:SetMore(BuildMoreMenu, "Import a BiS list from another site, export yours to WoWSims or Wowhead, "
-        .. "copy another phase or list, or clear this phase's picks.")
+    moreBtn = bar:SetMore(BuildMoreMenu, MORE_TIP)
     p.moreBtn = moreBtn
     p.phaseButtons = phaseButtons
 
@@ -2013,7 +2051,7 @@ local function CreateTopBar(p, toolbar)
     UI:SetTextStyle(suggestBtn:GetFontString(), "emph", "TEXT")
     UI:AttachTooltip(suggestBtn, function(_, tt)
         tt:AddLine("Suggest", S:RGB("GOLD"))
-        tt:AddLine(WornView() and "Gems and enchants for the gear you wear, from your spec's guide."
+        tt:AddLine(WornView() and ((FOREVER and "Enchants" or "Gems and enchants") .. " for the gear you wear, from your spec's guide.")
             or "Fill this phase from your spec's best-in-slot guide (shipped with DisasterZone).", 1, 1, 1, true)
     end, nil, { anchor = "ANCHOR_BOTTOM" })
 
@@ -2040,10 +2078,9 @@ local function LayoutBar(view)
     if view == "sim" then
         moreBtn.tipText = "Start the Working set over from the gear you wear or a BiS phase, or export a set to WoWSims."
     elseif WornView() then
-        moreBtn.tipText = "Export the gear you wear, or put the gems and enchants still to apply on your shopping list."
+        moreBtn.tipText = "Export the gear you wear, or put the " .. GE .. " still to apply on your shopping list."
     else
-        moreBtn.tipText = "Import a BiS list from another site, export yours to WoWSims or Wowhead, copy another "
-            .. "phase or list, or clear this phase's picks."
+        moreBtn.tipText = MORE_TIP
     end
     bar:LayoutRight()
 end
@@ -2265,7 +2302,7 @@ function MyBiS:FillFinishTooltip(owner, tt)
     local phase = owner.phase or CurrentPhase()
     local worn = owner.view and owner.view.worn
     local view = worn and owner.view or BiS:GetListView(ListArg())
-    tt:AddLine("Gems and enchants - " .. (worn and "Equipped" or PL(phase)), S:RGB("GOLD"))
+    tt:AddLine((FOREVER and "Enchants - " or "Gems and enchants - ") .. (worn and "Equipped" or PL(phase)), S:RGB("GOLD"))
     local any = false
     local picks = G:CountedPicks(view, phase, not worn and function(sid) return SlotDisabled(phase, sid) end or nil)
     for sid = 1, NUM_SLOTS do

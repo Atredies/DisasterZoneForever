@@ -1991,7 +1991,7 @@ local function BuildOverlay()
     overlay:SetScript("OnMouseUp", function() EM:EndDrag() end)
     overlay:SetScript("OnKeyDown", function(self, key)
         local handled = EM:OnKey(key)
-        if not InCombat() then self:SetPropagateKeyboardInput(not handled) end
+        if not InCombat() then ns.Util.SetPropagateKeys(self, not handled) end
     end)
     local since = 0
     overlay:SetScript("OnUpdate", function(_, elapsed)

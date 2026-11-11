@@ -20,6 +20,7 @@ TESTS = os.path.dirname(HERE)
 sys.path.insert(0, os.path.join(TESTS, "boot-ui"))
 
 from _common import World, Client, case, run_all, solo, no_errors, install_helpers, menu_pick, strip_codes  # noqa: E402
+from _common import DEV_NAME, DEV_REALM, DEV_KEY  # noqa: E402
 
 REALM = "Thunderstrike"
 
@@ -203,21 +204,21 @@ def a_creators_alt_edits_and_deletes_their_event_and_a_member_does_not():
 @case
 def the_debug_role_makes_only_me_an_attendance_reviewer():
     w = World()
-    t = Client(w, "Tsumil", guild_rank=4, class_file="PALADIN")
+    t = Client(w, DEV_NAME, realm=DEV_REALM, guild_rank=4, class_file="PALADIN")    # the developer
     sam = Client(w, "Sam", guild_rank=4, class_file="ROGUE")
     for x in (t, sam):
         x.load_addon()
     w.tick(3)
-    assert t.eval("return ns.Guild:IsAttendanceReviewer(...)", K("Tsumil")) is False
+    assert t.eval("return ns.Guild:IsAttendanceReviewer(...)", DEV_KEY) is False
     t.slash("/dz role officer")
     w.tick(0.5)
     assert t.eval("return ns.db.debugRole") == "officer"
-    assert t.eval("return ns.Guild:IsAttendanceReviewer(...)", K("Tsumil")) is True
+    assert t.eval("return ns.Guild:IsAttendanceReviewer(...)", DEV_KEY) is True
     assert t.eval("return ns.Guild:IsAttendanceReviewer(...)", K("Sam")) is False
     # the other clients see Tsumil's real rank
-    assert sam.eval("return ns.Guild:IsAttendanceReviewer(...)", K("Tsumil")) is False
+    assert sam.eval("return ns.Guild:IsAttendanceReviewer(...)", DEV_KEY) is False
     t.slash("/dz role off")
-    assert t.eval("return ns.Guild:IsAttendanceReviewer(...)", K("Tsumil")) is False
+    assert t.eval("return ns.Guild:IsAttendanceReviewer(...)", DEV_KEY) is False
     w.assert_no_errors()
 
 

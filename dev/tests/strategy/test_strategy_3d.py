@@ -222,8 +222,6 @@ def the_map_tilts_up_into_the_room_and_back_down():
     assert st["measured"] is True and st["textures"] > 200, st         # the room is drawn
     assert st["models"] == 1 and st["plates"] >= 1, st                  # Teron as his model, his name over him
     assert st["inset"] is True and st["compass"] is True
-    # the board's renderer is its own, not the trainer's
-    assert bob.eval_py("return T3.v().R ~= ns.TrainerRoom and ns.TrainerRoom ~= nil") is True
     # back down to the map
     bob.eval("ns.StrategyBoard:Set3D(false)")
     tick(w, 0.8)
@@ -1125,7 +1123,7 @@ def the_room_data_loads_only_when_a_room_is_first_drawn():
     go3d(w, bob)
     assert bob.eval("return ns.Render3D.DataLoaded()") is True
     assert bob.eval("return (C_AddOns.IsAddOnLoaded('DisasterZone_Rooms'))") is True
-    assert bob.eval("return ns.RoomFloors.BlackTemple_Teron ~= nil and ns.TrainerFloors.teron ~= nil")
+    assert bob.eval("return ns.RoomFloors.BlackTemple_Teron ~= nil")
     assert bob.eval("return ns.RoomStandins ~= nil and ns.RoomStandinGaps ~= nil and ns.RoomDepthModes ~= nil")
     assert bob.eval("return rawget(_G, 'DisasterZone') == ns")
     assert bob.eval("return select(2, ns.Render3D.LoadData()) == nil and ns.Render3D.LoadData() == true")
@@ -1165,9 +1163,6 @@ def without_the_rooms_folder_there_is_no_switch_and_the_zip_is_named_once():
     assert len(rooms) == 1 and "zip" in rooms[0], said
     assert not any("restart" in s.lower() for s in said), said
     assert bob.eval("return (ns.Render3D.DataAvailable())") is False
-    # the Raid Trainer plays on a flat floor, the chess hall stays flat (no error)
-    assert bob.eval("local T = ns.Trainer local sim = T and T:NewSim('teron') "
-                    "return sim ~= nil and sim.enc.arena.mesh == nil")
 
 
 @case

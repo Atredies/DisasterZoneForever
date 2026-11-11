@@ -34,6 +34,9 @@ local MEASURE_S = 30
 local RING = "Interface\\AddOns\\DisasterZone\\Media\\Events\\ring"
 local ART = "Interface\\Glues\\LoadingScreens\\LoadScreenTempestKeep"
 local ROOMS_ART = "Interface\\Glues\\LoadingScreens\\LoadScreenKarazhan"
+if ns.Compat and ns.Compat.isForever then   -- (Forever: Gnomeregan's and Blackrock Spire's, by FileDataID)
+    ART, ROOMS_ART = 131841, 131825
+end
 local function ICON(n) return "Interface\\Icons\\" .. n end
 local NUM = S.FONT_NUM
 

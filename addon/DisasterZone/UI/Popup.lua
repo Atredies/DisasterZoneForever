@@ -143,16 +143,16 @@ local function New(i)
     -- Escape closes the dialog and goes no further; other keys go on to the game
     f:SetScript("OnKeyDown", function(self, key)
         if key == "ESCAPE" then
-            if not InCombatLockdown() then self:SetPropagateKeyboardInput(false) end
+            if not InCombatLockdown() then ns.Util.SetPropagateKeys(self, false) end
             Popup:Dismiss(self)
         elseif not InCombatLockdown() then
-            self:SetPropagateKeyboardInput(true)
+            ns.Util.SetPropagateKeys(self, true)
         end
     end)
     f:SetScript("OnShow", function(self)
         if not InCombatLockdown() then
             self:EnableKeyboard(true)
-            self:SetPropagateKeyboardInput(true)
+            ns.Util.SetPropagateKeys(self, true)
         end
     end)
     f:SetScript("OnHide", function(self)

@@ -25,7 +25,7 @@ import sys
 import time
 
 DEV = os.path.normcase(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-_ADDON = os.environ.get("DISASTERZONE_ADDON_DIR") or r"C:\World of Warcraft\_anniversary_\Interface\AddOns\DisasterZone"
+_ADDON = os.environ.get("DISASTERZONE_ADDON_DIR") or r"C:\World of Warcraft\_forever_\Interface\AddOns\DisasterZone"
 ADDON = os.path.normcase(os.path.realpath(_ADDON))
 # under dev/: run output, caches and the Python environment are not inputs
 _SKIP = tuple(os.path.join(DEV, d) + os.sep for d in ("tf_e", ".luacache", ".testmap", "luaenv", "__pycache__"))

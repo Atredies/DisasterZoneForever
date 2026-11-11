@@ -74,6 +74,13 @@ end
 
 local Now, IsInt, DemoOn = Util.Now, Util.IsInt, Util.DemoOn
 
+-- v, or nil when it is a secret value (Core/Compat.lua).
+local function Plain(v)
+    local C = ns.Compat
+    if C and C.IsSecret(v) then return nil end
+    return v
+end
+
 local function DemoRoster()
     local Demo = ns.Demo
     if DemoOn() and Demo.GetRoster then
@@ -309,6 +316,9 @@ local function BuildRoster()
     local changed, membersChanged = not ready, not ready
     for i = 1, total do
         local name, rankName, rankIndex, level, _, _, _, _, isOnline, status, classFile = GetGuildRosterInfo(i)
+        -- (WoW Forever: roster values may be secret inside a raid instance, unverified. A secret name drops the row and
+        -- a secret rank reads as no rank (99): roles fail closed, nobody gains one from a value the addon can't read)
+        name, rankName, rankIndex = Plain(name), Plain(rankName), Plain(rankIndex)
         local key = type(name) == "string" and Util.NormalizeName(name) or nil
         if key then
             count = count + 1
@@ -492,18 +502,16 @@ end
 local Principals, IsGMKey, AddAlts, InvalidateAccounts, NoteOwnCharacter
 
 ---------------------------------------------------------------------------
--- Debug roles (for the addon's developer only): the character named DEBUG_CHAR can pretend to have another role with
--- /dz role, to look at the addon as a GM, officer, council member, raid leader or plain raider. It only changes what
--- MY client thinks my role is (UI and my own checks); every other client still checks my real rank and lists, so
--- nothing I'm not really entitled to is sent to me. Saved in db.debugRole.
+-- Debug roles (for the addon's developer only): the developer's character (Util.DEV_KEY: name and realm) can pretend
+-- to have another role with /dz role, to look at the addon as a GM, officer, council member, raid leader or plain
+-- raider. It only changes what MY client thinks my role is (UI and my own checks); every other client still checks my
+-- real rank and lists, so nothing I'm not really entitled to is sent to me. Saved in db.debugRole.
 ---------------------------------------------------------------------------
 
-local DEBUG_CHAR = "Tsumil"
 local DEBUG_ROLES = { gm = true, officer = true, council = true, raidleader = true, raider = true }
 
 local function DebugAllowed()
-    local name = UnitName and UnitName("player")
-    return name == DEBUG_CHAR
+    return Util.IsDevKey(Util.PlayerKey())
 end
 
 -- My pretend role, or nil.
@@ -738,6 +746,18 @@ local function OnGuildCouncil(sender, msg, dist)
         if stored and not IsTofu(stored) then
             vouched = stored.members[sender] and roster[sender] and true or false
             src = "relay"
+            -- 2026-11-09 (authority holes, round 3): the list is the GM's alone, like the GMR record. A council member
+            -- could relay a rewritten list "by the GM" with a newer rev, and it stood until the GM's own copy came. A
+            -- relay now only confirms the list I hold (the same rev and names, below); a newer one is held back: the
+            -- GM is asked for theirs (online now, or when their HELLO shows the rev, Guild:OnCouncilRevSeen).
+            if vouched and v.rev > stored.rev then
+                ns:Debug("Guild: relayed CG rev %d from %s held back (only the GM's own copy changes the list)", v.rev,
+                    tostring(sender))
+                if gmKey and roster[gmKey] and roster[gmKey].online and RateLimit("cq-gm:" .. gmKey, CQ_REPLY_LIMIT) then
+                    SendCQ("WHISPER", gmKey)
+                end
+                return
+            end
         else
             vouched = v.members[sender] and true or false
             src = "tofu"
@@ -984,20 +1004,21 @@ end
 ---------------------------------------------------------------------------
 
 ---------------------------------------------------------------------------
--- Raid leaders (Addendum J §62): a list officers (rank 0-1: the GM and the rank below) keep. Raid leaders and the GM
+-- Raid leaders (Addendum J §62): a list officers (the officer ranks, below) keep. Raid leaders and the GM
 -- plan raids; the raid log is also open to the guild council. No loot council access comes with the list.
 --
 -- Its own message RLL { rev, m, by } (GUILD, or WHISPER as an answer): accepted only from an officer per the live
 -- roster (the author, or an officer passing it on), newer rev wins (the same rev: the larger name list). HELLO carries
 -- my rev (rlr); an officer answers an older one with the list, and asks (RLQ) an officer who has a newer one. An
 -- officer also shares it once after logging in, for members who logged in while no officer was online.
+--
+-- The GM's own rules ride on the same saved record but travel on their own (GMR, below), from the GM only.
 ---------------------------------------------------------------------------
 
-local OFFICER_RANK = 1          -- rank index 0 (GM) and 1 are officers
 local RLL_REPLY_LIMIT = 30
 local RLL_LOGIN_MIN, RLL_LOGIN_MAX = 20, 40
 
--- db.raidLeaders[guildKey] = { rev, m = { [key] = true }, by }
+-- db.raidLeaders[guildKey] = { rev, m = { [key] = true }, by, and the GM's record: gv (its rev), ar, lr, dc, rc, ok }
 local function LeadersRec(create)
     local g = GuildKey()
     if not g then return nil end
@@ -1009,6 +1030,62 @@ local function LeadersRec(create)
         rec.rev, rec.m = 0, {}
     end
     return rec
+end
+
+---------------------------------------------------------------------------
+-- Officers (owner decision 2026-11-09): the guild ranks the GM ticks in Settings > Guild > Officers. The choice is the
+-- GM's (ok = { rank index, ... } on the GM's record, GMR: accepted only from the GM); until the GM sets it, ranks 0
+-- and 1. Rank 0, the GM, is always one. Every officer check goes through RankIsOfficer; a rank the addon can't read
+-- (unknown, or secret on WoW Forever) is no officer.
+---------------------------------------------------------------------------
+
+local MAX_RANK = 9                              -- the game has 10 guild ranks, index 0-9
+local DEFAULT_OFFICER_RANKS = { [0] = true, [1] = true }
+
+-- A set { [rank index] = true } (rank 0 always in it) from a list of rank indices, or nil when it isn't one.
+local function CleanOfficerRanks(list)
+    if type(list) ~= "table" then return nil end
+    local set, n = { [0] = true }, 0
+    for _, ri in pairs(list) do
+        n = n + 1
+        if n > MAX_RANK + 1 or not IsInt(ri, 0, MAX_RANK) then return nil end
+        set[ri] = true
+    end
+    return set
+end
+
+-- The wire / saved form: the sorted rank indices.
+local function OfficerRankList(set)
+    local out = {}
+    for ri = 0, MAX_RANK do
+        if set[ri] then out[#out + 1] = ri end
+    end
+    return out
+end
+
+local rankCacheSrc, rankCache       -- (rec.ok as last read, and its set: IsOfficer runs often)
+local function OfficerRankSet()
+    local rec = LeadersRec(false)
+    local ok = rec and rec.ok
+    if ok == nil then return DEFAULT_OFFICER_RANKS end
+    if ok ~= rankCacheSrc then
+        rankCacheSrc, rankCache = ok, CleanOfficerRanks(ok)
+    end
+    return rankCache or DEFAULT_OFFICER_RANKS
+end
+
+-- Is this guild rank index an officer rank? The one officer check.
+local function RankIsOfficer(ri)
+    ri = tonumber(ri)
+    if not IsInt(ri, 0, MAX_RANK) then return false end
+    return OfficerRankSet()[ri] == true
+end
+
+-- Strictly the Guild Master: rank 0 in the live roster right now. Not an alt, not a debug role, not the GM last seen:
+-- what the GM alone may send (GMR) is checked with this.
+local function IsRosterGM(key)
+    local e = type(key) == "string" and roster[key]
+    return (e and key == gmKey and e.rankIndex == 0) and true or false
 end
 
 ---------------------------------------------------------------------------
@@ -1065,7 +1142,7 @@ end
 local function OwnRoles(key)
     local e = roster[key]
     local gm = gmKey ~= nil and key == gmKey
-    local officer = e ~= nil and (tonumber(e.rankIndex) or 99) <= OFFICER_RANK
+    local officer = e ~= nil and RankIsOfficer(e.rankIndex)
     local list = guildList
     local council = e ~= nil and list ~= nil and not IsTofu(list) and list.members[key] == true
     local lrec = LeadersRec(false)
@@ -1395,12 +1472,42 @@ function Guild:IsOfficer(key, real)
     if role then return role == "gm" or role == "officer" end
     local e = type(key) == "string" and roster[key]
     if not e then return false end
-    if (tonumber(e.rankIndex) or 99) <= OFFICER_RANK then return true end
+    if RankIsOfficer(e.rankIndex) then return true end
     for _, m in ipairs(Principals(key) or {}) do
         local me = roster[m]
-        if me and (tonumber(me.rankIndex) or 99) <= OFFICER_RANK then return true end
+        if me and RankIsOfficer(me.rankIndex) then return true end
     end
     return false
+end
+
+-- Is this guild rank index one of the officer ranks (the GM's pick, else 0 and 1)?
+function Guild:IsOfficerRank(ri)
+    return RankIsOfficer(ri)
+end
+
+-- The guild's ranks for the Officers checklist: { { index, name, officer }, ... } from rank 0 down (the game's rank
+-- names; ranks nobody holds included when the client knows them).
+function Guild:GetRanks()
+    local out, names = {}, {}
+    local n = GuildControlGetNumRanks and tonumber(Plain(GuildControlGetNumRanks())) or 0
+    for i = 1, math.min(n, MAX_RANK + 1) do
+        local name = GuildControlGetRankName and Plain(GuildControlGetRankName(i))
+        if type(name) == "string" and name ~= "" then names[i - 1] = name end
+    end
+    for _, e in pairs(roster) do
+        local ri = tonumber(e.rankIndex)
+        if IsInt(ri, 0, MAX_RANK) and not names[ri] and type(e.rankName) == "string" then names[ri] = e.rankName end
+    end
+    for ri = 0, MAX_RANK do
+        if names[ri] then out[#out + 1] = { index = ri, name = names[ri], officer = RankIsOfficer(ri) } end
+    end
+    return out
+end
+
+-- The officer ranks: a sorted list of rank indices, and whether the GM chose them (false: the default, 0 and 1).
+function Guild:GetOfficerRanks()
+    local rec = LeadersRec(false)
+    return OfficerRankList(OfficerRankSet()), (rec and CleanOfficerRanks(rec.ok)) ~= nil
 end
 
 function Guild:CanEditRaidLeaders()
@@ -1603,9 +1710,7 @@ end
 local function SendRLL(target)
     local rec = LeadersRec(false)
     if not rec or rec.rev == 0 then return false end
-    local msg = { t = "RLL", rev = rec.rev, m = SetToArray(rec.m), by = rec.by, ar = CleanRules(rec.ar), arb = rec.arBy,
-                  lr = CleanLootRules(rec.lr), lrb = rec.lrBy, dc = CleanDiscord(rec.dc), dcb = rec.dcBy,
-                  rc = CleanRecruitRules(rec.rc), rcb = rec.rcBy }
+    local msg = { t = "RLL", rev = rec.rev, m = SetToArray(rec.m), by = rec.by }   -- (the GM's rules: GMR)
     if target then return Send(msg, "WHISPER", target, "ctrl") end
     AuditRL({ mine = true })            -- (sent to the guild: after one of my own saves)
     return Send(msg, "GUILD", nil, "ctrl")
@@ -1642,29 +1747,91 @@ local function OnRaidLeaders(sender, msg, dist)
         if a <= b then return end                      -- the same (or the smaller) list: keep mine
     end
     rec.rev, rec.m, rec.by = msg.rev, set, by
-    -- (the margins are the GM's: from anyone else, or a list without them, the ones I have stay)
-    local ar = CleanRules(msg.ar)
-    local arBy = msg.arb ~= nil and WireKey(msg.arb) or nil
-    if ar and (Guild:IsGM(sender) or (arBy and Guild:IsGM(arBy))) then rec.ar, rec.arBy = ar, arBy or sender end
-    local lr = CleanLootRules(msg.lr)
-    local lrBy = msg.lrb ~= nil and WireKey(msg.lrb) or nil
-    if lr and (Guild:IsGM(sender) or (lrBy and Guild:IsGM(lrBy))) then rec.lr, rec.lrBy = lr, lrBy or sender end
-    local dc = CleanDiscord(msg.dc)
-    local dcBy = msg.dcb ~= nil and WireKey(msg.dcb) or nil
-    if dc and (Guild:IsGM(sender) or (dcBy and Guild:IsGM(dcBy))) then
-        rec.dc, rec.dcBy = dc, dcBy or sender
-        ns:Fire("DISCORD_CHANGED")
-    end
-    local rc = CleanRecruitRules(msg.rc)
-    local rcBy = msg.rcb ~= nil and WireKey(msg.rcb) or nil
-    if rc and (Guild:IsGM(sender) or (rcBy and Guild:IsGM(rcBy))) then
-        rec.rc, rec.rcBy = rc, rcBy or sender
-        ns:Fire("RECRUIT_RULES_CHANGED")
-    end
+    -- (the GM's rules (ar, lr, dc, rc) an RLL may still carry are not read here: an officer could write them "by" the
+    -- GM. They come from the GM's own GMR only.)
+    AuditRL({ via = sender })
+    Recompute()
+end
+
+---------------------------------------------------------------------------
+-- The GM's record: the rules only the Guild Master sets (attendance ar, loot lr, Discord dc, recruitment rc) and the
+-- officer ranks (ok), with their own rev (gv). Message GMR { v, ar, lr, dc, rc, ok } (GUILD, or WHISPER as an answer):
+-- accepted only when its sender IS the Guild Master (rank 0 in my live roster: no alt, no relay, no "by" field to
+-- believe), newer v wins, and it replaces the whole record (a part left out goes back to its default). HELLO carries my
+-- gv (gmr); the GM answers an older one, and a member with an older one asks the GM (GMQ). A member who never shares a
+-- moment online with the GM keeps the defaults: nobody else can vouch for the GM's rules.
+---------------------------------------------------------------------------
+
+local GMR_REPLY_LIMIT = 30
+
+local function GMRev()
+    local rec = LeadersRec(false)
+    return rec and IsInt(rec.gv, 1, MAX_REV) and rec.gv or 0
+end
+
+local function SendGMR(target)
+    local rec = LeadersRec(false)
+    if not rec or not IsInt(rec.gv, 1, MAX_REV) then return false end
+    local ok = CleanOfficerRanks(rec.ok)
+    local msg = { t = "GMR", v = rec.gv, ar = CleanRules(rec.ar), lr = CleanLootRules(rec.lr), dc = CleanDiscord(rec.dc),
+                  rc = CleanRecruitRules(rec.rc), ok = ok and OfficerRankList(ok) or nil }
+    if target then return Send(msg, "WHISPER", target, "ctrl") end
+    return Send(msg, "GUILD", nil, "ctrl")
+end
+
+-- The GM only (my own client): bumps the record's rev after a change and shares it.
+local function SaveGMRecord(rec)
+    rec.gv = max(floor(Now()), (IsInt(rec.gv, 0, MAX_REV) and rec.gv or 0) + 1)
+    AuditRL({ mine = true })
+    SendGMR()
+end
+
+local function OnGMRecord(sender, msg, dist)
+    if (dist ~= "GUILD" and dist ~= "WHISPER") or not ready or not IsRosterGM(sender) then return end
+    if not IsInt(msg.v, 1, Now() + FUTURE_SLACK) then return end
+    local rec = LeadersRec(true)
+    if not rec or msg.v <= GMRev() then return end
+    rec.gv = msg.v
+    local ar, lr, dc, rc = CleanRules(msg.ar), CleanLootRules(msg.lr), CleanDiscord(msg.dc), CleanRecruitRules(msg.rc)
+    local ok = CleanOfficerRanks(msg.ok)
+    rec.ar, rec.arBy = ar, ar and sender or nil
+    rec.lr, rec.lrBy = lr, lr and sender or nil
+    rec.dc, rec.dcBy = dc, dc and sender or nil
+    rec.rc, rec.rcBy = rc, rc and sender or nil
+    rec.ok = ok and OfficerRankList(ok) or nil
+    InvalidateAccounts()                 -- (who is an officer may have changed: what vouches may pass on too)
     AuditRL({ via = sender })
     Recompute()
     ns:Fire("ATTENDANCE_RULES_CHANGED")
     ns:Fire("LOOT_RULES_CHANGED")
+    ns:Fire("DISCORD_CHANGED")
+    ns:Fire("RECRUIT_RULES_CHANGED")
+    ns:Fire("OFFICER_RANKS_CHANGED")
+end
+
+-- The GM only: which guild ranks are officers (a list or set of rank indices; rank 0 is always one). Returns ok, err.
+function Guild:SetOfficerRanks(list)
+    if not ns.loggedIn or not IsInGuild() then return false, "not in a guild" end
+    if not ready then return false, "the guild roster has not loaded yet" end
+    if not IsRosterGM(Util.PlayerKey()) then return false, "only the Guild Master picks the officer ranks" end
+    local arr = {}
+    for k, v in pairs(type(list) == "table" and list or {}) do
+        if v == true then arr[#arr + 1] = k elseif type(k) == "number" then arr[#arr + 1] = v end
+    end
+    local set = CleanOfficerRanks(arr)
+    if not set then return false, "not a list of guild ranks" end
+    local rec = LeadersRec(true)
+    if not rec then return false, "your guild is not known yet" end
+    rec.ok = OfficerRankList(set)
+    InvalidateAccounts()
+    SaveGMRecord(rec)
+    Recompute()
+    ns:Fire("OFFICER_RANKS_CHANGED")
+    return true
+end
+
+function Guild:CanEditOfficerRanks()
+    return (IsInGuild() and ready and IsRosterGM(Util.PlayerKey())) and true or false
 end
 
 -- 1.3.5: the attendance rules { o = on-time minutes, d = disconnect minutes } (the GM's, else 5 and 10).
@@ -1690,10 +1857,8 @@ function Guild:SetAttendanceRules(o, d)
     if not ar then return false, "the margins are whole minutes from 0 to 60" end
     local rec = LeadersRec(true)
     if not rec then return false, "your guild is not known yet" end
-    rec.rev = max(floor(Now()), rec.rev + 1)
     rec.ar, rec.arBy = ar, Util.PlayerKey()
-    rec.by = rec.by or Util.PlayerKey()
-    SendRLL()
+    SaveGMRecord(rec)
     ns:Fire("ATTENDANCE_RULES_CHANGED")
     return true
 end
@@ -1734,10 +1899,8 @@ function Guild:SetLootRules(lr)
     if not Guild:IsGM(Util.PlayerKey()) then return false, "only the Guild Master sets the loot rules" end
     local rec = LeadersRec(true)
     if not rec then return false, "your guild is not known yet" end
-    rec.rev = max(floor(Now()), rec.rev + 1)
     rec.lr, rec.lrBy = lr, Util.PlayerKey()
-    rec.by = rec.by or Util.PlayerKey()
-    SendRLL()
+    SaveGMRecord(rec)
     ns:Fire("LOOT_RULES_CHANGED")
     return true
 end
@@ -1768,10 +1931,8 @@ function Guild:SetRecruitRules(changes)
     if not Guild:IsGM(Util.PlayerKey()) then return false, "only the Guild Master sets the recruitment rules" end
     local rec = LeadersRec(true)
     if not rec then return false, "your guild is not known yet" end
-    rec.rev = max(floor(Now()), rec.rev + 1)
     rec.rc, rec.rcBy = rc, Util.PlayerKey()
-    rec.by = rec.by or Util.PlayerKey()
-    SendRLL()
+    SaveGMRecord(rec)
     ns:Fire("RECRUIT_RULES_CHANGED")
     return true
 end
@@ -1824,10 +1985,8 @@ function Guild:SetDiscord(patch)
             dc.t[id] = ch
         end
     end
-    rec.rev = max(floor(Now()), rec.rev + 1)
     rec.dc, rec.dcBy = CleanDiscord(dc), Util.PlayerKey()
-    rec.by = rec.by or Util.PlayerKey()
-    SendRLL()
+    SaveGMRecord(rec)
     ns:Fire("DISCORD_CHANGED")
     return true
 end
@@ -1852,9 +2011,25 @@ function Guild:OnRaidLeadersRevSeen(sender, rlr)
     if leadersSync then leadersSync.Seen(sender, rlr) end
 end
 
+-- The GM's record rides the HELLO the same way (gmr): only the GM serves it, only the GM is asked.
+local gmSync
+local function GMRevList()
+    return ns.DigestSync.RevList({
+        field = "gmr", order = 82, query = "GMQ", send = Send, limit = GMR_REPLY_LIMIT,
+        replyKey = "gmr-reply:", askKey = "gmq-ask:", queryKey = "gmq:",
+        rev = GMRev,
+        serve = function() return IsRosterGM(Util.PlayerKey()) end,
+        writer = IsRosterGM,
+        sendList = function(target) SendGMR(target) end,
+    })
+end
+
 local function ShareRaidLeadersAfterLogin()
     Util.RandomDelay(RLL_LOGIN_MIN, RLL_LOGIN_MAX, function()
         if Guild:IsOfficer(Util.PlayerKey()) and Guild:GetRaidLeadersRev() > 0 then SendRLL() end
+        -- (the GM's rules saved before they had a rev of their own: given one, so they reach the guild)
+        local rec = IsRosterGM(Util.PlayerKey()) and LeadersRec(false)
+        if rec and GMRev() == 0 and (rec.ar or rec.lr or rec.dc or rec.rc or rec.ok) then SaveGMRecord(rec) end
     end)
 end
 
@@ -1917,11 +2092,14 @@ function Guild:OnInit()
     end
     if ns.Comm and ns.Comm.Register then
         ns.Comm:Register("RLL", OnRaidLeaders)          -- Addendum J §62
+        ns.Comm:Register("GMR", OnGMRecord)             -- the GM's rules and officer ranks: from the GM only
         ns.Comm:Register("ACB", OnAccounts)             -- accounts: a player's characters share their roles
     end
     -- the HELLO's rlr (and RLQ), then its av: handled after every other module's field, as always
     leadersSync = LeadersRevList()
     leadersSync.Register()
+    gmSync = GMRevList()
+    gmSync.Register()
     local Sync = ns.Sync
     if Sync and Sync.RegisterHelloField then
         Sync:RegisterHelloField("av", 90, function() return Guild:GetAccountsHash() end,

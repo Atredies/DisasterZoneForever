@@ -22,7 +22,7 @@ local tconcat, tsort = table.concat, table.sort
 local floor = math.floor
 
 local NUM_SLOTS = 17
-local MAX_ITEM_ID = 200000
+local MAX_ITEM_ID = 1000000   -- (Forever's new items are 280000+)
 local MAX_PASTE = 4 * 1024 * 1024
 local MAX_ITEMS = 400
 
@@ -36,6 +36,18 @@ Imp.FORMAT_LABELS = {
 
 local NOTHING = "Nothing to import found. Paste a That's My BiS export, a Sixty Upgrades or WoWSims export, "
     .. "a Wowhead gear planner link, or item links / numbers."
+
+-- WoW Forever: WoWSims has no Forever sim and the link format of Wowhead's Forever gear planner is not known
+-- (UNVERIFIED), so neither is offered. A JSON gear list (our own export, UI/ImportExport.lua) still reads; a gear
+-- planner link is refused with a hint.
+local FOREVER = ns.Compat and ns.Compat.isForever
+if FOREVER then
+    Imp.FORMAT_LABELS.wowsims = "DisasterZone export"
+    NOTHING = "Nothing to import found. Paste a That's My BiS export, a Sixty Upgrades export, a DisasterZone "
+        .. "export, or item links / numbers."
+end
+local FOREVER_PLANNER = "Wowhead gear planner links can't be read on WoW Forever yet. Paste the items as a list "
+    .. "instead (item links, Wowhead item links or item numbers)."
 
 local function Codec() return ns.Codec end
 local function ItemDB() return ns.ItemDB end
@@ -459,6 +471,7 @@ function Imp:Parse(text)
     if text == "" then return nil, nil end
     local parsed, err
     if strfind(text, "gear-planner/", 1, true) then
+        if FOREVER then return nil, FOREVER_PLANNER end
         parsed, err = ParseWowhead(text)
     elseif strfind(text, "^{") or strfind(text, '^%[%s*[%[{"%d%-]') then   -- not "[Item Name]"
         parsed, err = ParseJSON(text)

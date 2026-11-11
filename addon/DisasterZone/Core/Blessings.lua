@@ -160,15 +160,12 @@ local function KnownRank(ranks)
     return nil
 end
 
--- Talent ranks by the talent's icon (Pally Power's way: a talent shares its spell's icon).
+-- Talent ranks by the talent's icon (Pally Power's way: a talent shares its spell's icon). ns.Compat.Talents reads
+-- the old talent tabs or WoW Forever's trait tree.
 local function TalentsByIcon()
     local map = {}
-    if not (GetNumTalentTabs and GetNumTalents and GetTalentInfo) then return map end
-    for t = 1, GetNumTalentTabs() or 0 do
-        for i = 1, GetNumTalents(t) or 0 do
-            local _, icon, _, _, rank = GetTalentInfo(t, i)
-            if icon then map[icon] = tonumber(rank) or 0 end
-        end
+    for _, t in ipairs(ns.Compat.Talents() or {}) do
+        if t.icon then map[t.icon] = t.rank or 0 end
     end
     return map
 end
@@ -209,7 +206,7 @@ function Blessings:ScanSelf()
             p.aura[ai] = nil
         end
     end
-    p.symbols = GetItemCount and GetItemCount(D.SYMBOL_OF_KINGS) or 0
+    p.symbols = (D.SYMBOL_OF_KINGS and GetItemCount and GetItemCount(D.SYMBOL_OF_KINGS)) or 0
     p.free = Setting("free", false) and true or false
     p.seen = GetTime()
     p.me = true
@@ -948,6 +945,18 @@ local DEMO_CLASSES = {
     { "PRIEST", { "Isolde", "Nyxa", "Seraphel" } }, { "MAGE", { "Embera", "Frostweaver", "Kaelwyn" } },
     { "WARLOCK", { "Grumpykat", "Morrigan" } },
 }
+-- WoW Forever: a 20-man Hyjal Summit at level 60 (no shamans beside paladins, no Salvation / Light / Sanctuary): Kings
+-- and Might / Wisdom; the fourth paladin is spare; a hunter missing Might, two mages missing Kings
+local FOREVER = ns.Compat and ns.Compat.isForever
+if FOREVER then
+    DEMO_CLASSES = {
+        { "WARRIOR", { "Victhar", "Brakka", "Kordan" } }, { "ROGUE", { "Shadowmelder" } },
+        { "HUNTER", { "Faelar", "Tarrow" } }, { "DRUID", { "Moonwhisper", "Rhosyn", "Quillon" } },
+        { "PALADIN", { "Caelith", "Lightbringer", "Sunniva", "@me" } },
+        { "PRIEST", { "Isolde", "Nyxa" } }, { "MAGE", { "Embera", "Frostweaver", "Kaelwyn" } },
+        { "WARLOCK", { "Grumpykat", "Morrigan" } },
+    }
+end
 
 local function BuildDemo()
     local me = Blessings:Me() or "You"
@@ -960,7 +969,7 @@ local function BuildDemo()
             n = (n == "@me") and me or (n == me and "Thorgrim") or n   -- (my own name is taken by my paladin)
             i = i + 1
             local m = { unit = "dzdemo" .. i, name = n, class = e[1], ci = CLASS_INDEX[e[1]],
-                subgroup = floor((i - 1) / 5) + 1, level = 70, online = true, dead = false, demo = true,
+                subgroup = floor((i - 1) / 5) + 1, level = FOREVER and 60 or 70, online = true, dead = false, demo = true,
                 tank = (orig == "Victhar" or orig == "Caelith" or orig == "Moonwhisper") or nil }
             if n == "Caelith" or n == "Lightbringer" then m.subgroup = 1 end
             d.roster[#d.roster + 1] = m
@@ -972,7 +981,7 @@ local function BuildDemo()
         local m = d.byUnit[unit]
         if not m then return nil end
         if m.name == "Tarrow" and bi == 2 then return nil end
-        if (m.name == "Embera" or m.name == "Kaelwyn") and bi == 4 then return nil end
+        if (m.name == "Embera" or m.name == "Kaelwyn") and bi == (FOREVER and 3 or 4) then return nil end
         if m.class == "PRIEST" and bi == 1 then return max(5, 185 - (GetTime() - d.started)) end
         return 1500 - ((GetTime() - d.started) % 600)
     end
@@ -991,6 +1000,21 @@ local function BuildDemo()
     local function row(name, list)
         s.assign[name] = {}
         for j, cls in ipairs(D.DISPLAY) do s.assign[name][CLASS_INDEX[cls]] = list[j] end
+    end
+    if FOREVER then
+        -- (Forever's ranks: Wisdom 6, Might 7, Kings 1, Sacrifice 2; Devotion 7, Retribution 5, resistances 3)
+        d.pals = {}
+        pal("Caelith", "Protection", { { 6, 0 }, { 7, 0 }, { 1, 0 }, [7] = { 2, 0 } },
+            { { 7, 5 }, { 5, 0 }, { 1, 0 }, { 3, 0 }, { 3, 0 }, { 3, 0 } })
+        pal("Sunniva", "Retribution", { { 6, 0 }, { 7, 5 }, { 1, 0 } }, { { 7, 0 }, { 5, 0 }, { 1, 0 }, [7] = { 1, 0 } })
+        pal(me, "Holy", { { 6, 2 }, { 7, 0 } }, { { 7, 0 }, { 5, 0 }, { 1, 3 } })
+        pal("Lightbringer", "Holy", { { 6, 1 }, { 7, 0 } }, { { 7, 0 }, { 5, 0 }, { 1, 0 } })
+        row("Caelith", { 3, 3, 3, 3, 3, 3, 3, 3, 3 })
+        row("Sunniva", { 2, 2, 2, 2, 2, 2 })
+        row(me, { nil, nil, nil, 1, 1, 1, 1, 1, 1 })
+        row("Lightbringer", {})
+        s.aura = { Caelith = 1, Sunniva = 7, [me] = 3, Lightbringer = 2 }
+        return d
     end
     row("Caelith", { 3, 3, 3, 3, 3, 3, 3, 3, 3 })
     row("Sunniva", { 2, 2, 2, 2, 2, 2, 5, 5, 5 })

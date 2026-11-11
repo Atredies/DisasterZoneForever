@@ -1,0 +1,11 @@
+## Interface: 16001
+## Title: DZ Probe
+## Notes: Records what the WoW Forever client allows addons to do, for the DisasterZoneForever port. Sends nothing anyone can see.
+## Author: Casual Disaster
+## Version: 1.0.0
+## SavedVariables: DZProbeDB
+## LoadSavedVariablesFirst: 1
+## X-Probe: metadata-ok
+
+ApiList.lua
+Probe.lua

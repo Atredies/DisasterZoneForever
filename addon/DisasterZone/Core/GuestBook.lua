@@ -240,10 +240,37 @@ local function OnNotes(sender, msg, dist)
     local rec = NotesRec(true)
     if not rec then return end
     if msg.rev < rec.rev then return end
+    -- 2026-11-09 (authority holes, round 2): who wrote a note (its by, the list's by) is the sender's word. Taken as it
+    -- is only from the writer (a character of theirs); a note that is new or changed here, passed on by another
+    -- manager, keeps their name apart (rec.rb[key] = who passed it on, local, shown "relayed by"). The same note later
+    -- from its writer clears the mark.
+    local function Writer(key) return key and (key == sender or (ns.Guild and ns.Guild.SameAccount
+        and ns.Guild:SameAccount(key, sender))) and true or false end
+    if msg.rev == rec.rev and Util.Hash(l) == Util.Hash(rec.l) and type(rec.rb) == "table" then
+        local upgraded = false
+        for key, e in pairs(l) do
+            if rec.rb[key] and Writer(e.by) then rec.rb[key], upgraded = nil, true end
+        end
+        if upgraded then Changed() end
+        return
+    end
     if msg.rev == rec.rev and Util.Hash(l) <= Util.Hash(rec.l) then return end   -- the same rev: every client keeps one
     local oldL = rec.l
-    rec.rev, rec.l, rec.by = msg.rev, l, (msg.by ~= nil and WireKey(msg.by)) or sender
-    AuditNotes(oldL, l, function(key) return { key = key, at = msg.rev, who = rec.by, via = sender } end)
+    local oldRb = type(rec.rb) == "table" and rec.rb or {}
+    local rb = {}
+    for key, e in pairs(l) do
+        if oldL[key] and Util.Hash(oldL[key]) == Util.Hash(e) then
+            rb[key] = oldRb[key]
+        elseif not Writer(e.by) then
+            rb[key] = sender
+        end
+    end
+    local by = msg.by ~= nil and WireKey(msg.by) or sender
+    rec.rev, rec.l, rec.by, rec.rb = msg.rev, l, Writer(by) and by or sender, next(rb) and rb or nil
+    AuditNotes(oldL, l, function(key)
+        local e = l[key]
+        return { key = key, at = msg.rev, who = e and e.by or by, via = sender }
+    end)
     Changed()
 end
 
@@ -273,7 +300,8 @@ function GuestBook:GetNote(key)
     local rec = NotesRec(false)
     local e = rec and type(key) == "string" and rec.l[key]
     if type(e) ~= "table" then return nil end
-    return { note = e.n, recruit = e.rc and true or false, c = e.c, sp = e.sp, by = e.by, at = e.at }
+    return { note = e.n, recruit = e.rc and true or false, c = e.c, sp = e.sp, by = e.by, at = e.at,
+             via = type(rec.rb) == "table" and rec.rb[key] or nil }
 end
 
 local LearnSpec   -- (the spec memory, below)
@@ -330,6 +358,8 @@ function GuestBook:SetNote(name, note, recruit, classFile, sp)
     if c and classFile ~= nil then LearnSpec(key, c, spec, Now()) end
     rec.rev = max(Now(), rec.rev + 1)
     rec.by = Util.PlayerKey()
+    -- (a note kept as it was keeps who passed it on)
+    if type(rec.rb) == "table" and not (rec.l[key] and rec.l[key].by ~= rec.by) then rec.rb[key] = nil end
     ns.AuditSaw("gb.N", cur, rec.l[key], { key = key, at = rec.rev, mine = true })
     SendNotes()
     Changed()
@@ -353,6 +383,7 @@ function GuestBook:Remove(name)
     rec.l[key] = { x = Now(), by = Util.PlayerKey(), at = Now() }
     rec.rev = max(Now(), rec.rev + 1)
     rec.by = Util.PlayerKey()
+    if type(rec.rb) == "table" then rec.rb[key] = nil end
     ns.AuditSaw("gb.N", was, rec.l[key], { key = key, at = rec.rev, mine = true })
     SendNotes()
     Changed()
@@ -552,6 +583,7 @@ local function Build()
         if type(n) == "table" and IsOutsider(key) then
             local e = E(key)
             e.note, e.recruit, e.noteBy, e.noteAt = n.n, n.rc and true or false, n.by, n.at
+            e.noteVia = type(notes.rb) == "table" and notes.rb[key] or nil
             e.setC, e.setSp = n.c, n.sp
             e.removedAt = n.x
         end

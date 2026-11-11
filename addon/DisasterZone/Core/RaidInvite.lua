@@ -44,9 +44,10 @@ local function Invite(key)
     if C_PartyInfo and C_PartyInfo.InviteUnit then C_PartyInfo.InviteUnit(name) else InviteUnit(name) end
 end
 
--- The global ConvertToRaid exists on 2.5.x (Attune calls it).
+-- The global ConvertToRaid exists on 2.5.x (Attune calls it); on Forever Core/Compat.lua fills it from
+-- C_PartyInfo.ConvertToRaid.
 local function Convert()
-    ConvertToRaid()
+    if ConvertToRaid then ConvertToRaid() end
 end
 
 local function Save()

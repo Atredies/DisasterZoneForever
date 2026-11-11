@@ -19,7 +19,9 @@ local tsort, tconcat = table.sort, table.concat
 local ICON_PATH = "Interface\\Icons\\"
 local NUM_SLOTS = 17
 local SID_MAINHAND, SID_OFFHAND = 15, 16
-local LINK_LEVEL = 70
+-- the level an item string is made at: the level cap (70; WoW Forever: GetMaxPlayerLevel(), 60)
+local LINK_LEVEL = (ns.Compat and ns.Compat.isForever) and ((GetMaxPlayerLevel and tonumber(GetMaxPlayerLevel())) or 60)
+    or 70
 
 -- Which socket colours a gem colour counts as.
 local COUNTS_AS = {

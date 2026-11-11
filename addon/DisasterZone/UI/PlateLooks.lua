@@ -39,7 +39,7 @@ local BW = 118
 ---------------------------------------------------------------------------
 
 local function Mark(c, i, cx, cy, sz)
-    i = tonumber(i)
+    i = tonumber(ns.Compat.Plain(i))             -- (GetRaidTargetIndex is secret on WoW Forever: no mark)
     if not i or i < 1 or i > 8 then return end
     local col, row = (i - 1) % 4, floor((i - 1) / 4)
     c:Img(RAID, cx, cy, sz, sz, nil, 1, col * 0.25, col * 0.25 + 0.25, row * 0.25, row * 0.25 + 0.25)

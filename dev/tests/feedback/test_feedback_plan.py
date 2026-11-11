@@ -10,7 +10,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "boot-ui"))
 
-from _common import World, Client, case, run_all  # noqa: E402
+from _common import World, Client, case, run_all, dev_client, DEV_KEY  # noqa: E402
 
 REALM = "Thunderstrike"
 F = "ns.Feedback"
@@ -18,6 +18,8 @@ P = "ns.FeedbackPlan"
 
 
 def K(name):
+    if name == "Tsumil":                  # (the developer: Arakis War on the guild's realm, _common.DEV_KEY)
+        return DEV_KEY
     return "%s-%s" % (name, REALM)
 
 
@@ -27,7 +29,8 @@ def standard():
     c = {}
     for name, cls, rank in [("Gina", "PALADIN", 0), ("Olaf", "WARRIOR", 1), ("Tsumil", "PALADIN", 3),
                             ("Alfa", "MAGE", 3), ("Bert", "ROGUE", 3)]:
-        c[name] = Client(w, name, class_file=cls, guild_rank=rank)
+        c[name] = (dev_client(w, class_file=cls, guild_rank=rank) if name == "Tsumil"
+                   else Client(w, name, class_file=cls, guild_rank=rank))
     for x in c.values():
         x.load_addon()
     w.tick(3)

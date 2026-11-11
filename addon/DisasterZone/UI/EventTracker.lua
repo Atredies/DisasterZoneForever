@@ -1349,13 +1349,13 @@ end
 local function UnitOfKey(key)
     local short = ns.Util.ShortName(key)
     for _, u in ipairs({ "target", "mouseover", "focus" }) do
-        if UnitExists and UnitExists(u) and UnitName(u) == short then return u end
+        if UnitExists and UnitExists(u) and ns.Util.UnitNameRealm(u) == short then return u end
     end
     local n = GetNumGroupMembers and GetNumGroupMembers() or 0
     local raid = IsInRaid and IsInRaid()
     for i = 1, n do
         local u = raid and ("raid" .. i) or ("party" .. i)
-        if UnitName and UnitName(u) == short then return u end
+        if UnitName and ns.Util.UnitNameRealm(u) == short then return u end
     end
     return nil
 end

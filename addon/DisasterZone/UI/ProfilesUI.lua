@@ -21,6 +21,10 @@ local GOLD = S.C.GOLD
 local GOLD_DEEP = S.C.GOLD_DEEP
 local ART = { "SerpentshrineCavern", "BlackTemple", "TempestKeep", "Karazhan", "HyjalSummit", "ZulAman",
               "SunwellPlateau", "GruulsLair", "MagtheridonsLair" }
+local DEFAULT_ART = "Karazhan"
+if ns.Compat and ns.Compat.isForever then   -- (WoW Forever's raids: Data/Raids.lua)
+    ART, DEFAULT_ART = { "HyjalForever", "Onyxia", "BarrowDeeps" }, "Onyxia"
+end
 local PART_INFO = {
     looks = { icon = 31, title = "Looks" },
     layout = { icon = 35, title = "Layout" },
@@ -32,7 +36,7 @@ local function P() return ns.Profiles end
 -- A profile's art: a raid's loading screen, the same one for the same profile.
 local function ArtOf(p)
     if p.art then return p.art end
-    if p.id == "default" then return "Karazhan" end
+    if p.id == "default" then return DEFAULT_ART end
     local h = 0
     for i = 1, #tostring(p.id) do h = (h * 31 + tostring(p.id):byte(i)) % 9973 end
     return ART[h % #ART + 1]

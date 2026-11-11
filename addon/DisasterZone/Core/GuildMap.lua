@@ -30,6 +30,13 @@ local SCALE = 10000        -- x / y on the wire
 
 GuildMap.CONTINENTS = { { id = 1414, name = "Kalimdor" }, { id = 1415, name = "Eastern Kingdoms" },
     { id = 1945, name = "Outland" } }
+GuildMap.DEFAULT_CONTINENT = 1945   -- the map's first view and the fallback for a map on no known continent
+-- WoW Forever: no Outland (its overlays in Data/MapOverlays.lua stay but never show). The Classic continent uiMapIDs
+-- 1414 / 1415 are UNVERIFIED on Forever's retail engine (retail's are 12 / 13): check C_Map.GetBestMapForUnit there.
+if ns.Compat and ns.Compat.isForever then
+    GuildMap.CONTINENTS = { { id = 1414, name = "Kalimdor" }, { id = 1415, name = "Eastern Kingdoms" } }
+    GuildMap.DEFAULT_CONTINENT = 1415
+end
 
 -- Where an instance's entrance is: { zone uiMapID, x, y } (0..1 on that zone's map; approximate).
 local ENTRANCES = {
@@ -67,6 +74,14 @@ local ENTRANCES = {
     [509] = { 1451, 0.286, 0.924 },   -- Ruins of Ahn'Qiraj
     [531] = { 1451, 0.286, 0.924 },   -- Temple of Ahn'Qiraj
 }
+-- WoW Forever: Hyjal Summit is a new raid on the summit of Mount Hyjal near Nordrassil, not the Caverns of Time
+-- (Blizzard, news.blizzard.com/en-us/article/24303009), so TBC's 534 pin in Tanaris is dropped there. Barrow Deeps is
+-- within Mount Hyjal with entrances from Mount Hyjal, Winterspring and Blackmaw Hold (same article). UNVERIFIED: both
+-- raids' instance ids (GetInstanceInfo, 8th value) and Mount Hyjal's uiMapID on Forever (Wowhead lists the zone as
+-- zone=16004); add their entrances here once measured in game (raids open 2026-12-09).
+if ns.Compat and ns.Compat.isForever then
+    ENTRANCES[534] = nil
+end
 
 local live = {}            -- [key] = { m, x, y, s, i, n, a, z, at = GetTime(), ts = Util.Now() (server time) }
 local viewers = {}         -- [key] = GetTime() of their last ask
@@ -435,11 +450,40 @@ local DEMO_GROUPS = {
     { 1952, 0.56, 0.53, "Allerian Stronghold", 2, 0.03 }, { 1953, 0.32, 0.66, "Area 52", 3, 0.04 },
     { 1957, 0.48, 0.30, "Sun's Reach", 3, 0.05 }, { 1446, 0.51, 0.29, "Gadgetzan", 2, 0.03 },
 }
+-- WoW Forever: the old world (classic uiMapIDs as in ENTRANCES): the capitals, the level-60 hubs, its dungeons and
+-- Onyxia's Lair. (Spots are approximate, like the TBC ones.)
+if ns.Compat and ns.Compat.isForever then
+    DEMO_SPOTS = {
+        { 1453, 0.62, 0.71, "Trade District" }, { 1453, 0.64, 0.74, "Trade District" }, { 1453, 0.52, 0.45 },
+        { 1453, 0.40, 0.30, "Cathedral Square" }, { 1453, 0.66, 0.36, "Dwarven District" },
+        { 1455, 0.25, 0.70, "The Military Ward" }, { 1455, 0.52, 0.48, "The Commons" },
+        { 1454, 0.52, 0.80, "Valley of Strength" }, { 1454, 0.47, 0.72, "Valley of Strength" },
+        { 1452, 0.61, 0.38, "Everlook", w = true }, { 1428, 0.82, 0.68, "Morgan's Vigil" }, { 1428, z = true },
+        { 1423, 0.81, 0.58, "Light's Hope Chapel" }, { 1451, 0.51, 0.35, "Cenarion Hold", w = true },
+        { i = 289 }, { i = 289 }, { i = 289 }, { 1448, 0.64, 0.08, "Timbermaw Hold", a = true },
+        { 1427, 0.38, 0.27, "Thorium Point", w = true },
+    }
+    DEMO_GROUPS = {
+        { 1453, 0.60, 0.70, "Trade District", 7, 0.08 }, { 1454, 0.50, 0.75, "Valley of Strength", 4, 0.06 },
+        { i = 249, n = 10 }, { i = 229, n = 5 }, { i = 329, n = 5 },
+        { 1428, 0.82, 0.68, "Morgan's Vigil", 3, 0.04 }, { 1423, 0.81, 0.58, "Light's Hope Chapel", 3, 0.05 },
+        { 1449, 0.43, 0.08, "Marshal's Refuge", 2, 0.03 }, { 1452, 0.61, 0.38, "Everlook", 2, 0.04 },
+        { 1451, 0.51, 0.35, "Cenarion Hold", 2, 0.03 }, { 1445, 0.66, 0.49, "Theramore Isle", 3, 0.04 },
+        { 1422, 0.43, 0.84, "Chillwind Camp", 3, 0.05 }, { 1446, 0.51, 0.29, "Gadgetzan", 2, 0.03 },
+    }
+end
 local DEMO_NAMES = { "Aeli", "Bram", "Cora", "Dusk", "Eldr", "Fenn", "Gael", "Hrot", "Isla", "Jarn", "Kael", "Lyra",
     "Mord", "Nyx", "Orin", "Pell", "Quor", "Rhea", "Syl", "Thal", "Ulda", "Vex", "Wynn", "Xan", "Yri", "Zul" }
 local DEMO_ENDS = { "and", "wyn", "ric", "a", "os", "ith", "ar", "elle" }
 local DEMO_CLASSES = ns.CLASSES
 local DUNGEON_NAMES = { [555] = "Shadow Labyrinth" }   -- (the demo's raids are named by ItemDB)
+if ns.Compat and ns.Compat.isForever then
+    DUNGEON_NAMES = { [289] = "Scholomance", [229] = "Blackrock Spire", [329] = "Stratholme" }
+    -- (the demo's dungeons' entrances, approximate, if the table has none yet)
+    ENTRANCES[289] = ENTRANCES[289] or { 1422, 0.695, 0.733 }   -- Scholomance (Western Plaguelands)
+    ENTRANCES[229] = ENTRANCES[229] or { 1427, 0.348, 0.853 }   -- Blackrock Spire (Blackrock Mountain)
+    ENTRANCES[329] = ENTRANCES[329] or { 1423, 0.270, 0.115 }   -- Stratholme (Eastern Plaguelands)
+end
 local demoClass = {}
 
 -- A demo group's instance name: the dungeon's, or the raid's from the item data.

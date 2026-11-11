@@ -12,7 +12,7 @@ if [ -f "$ROOT/.git" ] && [ -z "$GIT_DIR" ]; then
   GD="$(sed -n 's/^gitdir: \([A-Za-z]\):\(.*\)$/\/mnt\/\L\1\E\2/p' "$ROOT/.git")"
   if [ -n "$GD" ] && [ -d "$GD" ]; then export GIT_DIR="$GD" GIT_WORK_TREE="$ROOT"; fi
 fi
-export DISASTERZONE_ADDON_DIR="${DISASTERZONE_ADDON_DIR:-/mnt/c/World of Warcraft/_anniversary_/Interface/AddOns/DisasterZone}"
+export DISASTERZONE_ADDON_DIR="${DISASTERZONE_ADDON_DIR:-/mnt/c/World of Warcraft/_forever_/Interface/AddOns/DisasterZone}"
 # compiled Python modules on the Linux disk (not next to the sources on /mnt/c, and not recompiled every run)
 export PYTHONPYCACHEPREFIX=/var/cache/dz-pyc
 # one thread per suite for numpy's maths: run_all gives each suite one slot (the stand-in generator took 12 cores)

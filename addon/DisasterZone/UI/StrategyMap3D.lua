@@ -1841,7 +1841,7 @@ function V:CreateHud()
     keys:EnableKeyboard(false)
     keys:SetScript("OnKeyDown", function(f, key)
         local used = self:WalkKey(key, true)
-        if not InCombatLockdown() and f.SetPropagateKeyboardInput then f:SetPropagateKeyboardInput(not used) end
+        if not InCombatLockdown() and f.SetPropagateKeyboardInput then ns.Util.SetPropagateKeys(f, not used) end
     end)
     keys:SetScript("OnKeyUp", function(_, key) self:WalkKey(key, false) end)
     self.keys = keys

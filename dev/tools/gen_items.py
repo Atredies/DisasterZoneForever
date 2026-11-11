@@ -34,7 +34,7 @@ sys.path.insert(0, HERE)
 import luabc  # noqa: E402  (sets up lupa import path)
 from lupa import lua51  # noqa: E402
 
-ADDONS = r"C:\World of Warcraft\_anniversary_\Interface\AddOns"
+ADDONS = r"C:\World of Warcraft\_forever_\Interface\AddOns"
 DISASTERZONE_ITEMS = os.path.join(ADDONS, "DisasterZone", "Data", "Items.lua")
 QUESTIE_TBC = os.path.join(ADDONS, "Questie", "Database", "TBC", "tbcItemDB.lua")
 OUT_DIR = os.path.join(HERE, "wowmock")

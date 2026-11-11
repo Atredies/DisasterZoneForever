@@ -287,7 +287,7 @@ end
 local function Clean(e)
     if type(e) ~= "table" then return nil, "not a table" end
     if not IsStr(e.id, MAX_ID_LEN) then return nil, "bad id" end
-    if not IsInt(e.i, 1, 200000) then return nil, "bad item" end
+    if not IsInt(e.i, 1, 1000000) then return nil, "bad item" end
     if not IsStr(e.w, MAX_ID_LEN) then return nil, "bad winner" end
     if not IsStr(e.by, MAX_ID_LEN) then return nil, "bad recorder" end
     if not IsInt(e.ts, 1, MAX_TS) then return nil, "bad ts" end
@@ -340,7 +340,51 @@ end
 --   1. same-kind entries (auto/auto or manual/manual) within 120s of the last kept one are
 --      hidden (sorted by ts, then id: the earliest / smallest id wins);
 --   2. an auto entry from 10 min before to 6h after a kept manual entry is hidden.
+-- Two copies of an item (a boss dropped it twice) can go to one player within those 120 s, so (2026-11-09):
+--   1a. two manual entries are two awards when both are roll awards (two roll sessions: the copies' rolls), or both
+--       are Award-menu entries of the same recorder (one council member recorded it twice: the two copies);
+--   1b. an auto entry is one loot line. Every council member records each line once, under its own id, so an auto
+--       entry is hidden only as another recorder's copy of a kept line (within 120 s; one per recorder and line);
+--   2a. a kept manual entry hides one loot line (its hand-out), not every line of the item for 6 h.
+-- (DisasterZone 1.5.5 / 1.6.0 showed one award for both copies.)
 ---------------------------------------------------------------------------
+
+-- A roll award's id (RollAwardID): "m" .. <session id, a name first> .. "-" .. <winner>; Award-menu ids are "m<digits>".
+local function IsRollAwardID(id)
+    return type(id) == "string" and id:find("^m%D") ~= nil
+end
+
+-- Two manual entries of one winner and item that are two awards (1a above).
+local function DistinctManual(a, b)
+    if a.id == b.id then return false end
+    local ra, rb = IsRollAwardID(a.id), IsRollAwardID(b.id)
+    if ra and rb then return true end
+    return (not ra and not rb and a.by == b.by) and true or false
+end
+
+-- The loot lines of one (winner, item) group's auto entries (sorted by OrderAsc): { { entries }, ... }, the first
+-- entry of each line is the one shown. An entry joins the earliest line within SAME_KIND_WINDOW that has no entry of
+-- its recorder yet; else it starts a new line.
+local function AutoLines(list)
+    local lines = {}
+    for _, e in ipairs(list) do
+        local home
+        for _, line in ipairs(lines) do
+            local head = line[1]
+            if e.ts - head.ts <= SAME_KIND_WINDOW and not line.by[e.by] then
+                home = line
+                break
+            end
+        end
+        if home then
+            home[#home + 1] = e
+            home.by[e.by] = true
+        else
+            lines[#lines + 1] = { e, by = { [e.by] = true } }
+        end
+    end
+    return lines
+end
 
 local function BuildView()
     local demo = DemoOn()
@@ -371,33 +415,40 @@ local function BuildView()
     for _, byItem in pairs(groups) do
         for _, g in pairs(byItem) do
             tsort(g, OrderAsc)
-            local manuals, autos = {}, {}
-            local lastManual, lastAuto
+            local manuals, autoList = {}, {}
             for _, e in ipairs(g) do
                 if e.s == "m" then
-                    if not (lastManual and e.ts - lastManual.ts <= SAME_KIND_WINDOW) then
-                        manuals[#manuals + 1] = e
-                        lastManual = e
+                    local hidden = false
+                    for k = #manuals, 1, -1 do
+                        local m = manuals[k]
+                        if e.ts - m.ts > SAME_KIND_WINDOW then break end
+                        if not DistinctManual(m, e) then
+                            hidden = true
+                            break
+                        end
                     end
+                    if not hidden then manuals[#manuals + 1] = e end
                 else
-                    if not (lastAuto and e.ts - lastAuto.ts <= SAME_KIND_WINDOW) then
-                        autos[#autos + 1] = e
-                        lastAuto = e
-                    end
+                    autoList[#autoList + 1] = e
                 end
             end
             for _, m in ipairs(manuals) do
                 all[#all + 1] = m
             end
-            for _, a in ipairs(autos) do
-                local hidden = false
-                for _, m in ipairs(manuals) do
-                    if a.ts >= m.ts - MANUAL_WINS_BEFORE and a.ts <= m.ts + MANUAL_WINS_AFTER then
-                        hidden = true
+            -- each kept manual entry hides one loot line in its range (the earliest one not hidden yet)
+            local lines = AutoLines(autoList)
+            local hiddenLine = {}
+            for _, m in ipairs(manuals) do
+                for k, line in ipairs(lines) do
+                    local a = line[1]
+                    if not hiddenLine[k] and a.ts >= m.ts - MANUAL_WINS_BEFORE and a.ts <= m.ts + MANUAL_WINS_AFTER then
+                        hiddenLine[k] = true
                         break
                     end
                 end
-                if not hidden then all[#all + 1] = a end
+            end
+            for k, line in ipairs(lines) do
+                if not hiddenLine[k] then all[#all + 1] = line[1] end
             end
         end
     end
@@ -470,15 +521,38 @@ end
 -- A peer's auto entry for the same loot line that wins the view's de-dupe over mine (earlier, or the same id): my
 -- own pending broadcast is not needed any more. A later one does not cancel mine, so every client still ends up
 -- with the earliest entry of the line (the one every view shows).
+-- Only my entry of the peer's loot line (AutoLines, as the view groups them): with two copies of the item to the
+-- same winner, the peer's entry of copy 1 must not cancel my entry of copy 2.
 local function CancelAutoFor(e)
-    if e.s ~= "a" then return end
-    for id, pe in pairs(pendingAuto) do
-        if pe.w == e.w and pe.i == e.i and math.abs((pe.ts or 0) - (e.ts or 0)) <= SAME_KIND_WINDOW
-            and (e.ts < pe.ts or (e.ts == pe.ts and e.id <= pe.id)) then
-            pendingAuto[id] = nil
+    if e.s ~= "a" or next(pendingAuto) == nil then return end
+    local db = LedgerDB()
+    local list, seen = {}, false
+    for _, o in pairs(db or {}) do
+        if type(o) == "table" and o.s == "a" and o.w == e.w and o.i == e.i and type(o.ts) == "number"
+            and type(o.by) == "string" and type(o.id) == "string" then
+            if o.id == e.id and o.by == e.by then seen = true end
+            list[#list + 1] = o
+        end
+    end
+    if not seen then list[#list + 1] = e end
+    tsort(list, OrderAsc)
+    for _, line in ipairs(AutoLines(list)) do
+        local mine
+        for _, o in ipairs(line) do
+            if o == e or (o.id == e.id and o.by == e.by) then mine = line end
+        end
+        if mine then
+            for _, pe in ipairs(mine) do
+                if pendingAuto[pe.id] == pe and (e.ts < pe.ts or (e.ts == pe.ts and e.id <= pe.id)) then
+                    pendingAuto[pe.id] = nil
+                end
+            end
+            return
         end
     end
 end
+
+local autoRank, autoRankTs = {}, nil   -- [auto id] = loot lines of it I recorded in server second autoRankTs
 
 -- A real loot message: always recorded into the REAL ledger (real council only), also while demo
 -- mode is on (then it is sent to the council once demo mode ends).
@@ -488,12 +562,21 @@ function Ledger:RecordAuto(itemID, winnerKey, bossKey, dg)
     local db = LedgerDB()
     local me = Util.PlayerKey()
     winnerKey = Util.NormalizeName(winnerKey)
-    if not db or not me or not winnerKey or not IsInt(itemID, 1, 200000) then return nil end
+    if not db or not me or not winnerKey or not IsInt(itemID, 1, 1000000) then return nil end
     local gkey = EntryGuildKey()
     if gkey == nil then return nil end
     local ts = GetServerTime()
     local id = ("a" .. ts .. IdName(winnerKey) .. itemID):sub(1, MAX_ID_LEN)
-    if db[id] then return db[id] end   -- same loot line seen twice / already received from a peer
+    -- The second loot line of the same item for the same winner in the same server second (two copies handed out
+    -- back to back) is another entry: "<id>-2". Every council member that sees both lines in one second derives the
+    -- same two ids. (1.5.5 / 1.6.0 took it for the first line again.)
+    if autoRankTs ~= ts then
+        autoRankTs, autoRank = ts, {}
+    end
+    local rank = (autoRank[id] or 0) + 1
+    autoRank[id] = rank
+    if rank > 1 then id = id:sub(1, MAX_ID_LEN - 4) .. "-" .. rank end
+    if db[id] then return db[id] end   -- already received from a peer
     local entry = {
         id = id, i = itemID, w = winnerKey, ts = ts, by = me, s = "a",
         b = IsStr(bossKey, MAX_ID_LEN, true) and bossKey or "", g = gkey or nil, dg = DgFlag(dg),
@@ -522,7 +605,7 @@ function Ledger:Award(itemID, winnerKey, bossKey, note, dg, reason)
     local me = Util.PlayerKey()
     itemID = tonumber(itemID)
     winnerKey = Util.NormalizeName(winnerKey)
-    if not db or not me or not winnerKey or not IsInt(itemID, 1, 200000) then return nil end
+    if not db or not me or not winnerKey or not IsInt(itemID, 1, 1000000) then return nil end
     if type(note) == "string" then
         note = note:gsub("^%s+", ""):gsub("%s+$", "")
         if note == "" then note = nil else note = note:sub(1, MAX_NOTE_LEN) end
@@ -575,7 +658,7 @@ function Ledger:RecordRollAward(sessionID, itemID, winnerKey, bossKey, note, byK
     winnerKey = Util.NormalizeName(winnerKey)
     byKey = Util.NormalizeName(byKey) or Util.PlayerKey()
     itemID = tonumber(itemID)
-    if not db or gkey == nil or not winnerKey or not byKey or not IsInt(itemID, 1, 200000) then return nil end
+    if not db or gkey == nil or not winnerKey or not byKey or not IsInt(itemID, 1, 1000000) then return nil end
     reason = ns.AWARD_REASON[reason] and reason or nil
     local id = RollAwardID(sessionID, winnerKey)
     local cur = db[id]
@@ -621,7 +704,7 @@ function Ledger:RecordTargetAward(itemID, winnerKey, bossKey, reason, byKey, ts)
     local gkey = EntryGuildKey()
     winnerKey, byKey = Util.NormalizeName(winnerKey), Util.NormalizeName(byKey)
     itemID = tonumber(itemID)
-    if not db or gkey == nil or not winnerKey or not byKey or not IsInt(itemID, 1, 200000) then return nil end
+    if not db or gkey == nil or not winnerKey or not byKey or not IsInt(itemID, 1, 1000000) then return nil end
     local now = GetServerTime()
     ts = tonumber(ts)
     if not IsInt(ts, 1, MAX_TS) or ts > now + FUTURE_SLACK or ts < now - DAY then ts = now end
@@ -663,16 +746,28 @@ end
 
 -- Entries that stand for the same award as an auto entry: every council member records the loot line under its
 -- own id (one server second apart at most), so voiding or restoring one of them does it for all of them.
+-- Only the entries of e's own loot line (AutoLines): another loot line of the item for the same winner (a second copy)
+-- is another award.
 local function AutoCluster(db, e, gkey, demo)
-    local list = { e }
-    if e.s ~= "a" then return list end
+    if e.s ~= "a" then return { e } end
+    local near = {}
     for _, o in pairs(db) do
-        if o ~= e and type(o) == "table" and o.s == "a" and o.w == e.w and o.i == e.i and type(o.ts) == "number"
-            and math.abs(o.ts - (e.ts or 0)) <= SAME_KIND_WINDOW and (demo or InScope(o, gkey)) then
-            list[#list + 1] = o
+        if type(o) == "table" and o.s == "a" and o.w == e.w and o.i == e.i and type(o.ts) == "number"
+            and type(o.by) == "string" and (o == e or demo or InScope(o, gkey)) then
+            near[#near + 1] = o
         end
     end
-    return list
+    tsort(near, OrderAsc)
+    for _, line in ipairs(AutoLines(near)) do
+        for _, o in ipairs(line) do
+            if o == e then
+                local list = {}
+                for k, x in ipairs(line) do list[k] = x end
+                return list
+            end
+        end
+    end
+    return { e }
 end
 
 local function SetVoid(list, value, demo)
@@ -812,7 +907,17 @@ function Ledger:Merge(entry, fromKey)
     -- entries from a peer belong to the guild we share with it (untagged until my guild name is known)
     e.g = gkey or nil
     local cur = db[e.id]
+    -- 2026-11-09 (authority holes 4): who recorded it (by) is the sender's word when the sender isn't the recorder:
+    -- such a copy keeps who passed it on (rb, local only: Clean drops it on the wire, the digest doesn't read it),
+    -- and the recorder's own copy puts its by in place and clears the mark.
+    local fromRecorder = fromKey == nil or Util.IsMe(fromKey) or fromKey == e.by
+        or (ns.Guild and ns.Guild.SameAccount and ns.Guild:SameAccount(fromKey, e.by)) or false
+    if type(cur) == "table" and cur.rb and fromRecorder and fromKey ~= nil then
+        cur.by, cur.rb = e.by, nil
+        Invalidate()
+    end
     if type(cur) ~= "table" then
+        if not fromRecorder then e.rb = fromKey end
         db[e.id] = e
         if gkey == false then pendingScope[e.id] = "quiet" end
         ns.AuditSaw("lg.A", nil, e, { via = fromKey })

@@ -7,7 +7,7 @@ TESTS = os.path.dirname(HERE)
 sys.path.insert(0, os.path.join(TESTS, "boot-ui"))
 sys.path.insert(0, os.path.join(TESTS, "loot-roll"))
 
-from _common import World, Client, gm_pick  # noqa: E402,F401
+from _common import World, Client, gm_pick, DEV_NAME, DEV_REALM  # noqa: E402,F401
 
 REALM = "Thunderstrike"
 DAY = 86400
@@ -23,7 +23,8 @@ def world(names=(("Gina", 0, "PALADIN"), ("Bob", 1, "MAGE"), ("Lee", 3, "WARRIOR
     w = World()
     c = {}
     for name, rank, cls in names:
-        c[name] = Client(w, name, guild_rank=rank, class_file=cls)
+        c[name] = Client(w, name, guild_rank=rank, class_file=cls,          # (the developer: _common.DEV_KEY)
+                         realm=DEV_REALM if name == DEV_NAME else None)
     for x in c.values():
         x.load_addon()
     w.tick(3)

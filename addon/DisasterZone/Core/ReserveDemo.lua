@@ -26,6 +26,17 @@ local RAID = "SerpentshrineCavern"
 local VASHJ = "SerpentshrineCavern:Vashj"
 local SCEPTER, LONGBOW, FANG, COILS, VORTEX, CORAL, GAUNTLETS, VESTMENTS = 30108, 30105, 30103, 30109, 30183, 30110,
     30112, 30107
+local MORE = { 30106, 30104, 30111 }
+-- WoW Forever: a pug night in Upper Blackrock Spire (10 players on Forever), General Drakkisath's loot: the Magister's
+-- Robes for me, the Breastplate of Valor and the Flask of the Titans recipe held for the guild.
+local FOREVER = ns.Compat and ns.Compat.isForever
+local PLACE, BOSS = "Serpentshrine Cavern", "Lady Vashj"
+if FOREVER then
+    RAID, VASHJ, PLACE, BOSS = "UBRS", "UBRS:GeneralDrakkisath", "Upper Blackrock Spire", "General Drakkisath"
+    SCEPTER, LONGBOW, FANG, COILS, VORTEX, CORAL, GAUNTLETS, VESTMENTS = 16688, 16674, 16730, 16700, 13519, 16690,
+        16721, 16706
+    MORE = { 16666, 16726, 15730 }
+end
 local DROP_ITEMS = { SCEPTER, LONGBOW, FANG, COILS }
 local MAX_LINES = 40
 
@@ -44,7 +55,7 @@ RD.STEPS = {
           .. "items greyed out, who else is on each item. Click a tile to reserve or take it back." },
     { key = "pull", title = "First pull",
       text = "The first pull closes reserves (the leader can still change any player's). The raid hears it once." },
-    { key = "drop", title = "Vashj drops",
+    { key = "drop", title = FOREVER and "Drakkisath drops" or "Vashj drops",
       text = "The drop panel says how each item is decided: the reservers roll, one reserve takes it without a roll, "
           .. "the guild's item goes to the council, the rest is up for grabs. Roll all plays them." },
     { key = "wrap", title = "Wrap-up",
@@ -155,7 +166,7 @@ local function Script()
     local g, p = c.guild, c.pugs
     return {
         { g[1], SCEPTER, "d" }, { g[2], GAUNTLETS, "d" }, { p[2], CORAL, "l" }, { g[3], CORAL, "d" },
-        { p[3], VESTMENTS, "s" }, { g[4], 30106, "d" }, { p[4], 30104, "l" }, { g[5] or g[1], 30111, "d" },
+        { p[3], VESTMENTS, "s" }, { g[4], MORE[1], "d" }, { p[4], MORE[2], "l" }, { g[5] or g[1], MORE[3], "d" },
     }
 end
 
@@ -215,7 +226,7 @@ end
 function DO.drop()
     if not (R():Get() and not R():IsOpen()) then DO.pull() end
     st.drop = DropNow()
-    Say("sys", "Lady Vashj has been defeated!")
+    Say("sys", BOSS .. " has been defeated!")
 end
 
 function DO.wrap()
@@ -314,7 +325,7 @@ function RD:Start()
     end
     st.on, st.cast, st.lines, st.drop, st.view = true, nil, {}, nil, "lead"
     Cast()
-    ns:Print("|cffffd100Reserves demo:|r a made-up pug night in Serpentshrine Cavern. Nothing is sent or saved.")
+    ns:Print("|cffffd100Reserves demo:|r a made-up pug night in " .. PLACE .. ". Nothing is sent or saved.")
     return self:Go(1)
 end
 

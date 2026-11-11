@@ -346,7 +346,7 @@ local EXTRA_KINDS = {
     { kind = "pvp",   data = "PvP",        flags = { "pvp" } },
 }
 local SEASON_BY_KEY = { S1 = 1, S2 = 2, S3 = 3, S4 = 4 }
-local MAX_ITEM_ID = 200000
+local MAX_ITEM_ID = 1000000   -- (Forever's new items are 280000+)
 local MAX_TEXT = 96
 
 local extraBuilt = false
@@ -565,12 +565,14 @@ function ItemDB:IsDungeonItem(itemID)
     return (itemID and dungeonSources[itemID] ~= nil) and true or false
 end
 
-local VIA_PREFIX = { token = "Token", arena = "Token", upgrade = "Sunmote" }
+local FOREVER = ns.Compat and ns.Compat.isForever   -- (WoW Forever: no Sunmotes, heroics or Badges of Justice)
+local VIA_PREFIX = { token = "Token", arena = "Token", upgrade = FOREVER and "Upgrade" or "Sunmote" }
 
 local function BossLabel(ref, short, heroic)
     local boss, raid = ref.boss, ref.raid
     local bossName = boss.name or boss.key or "?"
     local raidName = raid.name or raid.key or "?"
+    if FOREVER then heroic = nil end
     if short then
         local text = boss.isTrash and (raidName .. " trash") or bossName
         if heroic then text = text .. " (H)" end
@@ -618,8 +620,8 @@ local function SourceLabel(src, short)
         return src.standing and (name .. DASH .. src.standing) or name
     elseif kind == "badge" then
         -- "G'eras — 60 badges"
-        if src.cost then return name .. DASH .. NumberText(src.cost) .. " badges" end
-        return name .. " (Badge of Justice)"
+        if src.cost then return name .. DASH .. NumberText(src.cost) .. (FOREVER and "" or " badges") end
+        return FOREVER and name or (name .. " (Badge of Justice)")
     elseif kind == "pvp" then
         -- long: "Arena Season 2 (Merciless Gladiator)", "Honor vendors — 8000 honor (Alliance)";
         -- short: "Arena Season 2", "Honor vendors (Alliance)"
@@ -876,9 +878,69 @@ function ItemDB:GetArenaExchangeItems(tokenID)
     return ActiveArenaItems(data.TokenArenaExchanges and data.TokenArenaExchanges[tonumber(tokenID) or 0])
 end
 
+-- Forever 0.2: the item's own tooltip says which classes may use it. Data/ItemClasses.lua is the TBC original's list
+-- (TBC item ids 24046-37740, none of them a Forever item) and Forever's item data has no tier / token classes, so a
+-- class-restricted Forever item (a dungeon or PvP set piece, "Classes: Warrior") is read from its "Classes: ..."
+-- tooltip line (Atlas.ScanItemLines), once per item. [itemID] = { class files } | false (no such line).
+local tipClasses = {}
+local classByName
+
+local function ClassByName()
+    if classByName then return classByName end
+    local t = {}
+    for _, names in ipairs({ LOCALIZED_CLASS_NAMES_MALE, LOCALIZED_CLASS_NAMES_FEMALE }) do
+        if type(names) == "table" then
+            for file, name in pairs(names) do
+                if type(file) == "string" and type(name) == "string" then t[name:lower()] = file end
+            end
+        end
+    end
+    for file in pairs(ns.ARMOR_ALLOWED or {}) do
+        if type(file) == "string" and not t[file:lower()] then t[file:lower()] = file end
+    end
+    classByName = t
+    return t
+end
+
+local function TooltipClasses(itemID)
+    local known = tipClasses[itemID]
+    if known ~= nil then return known or nil end
+    -- (only items the client has: a picker checks hundreds at once, and this must not ask the server for each)
+    local cached = C_Item and C_Item.IsItemDataCachedByID and C_Item.IsItemDataCachedByID(itemID)
+    if cached == false then return nil end
+    local A = ns.Atlas
+    local ok, lines = pcall(function() return A and A.ScanItemLines and A.ScanItemLines(itemID) end)
+    if not ok or type(lines) ~= "table" then return nil end     -- not loaded yet: asked again next time
+    local fmt = type(ITEM_CLASSES_ALLOWED) == "string" and ITEM_CLASSES_ALLOWED or "Classes: %s"
+    local prefix = fmt:match("^(.-)%%s") or "Classes: "
+    local C = ns.Compat
+    local found = false
+    for _, line in ipairs(lines) do
+        if type(line) == "string" and not (C and C.IsSecret and C.IsSecret(line))
+            and line:sub(1, #prefix) == prefix then
+            local list = {}
+            for name in line:sub(#prefix + 1):gmatch("[^,]+") do
+                local file = ClassByName()[(name:gsub("^%s+", ""):gsub("%s+$", "")):lower()]
+                if file and not ListHas(list, file) then list[#list + 1] = file end
+            end
+            if #list > 0 then found = list end
+            break
+        end
+    end
+    tipClasses[itemID] = found
+    return found or nil
+end
+ItemDB._TooltipClasses = TooltipClasses
+
+local function RestrictedClasses(data, itemID)
+    local list = data.ItemClasses and data.ItemClasses[itemID]
+    if type(list) == "table" then return list end
+    return TooltipClasses(itemID)
+end
+
 -- DisasterZone 0.5: false when only other classes can use itemID (a tier piece, a token, or a class-restricted item of
--- ns.Data.ItemClasses: "Classes: ..." on the tooltip), true otherwise, nil for bad arguments. Class restrictions
--- only (no armor / weapon proficiency): the loot-decision guard for wanters.
+-- ns.Data.ItemClasses or, Forever 0.2, its tooltip: "Classes: ..."), true otherwise, nil for bad arguments. Class
+-- restrictions only (no armor / weapon proficiency): the loot-decision guard for wanters.
 function ItemDB:CanClassUse(itemID, classFile)
     itemID = tonumber(itemID)
     if not itemID or type(classFile) ~= "string" or classFile == "" then return nil end
@@ -887,15 +949,16 @@ function ItemDB:CanClassUse(itemID, classFile)
     if tierClass then return tierClass == classFile end
     local tokenClasses = data.TokenClasses and data.TokenClasses[itemID]
     if type(tokenClasses) == "table" then return ListHas(tokenClasses, classFile) end
-    local itemClasses = data.ItemClasses and data.ItemClasses[itemID]
+    local itemClasses = RestrictedClasses(data, itemID)
     if type(itemClasses) == "table" then return ListHas(itemClasses, classFile) end
     return true
 end
 
--- The classes that may use a class-restricted item (ns.Data.ItemClasses), or nil. Do not modify.
+-- The classes that may use a class-restricted item (ns.Data.ItemClasses, else its tooltip), or nil. Do not modify.
 function ItemDB:GetItemClasses(itemID)
-    local data = Data()
-    local list = data.ItemClasses and data.ItemClasses[tonumber(itemID) or 0]
+    itemID = tonumber(itemID)
+    if not itemID then return nil end
+    local list = RestrictedClasses(Data(), itemID)
     return type(list) == "table" and list or nil
 end
 
@@ -923,7 +986,7 @@ function ItemDB:IsUsableBy(itemID, classFile, sid)
 
     -- Class-restricted items ("Classes: Rogue": T5 class trinkets, Warglaives, PvP set pieces, Ashtongue
     -- talismans, ...), then the usual armor / weapon checks (a restricted weapon still needs dual wield).
-    local itemClasses = data.ItemClasses and data.ItemClasses[itemID]
+    local itemClasses = RestrictedClasses(data, itemID)
     if type(itemClasses) == "table" and not ListHas(itemClasses, classFile) then return false end
 
     local id, _, _, loc, _, classID, subclassID = InstantInfo(itemID)

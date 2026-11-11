@@ -189,23 +189,8 @@ function BM:MyRole()
     local t = Now()
     if roleCache and t - roleAt < 5 then return roleCache end
     roleAt = t
-    if ns.Tanks and ns.Tanks:IsMe() then
-        roleCache = "tank"
-        return roleCache
-    end
-    local cls = ns.ClassKit and ns.ClassKit:MyClass()
-    local tab = ns.ClassKit and ns.ClassKit:MyTab()
-    roleCache = "dps"
-    if cls and tab and ns.SPECS and ns.SPECS[cls] then
-        local roles = {}
-        for _, s in ipairs(ns.SPECS[cls]) do if s.tab == tab then roles[#roles + 1] = s.role end end
-        if #roles == 1 then
-            roleCache = roles[1] == "tank" and "tank" or roles[1] == "healer" and "healer" or "dps"
-        elseif #roles > 1 then    -- (Feral: bear form tanks)
-            local form = GetShapeshiftFormID and GetShapeshiftFormID()
-            roleCache = (form == 5 or form == 8) and "tank" or "dps"
-        end
-    end
+    -- (Core/ClassKit.lua: the guild's tank list, talents, stance or form, then the client's roles)
+    roleCache = ns.ClassKit and ns.ClassKit:MyRole() or "dps"
     return roleCache
 end
 
@@ -241,7 +226,7 @@ M.__index = function(m, k)
 end
 
 local function NpcOf(guid)
-    if type(guid) ~= "string" then return nil end
+    if type(guid) ~= "string" or ns.Compat.IsSecret(guid) then return nil end   -- (Forever: secret in instances)
     local kind, _, _, _, _, id = strsplit("-", guid)
     if kind == "Creature" or kind == "Vehicle" then return tonumber(id) end
     return nil
@@ -581,9 +566,8 @@ local function CheckHealth(unit)
     if #active == 0 then return end
     local npc = NpcOf(UnitGUID and UnitGUID(unit))
     if not npc then return end
-    local hmax = UnitHealthMax(unit) or 0
-    if hmax <= 0 then return end
-    local pct = (UnitHealth(unit) or 0) / hmax * 100
+    local pct = ns.Compat.HealthPct(unit)                -- (nil on Forever: health is secret, HP alerts stay quiet)
+    if not pct then return end
     for _, m in ipairs(active) do
         for i, e in ipairs(m.def._t.hp) do
             if not m.hpDone[i] and e.npc == npc and pct <= e.pct then
@@ -608,6 +592,8 @@ local function OnUnitCast(_, unit, castGUID, spellId)
     local guid = UnitGUID and UnitGUID(unit)
     local npc = NpcOf(guid)
     if not npc then return end
+    -- (WoW Forever: the cast's GUID and spell are secret while spell casts are restricted: never keys then)
+    if ns.Compat.IsSecret(castGUID) or ns.Compat.IsSecret(spellId) then return end
     if castGUID then
         if castSeen[castGUID] then return end
         castSeen[castGUID] = true
@@ -993,8 +979,13 @@ function BM:SendBreak(minutes)
     local ch = GroupChannel()
     if ch and C_ChatInfo and C_ChatInfo.SendAddonMessage and Get("dbm", true) then
         local realm = (GetRealmName and GetRealmName() or ""):gsub("[%s%-]+", "")
-        pcall(C_ChatInfo.SendAddonMessage, DBM_PREFIX, ("%s-%s\t1\tBT\t%d"):format(me, realm, secs), ch)
-        pcall(C_ChatInfo.SendAddonMessage, BW_PREFIX, "P^Break^" .. secs, ch)
+        local function send()
+            pcall(C_ChatInfo.SendAddonMessage, DBM_PREFIX, ("%s-%s\t1\tBT\t%d"):format(me, realm, secs), ch)
+            pcall(C_ChatInfo.SendAddonMessage, BW_PREFIX, "P^Break^" .. secs, ch)
+        end
+        -- (WoW Forever refuses addon messages for a whole boss pull: held by Comm until it ends)
+        local Comm = ns.Comm
+        if Comm and Comm.SendOrHold then Comm:SendOrHold(send) else send() end
     end
     return true
 end

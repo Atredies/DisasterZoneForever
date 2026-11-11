@@ -21,7 +21,8 @@ if DisasterZoneBoot and DisasterZoneBoot.Run("UI/Atlas.lua", ...) then return en
 -- phases, shopping list, try on, link); shift-click = link, ctrl-click = dressing room. What an item gives or comes
 -- from (a token's pieces for my class, a Sunmote upgrade, what a recipe makes) follows it with a gold bar.
 -- An item a vendor sells shows its cost with the currencies' icons, red while I hold less; the currency bar along the
--- bottom has Honor, Arena Points and Badges always, then what the page pays with, lit by a hovered item.
+-- bottom has Honor, Arena Points and Badges always (WoW Forever: Honor), then what the page pays with, lit by a
+-- hovered item.
 -- Ctrl+F focuses the search. Model: Core/Atlas.lua (ns.Atlas).
 local addonName, ns = ...
 
@@ -408,7 +409,7 @@ do
         end
     end
 
-    -- The bar: Honor, Arena Points and Badges always, a rule, then what the list shown pays with (most used first).
+    -- The bar: Currency.PINNED always (Honor, Arena Points, Badges; Forever: Honor), a rule, then what the list shown pays with (most used first).
     function LayoutBar()
         if not curBar then return end
         local C = Cur()
@@ -763,11 +764,11 @@ local function SourceIcon(src, cat)
     return CatIcon(cat)
 end
 
--- "P2" .. "P5" for a later phase's place (what has been out from the start goes without); a Classic dungeon's levels.
+-- "P2" .. "P5" (ns.PhaseLabel: "S2" on Forever) for a later phase's place (what has been out from the start goes without); a Classic dungeon's levels.
 local function PhaseTag(src)
     if src and src.lv then return src.lv end
     local p = tonumber(src and src.phase)
-    return (p and p > 1) and ("P" .. p) or nil
+    return (p and p > 1) and ns.PhaseLabel(p) or nil
 end
 
 -- "10 players", "Levels 18-21", "You're Revered" (a faction: its pages are the standings).
@@ -776,7 +777,7 @@ local function SourceSub(src)
     if src.lv then sub[#sub + 1] = "Levels " .. src.lv end
     if src.size then sub[#sub + 1] = src.size .. " players" end
     local p = tonumber(src.phase)
-    if p and p > 1 then sub[#sub + 1] = "Phase " .. p end
+    if p and p > 1 then sub[#sub + 1] = ns.PHASE_WORD .. " " .. p end
     if src.factionID and GetFactionInfoByID then
         local name, _, standing = GetFactionInfoByID(src.factionID)
         standing = tonumber(standing)
@@ -947,7 +948,7 @@ do
         if d.viaKind == "token" then
             -- (no word: the gold bar says it comes from the token before it)
         elseif d.viaKind == "upgrade" then
-            sub = lead("Sunmote upgrade")
+            sub = lead((ns.Compat and ns.Compat.isForever) and "Upgrade" or "Sunmote upgrade")   -- (Forever: no Sunmotes)
         elseif d.viaKind == "base" then
             sub = lead("Made from")
         elseif d.viaKind == "makes" then
@@ -1017,9 +1018,12 @@ do
         local id = d.id
         local function extra(tt)
             local viaName = d.via and (Atlas():GetName(d.via) or "the item before")
+            local forever = ns.Compat and ns.Compat.isForever   -- (WoW Forever: no Sunmotes, no Sunwell)
             local viaText = (d.viaKind == "token" and ("From " .. tostring(viaName)))
-                or (d.viaKind == "upgrade" and ("Upgrade of " .. tostring(viaName) .. ": bring it and a Sunmote to the Sunwell vendor"))
-                or (d.viaKind == "base" and ("Bring this and a Sunmote to the Sunwell vendor for " .. tostring(viaName)))
+                or (d.viaKind == "upgrade" and ("Upgrade of " .. tostring(viaName)
+                    .. (forever and "" or ": bring it and a Sunmote to the Sunwell vendor")))
+                or (d.viaKind == "base" and (forever and ("Upgrades to " .. tostring(viaName))
+                    or ("Bring this and a Sunmote to the Sunwell vendor for " .. tostring(viaName))))
                 or (d.viaKind == "makes" and ("Made with " .. tostring(viaName)))
             if viaText then
                 tt:AddLine(" ")
@@ -1331,8 +1335,8 @@ do
                         local n = A:AddToBiS(t.itemID, sid, which, phase, list, later)
                         if n > 0 then
                             local link = ns.ItemDB:GetLink(t.itemID) or A:GetName(t.itemID) or "item"
-                            local label = ns.PhaseLabel and ns.PhaseLabel(phase) or ("P" .. phase)
-                            local where = later and n > 1 and ("P%d-%d"):format(phase, phase + n - 1) or label
+                            local label = ns.PhaseLabel(phase)
+                            local where = later and n > 1 and ("%s%d-%d"):format(ns.PHASE_LETTER, phase, phase + n - 1) or label
                             ns:Print("%s is now your %s for %s (%s%s).", link, which == "main" and "BiS" or "alt",
                                 SlotLabel(sid), where, list == "os" and ", off spec" or "")
                         end
@@ -1353,7 +1357,7 @@ do
         local now = GuildPhase()
         for _, p in ipairs(ns.LIST_PHASES or { 1, 2, 3, 4, 5 }) do
             local info = ns.PHASE_INFO and ns.PHASE_INFO[p]
-            local label = info and info.name or ("Phase " .. p)
+            local label = info and info.name or (ns.PHASE_WORD .. " " .. p)
             if p == now then label = label .. "  " .. S:Wrap("DIM", "(now)") end
             local onList = false
             for _, t in ipairs(targets) do
@@ -1368,11 +1372,12 @@ do
         local from = now or 1
         if from < (ns.MAX_PHASE or 5) then
             if sub.CreateDivider then sub:CreateDivider() end
-            local later = sub:CreateButton(("Phase %d and later"):format(from))
+            local later = sub:CreateButton(("%s %d and later"):format(ns.PHASE_WORD, from))
             if later.SetTooltip then
                 later:SetTooltip(function(tooltip)
-                    tooltip:AddLine(("Phase %d and later"):format(from), S:RGB("GOLD"))
-                    tooltip:AddLine(("Sets it in P%d, and in every later phase where that place is still empty."):format(from), 1, 1, 1, true)
+                    tooltip:AddLine(("%s %d and later"):format(ns.PHASE_WORD, from), S:RGB("GOLD"))
+                    tooltip:AddLine(("Sets it in %s, and in every later %s where that place is still empty."):format(
+                        ns.PhaseLabel(from), ns.PHASE_WORD:lower()), 1, 1, 1, true)
                 end)
             end
             AddPhaseChoices(later, targets, from, list, true)
@@ -1705,7 +1710,7 @@ local function CategoryRows(out)
     end
     if #phases > 1 then
         table.sort(phases)
-        for _, p in ipairs(phases) do tiles(byPhase[p], p > 0 and ("Phase " .. p) or (cat.name or "")) end
+        for _, p in ipairs(phases) do tiles(byPhase[p], p > 0 and (ns.PHASE_WORD .. " " .. p) or (cat.name or "")) end
     else
         tiles(all, "All " .. (cat.name or ""):lower())
     end
@@ -2292,7 +2297,7 @@ do
             local note = {}
             local where = SourceSub(src)
             if where ~= "" then note[#note + 1] = where end
-            if page.phase and page.phase ~= (src.phase or 1) then note[#note + 1] = "Phase " .. page.phase end
+            if page.phase and page.phase ~= (src.phase or 1) then note[#note + 1] = ns.PHASE_WORD .. " " .. page.phase end
             if page.title and page.name then note[#note + 1] = page.name end
             if extraNote then note[#note + 1] = extraNote end
             sub = table.concat(note, DOT)
@@ -2317,7 +2322,7 @@ do
             if src.size then parts[#parts + 1] = src.size .. " players" end
             if src.lv then parts[#parts + 1] = "Levels " .. src.lv end
             local p = tonumber(src.phase)
-            if p then parts[#parts + 1] = "Phase " .. p end
+            if p then parts[#parts + 1] = ns.PHASE_WORD .. " " .. p end
             if bosses then parts[#parts + 1] = #src.pages .. " bosses" end
             kicker = table.concat(parts, DOT)
             if kicker == "" then kicker = (A:GetCategory(state.cat) or {}).name end
@@ -3115,13 +3120,13 @@ function AtlasUI:CreatePanel(parent)
 
     -- Ctrl+F: the search (every other key goes on to the game)
     panel:EnableKeyboard(true)
-    if panel.SetPropagateKeyboardInput then panel:SetPropagateKeyboardInput(true) end
+    if panel.SetPropagateKeyboardInput then ns.Util.SetPropagateKeys(panel, true) end
     panel:SetScript("OnKeyDown", function(self, key)
         if key == "F" and IsControlKeyDown() and not InCombatLockdown() then
-            self:SetPropagateKeyboardInput(false)
+            ns.Util.SetPropagateKeys(self, false)
             searchBox:SetFocus()
             C_Timer.After(0, function()
-                if not InCombatLockdown() then self:SetPropagateKeyboardInput(true) end
+                if not InCombatLockdown() then ns.Util.SetPropagateKeys(self, true) end
             end)
         end
     end)

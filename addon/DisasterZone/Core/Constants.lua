@@ -135,6 +135,7 @@ ns.DOLL_BOTTOM = { 15, 16, 17 }
 -- only its owner sees it (tooltips, My BiS, Atlas marks, the Dungeons tab); the council never does.
 ns.PHASES = { 1, 2, 3, 4, 5 }
 ns.MAX_PHASE = 5
+ns.WIRE_MAX_PHASE = 5     -- the phases a stored or received list may hold (Core/Store.lua); never lowered
 ns.PRE_RAID = 0
 ns.LIST_PHASES = { 0, 1, 2, 3, 4, 5 }   -- the phases of a My BiS list: Pre-raid, then the raid phases
 ns.PHASE_INFO = {
@@ -146,10 +147,31 @@ ns.PHASE_INFO = {
     [5] = { short = "P5", name = "Phase 5", raids = "Sunwell Plateau" },
 }
 
+-- WoW Forever: pages and views that have no Forever data or need the addon combat log Forever does not give, so the
+-- client never shows them: the gear sim (WoWSims TBC rules), My Log (pulls from the combat log), the strategy boards
+-- (TBC raid maps and rooms). They come back when they have Forever data.
+ns.FOREVER_HIDDEN = (ns.Compat and ns.Compat.isForever) and { gearsim = true, mylog = true, strategies = true } or {}
+
+-- How the UI names a phase: "Phase" / "P1" (TBC), "Season" / "S1" (WoW Forever runs in seasons). Data keeps numbers.
+ns.PHASE_WORD, ns.PHASE_LETTER = "Phase", "P"
+
+-- WoW Forever: one raid phase so far (all three raids open 2026-12-09). Validators take phases up to MAX_PHASE, so a
+-- new phase is appended here and ships to the whole guild in one release (an older client refuses the new phase).
+if ns.Compat and ns.Compat.isForever then
+    ns.PHASES = { 1 }
+    ns.MAX_PHASE = 1
+    ns.LIST_PHASES = { 0, 1 }
+    ns.PHASE_WORD, ns.PHASE_LETTER = "Season", "S"
+    ns.PHASE_INFO = {
+        [0] = { short = "Pre-raid", name = "Pre-raid", raids = "Dungeons · Reputation · Crafting · PvP" },
+        [1] = { short = "S1", name = "Season 1", raids = "Onyxia · Barrow Deeps · Hyjal Summit" },
+    }
+end
+
 -- "Pre-raid" for phase 0, else "P<n>".
 function ns.PhaseLabel(p)
     if p == 0 then return "Pre-raid" end
-    return "P" .. tostring(p)
+    return ns.PHASE_LETTER .. tostring(p)
 end
 
 -- The picks { [sid] = { main, alt } } of one phase of a ListData table (nil when it has none). p: 0 (Pre-raid) or
@@ -390,6 +412,12 @@ ns.WEAPON_RESTRICTED[W.GENERIC] = nil
 ns.WEAPON_RESTRICTED[W.FISHINGPOLE] = nil
 
 ns.DUAL_WIELD = { WARRIOR = true, ROGUE = true, HUNTER = true, SHAMAN = true }
+-- WoW Forever: shamans cannot dual wield (2026-11-09). Blizzard's class overview
+-- (news.blizzard.com/en-us/article/24302097) makes two-handed axes and maces and shields baseline and never mentions
+-- dual wield, and the Forever guides say so outright (zockify.com/forever/shaman, wow.gg/guides/
+-- wow-forever-enhancement-shaman, lfcarry.com/guides/wow-forever-shaman, dtgre.com 2026/11). Off hand = a shield.
+-- Still worth one in-game look (a shaman trying to equip an off-hand weapon).
+if ns.Compat and ns.Compat.isForever then ns.DUAL_WIELD.SHAMAN = nil end
 
 ---------------------------------------------------------------------------
 -- Award reasons (Addendum G §40): the `r` field of a loot log entry

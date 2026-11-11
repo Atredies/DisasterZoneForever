@@ -5,7 +5,8 @@ if DisasterZoneBoot and DisasterZoneBoot.Run("Core/ReserveLR.lua", ...) then ret
 --   I answer their Hello with the session (SessionInfo), take ReserveItem / CancelReserve (answering ReserveResult /
 --   CancelReserveResult), tell the raid each item's reservers (ReserveInfo), ask the reservers to roll (RequestRoll)
 --   and name the winner (SendWinner). The guild's hard reserves are hidden items there.
---   Reader: when someone else in the raid hosts a LootReserve session, its reserves become my list (read-only, see
+--   Reader: when someone else in the raid hosts a LootReserve session (only the group's leader, its master looter or
+--   the raid's loot authority can: MayHost), its reserves become my list (read-only, see
 --   Reserves:Mirror) so the drop panel and the rolls follow them. While another LootReserve host runs, I don't answer
 --   as one (two hosts would confuse LootReserve's clients).
 -- Wire: AceComm prefixes "LootReserve" and "LootReserve1".."LootReserve40" (sent round-robin like LootReserve does);
@@ -128,8 +129,11 @@ local function Send(dist, target, opcode, ...)
         nextPrefix = nextPrefix % PREFIX_MAX + 1
     end
     local text = ReserveLR:Build(opcode, ...)
-    comm:SendCommMessage(prefix, text, dist, target and (Ambiguate and Ambiguate(target, "none") or target) or nil,
-        "ALERT")
+    local to = target and (Ambiguate and Ambiguate(target, "none") or target) or nil
+    local function send() comm:SendCommMessage(prefix, text, dist, to, "ALERT") end
+    -- (WoW Forever refuses addon messages for a whole boss pull: held by Comm until it ends)
+    local Comm = ns.Comm
+    if Comm and Comm.SendOrHold then Comm:SendOrHold(send) else send() end
 end
 
 local function Broadcast(opcode, ...)
@@ -363,6 +367,21 @@ end
 -- Receiving
 ---------------------------------------------------------------------------
 
+-- 2026-11-09 (authority holes, round 2): may `key` host the raid's LootReserve session, so its broadcasts become my
+-- (read-only) list? LootReserve itself serves only from the group's leader or its master looter (Server.lua
+-- CanBeServer); the raid's loot authority (GroupRules, the rule Reserves:OnList goes by) counts too. Anyone else in the
+-- raid could otherwise push a made-up list of reserves (or stop mine from answering LootReserve's clients).
+local function MayHost(key)
+    if Util.IsMe(key) then return true end
+    local GR = ns.GroupRules
+    if GR and GR.GetAuthority and GR:GetAuthority() == key then return true end
+    local unit = Util.GetPartyUnit and Util.GetPartyUnit(key)
+    if unit and UnitIsGroupLeader(unit) then return true end
+    local G = ns.Guild
+    return (G and G.GetRaidMasterLooter and G:GetRaidMasterLooter() == key) and true or false
+end
+ReserveLR.MayHost = function(_, key) return MayHost(key) end
+
 local function OnComm(prefix, text, dist, sender)
     if Util.DemoOn() or not Enabled() then return end
     local key = KeyOf(sender)
@@ -374,6 +393,7 @@ local function OnComm(prefix, text, dist, sender)
     -- a host's broadcasts: theirs is the session to read. Not the DisasterZone host's own (I have that list from it
     -- already), not my own while I hold a list (that's me answering as a host).
     if ReadHandlers[opcode] then
+        if not MayHost(key) then return end
         local fromListHost = L and not L.foreign and L.by == key
         local mineEcho = Util.IsMe(key) and L and not L.foreign
         if not fromListHost and not mineEcho then ReadHandlers[opcode](key, f) end

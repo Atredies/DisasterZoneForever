@@ -219,10 +219,10 @@ def late_login_catches_up_from_a_member_after_the_organizer_left():
     mark = len(w.addon_log)
     uma.login()
     w.tick(40)
-    assert [r["id"] for r in raids(uma)] == [occ], raids(uma)
-    assert uma.eval_py("return ns.RaidPlan:GetTeam(...)", tid)["members"] == [K("Rita"), K("Uma")]
-    assert set(signups(uma, occ)) == {K("Rita")}
-    assert len(uma.eval_py("return ns.RaidPlan:GetUnanswered()")) == 1
+    # 2026-11-09 (authority holes): the members' copies can't prove Bob wrote them (any member could make one up "by"
+    # a raid leader), so Uma holds them back until a raid planner's copy comes (RaidPlan.lua Vouched)
+    assert raids(uma) == [], raids(uma)
+    assert uma.eval_py("return ns.RaidPlan:GetTeam(...)", tid) is None
     # One answer per round: the first member to answer claims the round (RPK on the live prefix) and the others stay
     # quiet. The only exception is a member whose own timer fired before that claim could reach it (two random
     # delays within one network latency): it answers too, which is harmless because Uma syncs with the first answer
@@ -233,10 +233,19 @@ def late_login_catches_up_from_a_member_after_the_organizer_left():
     first = min(m["_time"] for m in claims)
     assert all(m["_time"] < first + w.latency for m in claims), claims   # the others saw the answer and stayed quiet
     rpw = [m for m in lr.msgs_of_type(w, "RPW", mark) if m["_sender"] == K("Uma")]
-    assert len(rpw) == 1, rpw
+    # 2026-11-09 (authority holes 2): Rita's sign-up, passed on by another member, isn't taken at their word either:
+    # Uma asks its owner (Rita, online) for it, one more RPW of just that occurrence (RaidPlan.lua Merge.HoldSignup)
+    owner_asks = [m for m in rpw if m["w"] == ["O:" + occ]]
+    assert len(owner_asks) <= 1 and len(rpw) - len(owner_asks) == 1, rpw
     h = [m for m in lr.msgs_of_type(w, "H", mark) if m["_sender"] == K("Uma")]
     assert h and isinstance(h[0]["pd"], str), h           # (a live sign-up may have reached Uma already)
-    # everyone agrees afterwards
+    # the organizer comes back: their copies vouch for the raid and the team, and everyone agrees afterwards
+    bob.login()
+    w.tick(60)
+    assert [r["id"] for r in raids(uma)] == [occ], raids(uma)
+    assert uma.eval_py("return ns.RaidPlan:GetTeam(...)", tid)["members"] == [K("Rita"), K("Uma")]
+    assert set(signups(uma, occ)) == {K("Rita")}
+    assert len(uma.eval_py("return ns.RaidPlan:GetUnanswered()")) == 1
     hashes = {n: x.eval("return ns.RaidPlan:GetDigestHash()") for n, x in c.items() if x.online}
     assert len(set(hashes.values())) == 1, hashes
     w.assert_no_errors()

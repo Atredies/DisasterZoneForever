@@ -1256,7 +1256,11 @@ function SessionBar:WhisperTrade(t)
     local name = t and t.to and ns.Util.ShortName(t.to, true)
     if not (name and SendChatMessage) then return end
     local link = C_Item and C_Item.GetItemInfo and select(2, C_Item.GetItemInfo(t.itemID)) or ns.UI:ItemName(t.itemID) or "your item"
-    SendChatMessage(("I have %s for you: open a trade with me."):format(link), "WHISPER", nil, name)
+    local text = ("I have %s for you: open a trade with me."):format(link)
+    local function send() SendChatMessage(text, "WHISPER", nil, name) end
+    -- (WoW Forever: no chat from addons during a boss pull; the whisper goes out when it ends)
+    local Comm = ns.Comm
+    if Comm and Comm.SendOrHold then Comm:SendOrHold(send) else send() end
 end
 
 -- Right-click: hide it for this raid, its settings, Edit layout.

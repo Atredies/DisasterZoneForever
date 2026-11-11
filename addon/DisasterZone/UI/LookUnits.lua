@@ -128,16 +128,21 @@ function Units.Data(unit, d)
     for k in pairs(d) do d[k] = nil end
     if not (UnitExists and UnitExists(unit)) then return d end
     d.exists, d.unit = true, unit
-    d.name = UnitName(unit)
-    d.guid = UnitGUID and UnitGUID(unit) or nil      -- (another unit on the frame: its bar jumps, no slide)
+    -- (WoW Forever: a mob's name and GUID are secret in instances, health and power everywhere. Secrets can't be
+    -- compared or counted with, so they read as unknown: no name, a full bar without numbers, no power text.)
+    local C = ns.Compat
+    d.name = C.Plain(UnitName(unit))
+    d.guid = C.GUID(unit)                             -- (another unit on the frame: its bar jumps, no slide)
     d.level = UnitLevel(unit)
     local _, class = UnitClass(unit)
-    d.class = class
+    d.class = C.Plain(class)
     d.isPlayer = UnitIsPlayer(unit) and true or false
     d.classif = UnitClassification and UnitClassification(unit)
-    d.hp, d.hpMax = UnitHealth(unit) or 0, UnitHealthMax(unit) or 1
+    d.hp, d.hpMax = C.Plain(UnitHealth(unit)), C.Plain(UnitHealthMax(unit))
+    d.hpHidden = d.hp == nil and C.IsSecret(UnitHealth(unit)) or nil
+    if d.hpHidden then d.hp, d.hpMax = 1, 1 else d.hp, d.hpMax = d.hp or 0, d.hpMax or 1 end
     d.pt = UnitPowerType and UnitPowerType(unit) or 0
-    d.pw, d.pwMax = UnitPower(unit) or 0, UnitPowerMax(unit) or 0
+    d.pw, d.pwMax = C.Plain(UnitPower(unit)) or 0, C.Plain(UnitPowerMax(unit)) or 0
     d.dead = UnitIsDeadOrGhost and UnitIsDeadOrGhost(unit) or false
     d.ghost = UnitIsGhost and UnitIsGhost(unit) or false
     d.offline = d.isPlayer and UnitIsConnected and not UnitIsConnected(unit) or false
@@ -145,14 +150,15 @@ function Units.Data(unit, d)
     d.tapped = UnitIsTapDenied and not (UnitPlayerControlled and UnitPlayerControlled(unit)) and UnitIsTapDenied(unit) or false
     d.leader = UnitIsGroupLeader and UnitIsGroupLeader(unit) or false
     d.mt = d.isPlayer and ns.Tanks and ns.Tanks:NumberOfUnit(unit) or nil
-    d.raidIcon = GetRaidTargetIndex and GetRaidTargetIndex(unit) or nil
-    d.heal = UnitGetIncomingHeals and UnitGetIncomingHeals(unit) or nil
+    d.raidIcon = C.RaidMark(unit)                 -- (secret on Forever: no icon)
+    d.heal = UnitGetIncomingHeals and C.Plain(UnitGetIncomingHeals(unit)) or nil
     if UnitInRange and (unit:find("^party") or unit:find("^raid")) then
         local inRange, checked = UnitInRange(unit)
+        inRange, checked = C.Plain(inRange), C.Plain(checked)
         d.far = checked and not inRange or false
     end
-    if UnitThreatSituation then d.threat = UnitThreatSituation(unit) end
-    d.selected = UnitIsUnit and UnitExists("target") and UnitIsUnit(unit, "target") and true or false
+    if UnitThreatSituation then d.threat = C.Plain(UnitThreatSituation(unit)) end
+    d.selected = UnitExists("target") and C.SameUnit(unit, "target") or false   -- (a secret answer: GUIDs)
     -- the first debuff I could remove (the group frames' light)
     local _, me = UnitClass("player")
     local can = DISPEL_CLASS[me]
@@ -160,6 +166,7 @@ function Units.Data(unit, d)
         for i = 1, 40 do
             local name, _, _, dtype = Aura(unit, i, "HARMFUL")
             if not name then break end
+            dtype = C.Plain(dtype)
             if dtype and can[dtype] then d.dispel = dtype break end
         end
     end
@@ -235,6 +242,20 @@ function Units.Fake(key, i)
     return { exists = true, name = UnitName and UnitName("player") or "Tsumil", class = class or "WARRIOR",
              isPlayer = true, level = UnitLevel and UnitLevel("player") or 70, hp = 14212, hpMax = 16840,
              pt = 1, pw = 45, pwMax = 100, leader = true }
+end
+-- WoW Forever (vanilla content): Onyxia and one of her warders, everyone level 60
+if ns.Compat and ns.Compat.isForever then
+    local tbcFake = Units.Fake
+    local SWAP = {
+        target = { name = "Onyxia", portrait = "Interface\\Icons\\INV_Misc_Head_Dragon_Black", hp = 712400, hpMax = 1150000 },
+        focus = { name = "Onyxian Warder", level = 62 },
+    }
+    function Units.Fake(key, i)
+        local u = tbcFake(key, i)
+        for k, v in pairs(SWAP[key] or {}) do u[k] = v end
+        if u.level == 70 then u.level = 60 elseif u.level == 69 then u.level = 59 end
+        return u
+    end
 end
 
 ---------------------------------------------------------------------------
@@ -889,6 +910,7 @@ function Face:Set(d)
     local txt
     if d.dead then txt = d.ghost and "Ghost" or "Dead"
     elseif d.offline then txt = "Offline"
+    elseif d.hpHidden then txt = ""                  -- (Forever: health is secret, no numbers)
     elseif self.kind == "small" or mode == "pct" or self.width == W.party then txt = pct .. "%"
     elseif mode == "full" then txt = Int(d.hp) .. " / " .. Int(d.hpMax)
     elseif mode == "none" then txt = ""
@@ -898,7 +920,7 @@ function Face:Set(d)
     if self.fit then self:FitName() end
     if self.kind == "cell" then
         local st = d.dead and (d.ghost and "Ghost" or "Dead") or (d.offline and "Offline" or "")
-        if st == "" and frac < 0.995 and frac > 0 then st = "-" .. Short(d.hpMax - d.hp) end
+        if st == "" and not d.hpHidden and frac < 0.995 and frac > 0 then st = "-" .. Short(d.hpMax - d.hp) end
         -- (the tank block's mob half says its own: "88%", "on Dreadhex", "planned": UI/LookTanks.lua)
         if d.statusText then st = d.statusText end
         self.status:SetText(st)
@@ -1212,7 +1234,7 @@ local function Refresh(b)
     local d = Units.Data(unit, b.data)
     b.data = d
     if b.face.showAuras then d.auras = Units.Auras(unit, b.face.part, b.auraList); b.auraList = d.auras end
-    if b.face.showCombo then d.combo = (GetComboPoints and GetComboPoints("player", "target")) or 0 end
+    if b.face.showCombo then d.combo = (GetComboPoints and ns.Compat.Plain(GetComboPoints("player", "target"))) or 0 end
     b.face:Set(d)
 end
 Units.Refresh = Refresh
@@ -1250,7 +1272,7 @@ local function MarkTarget()
             local c = hd:GetAttribute("child" .. i)
             if not c then break end
             local unit = c:IsShown() and c.face and c:GetAttribute("unit")
-            if unit then c.face:SetTarget(has and UnitIsUnit(unit, "target")) end
+            if unit then c.face:SetTarget(has and ns.Compat.SameUnit(unit, "target")) end
         end
     end
 end

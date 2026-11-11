@@ -74,8 +74,8 @@ end
 function Aggro.IsTank(u)
     if not (UnitExists and UnitExists(u)) then return false end
     if ns.Tanks and ns.Tanks.NumberOfUnit and ns.Tanks:NumberOfUnit(u) then return true end
-    if UnitGroupRolesAssigned and UnitGroupRolesAssigned(u) == "TANK" then return true end
-    local guid = UnitGUID and UnitGUID(u) or u
+    if UnitGroupRolesAssigned and ns.Compat.Plain(UnitGroupRolesAssigned(u)) == "TANK" then return true end
+    local guid = ns.Compat.GUID(u) or u
     local c, now = tankCache[guid], Clock()
     if c and c[1] > now then return c[2] end
     local is = HasTankAura(u)
@@ -101,6 +101,8 @@ function Aggro.Read(u)
     local function Try(m)
         if not (m and Attackable(m)) then return end
         local tanking, _, scaled = UnitDetailedThreatSituation(u, m)
+        -- (WoW Forever: secret while threat values are restricted: then no pull)
+        tanking, scaled = ns.Compat.Plain(tanking), ns.Compat.Plain(scaled)
         if tanking then pulled = true end
         scaled = tonumber(scaled) or 0
         if scaled > best then best = scaled end

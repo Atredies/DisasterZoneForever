@@ -76,13 +76,6 @@ local function AmHost()
     return (G and G.IsAuthority and G:IsAuthority()) and true or false
 end
 
--- key leads my raid or assists in it.
-local function LeadOrAssist(key)
-    local unit = Util.GetPartyUnit and Util.GetPartyUnit(key)
-    if not unit then return false end
-    return (UnitIsGroupLeader(unit) or (UnitIsGroupAssistant and UnitIsGroupAssistant(unit))) and true or false
-end
-
 local function Changed()
     ns:Fire("RESERVES_CHANGED")
 end
@@ -111,7 +104,8 @@ function Reserves:RaidLoot(rk)
     if lootCache[rk] then return lootCache[rk] end
     local out = {}
     local DB = ns.ItemDB
-    local raid = DB and DB.GetRaid and DB:GetRaid(rk)
+    -- (a raid, or a dungeon: WoW Forever's 10-player Upper Blackrock Spire runs take reserves too)
+    local raid = DB and DB.GetRaid and (DB:GetRaid(rk) or (DB.GetDungeon and DB:GetDungeon(rk)))
     for _, boss in ipairs(raid and raid.bosses or {}) do
         for _, id in ipairs(boss.items or {}) do
             if out[id] == nil then out[id] = boss.key end
@@ -124,7 +118,7 @@ end
 -- The raid's bosses in order: { { key, name, items = { ids } }, ... } (trash last).
 function Reserves:Bosses(rk)
     local DB = ns.ItemDB
-    local raid = rk and DB and DB.GetRaid and DB:GetRaid(rk)
+    local raid = rk and DB and DB.GetRaid and (DB:GetRaid(rk) or (DB.GetDungeon and DB:GetDungeon(rk)))
     local out, trash = {}, nil
     for _, boss in ipairs(raid and raid.bosses or {}) do
         local b = { key = boss.key, name = boss.name, items = boss.items or {}, trash = boss.isTrash or boss.isChest }
@@ -276,12 +270,22 @@ end
 
 -- How a roll for itemID is decided under reserves: "s", keys (the reservers in the group; one key = theirs, no
 -- roll), "g" (held for the guild), "o" (up for grabs); nil when reserves are not the loot method.
-function Reserves:Decide(itemID)
+-- taken (optional): { [key] = true }, the players who got another copy of the item from the same drop (Roll's
+-- CopyClaims). A reservation is one copy (a player reserves an item once), so they are no reservers of this copy;
+-- when no reserver is left the copy is up for grabs.
+function Reserves:Decide(itemID, taken)
     itemID = tonumber(itemID)
     if not itemID or not self:IsLootMethod() then return nil end
     local L = List()
     if IsHR(L, itemID) then return "g" end
     local keys = self:Reservers(itemID, true)
+    if type(taken) == "table" then
+        local left = {}
+        for _, key in ipairs(keys) do
+            if not taken[key] then left[#left + 1] = key end
+        end
+        keys = left
+    end
     if #keys > 0 then return "s", keys end
     return "o"
 end
@@ -328,7 +332,8 @@ function Reserves:Open(opts)
     opts = opts or {}
     if not AmHost() then return false, "only the raid's loot authority (usually the raid leader) can open reserves." end
     if Util.DemoOn() then
-        demoCur = demoCur or NewList(opts.rk or "SerpentshrineCavern", opts.n, opts.hr)
+        demoCur = demoCur or NewList(opts.rk or ((ns.Compat and ns.Compat.isForever) and "HyjalForever"
+            or "SerpentshrineCavern"), opts.n, opts.hr)   -- (Forever: its raids, Data/Items.lua)
         demoCur.o = true
         Changed()
         return true
@@ -595,9 +600,10 @@ local function OnList(sender, msg, dist)
     if Util.IsMe(sender) then return end
     local G = GR()
     local auth = G and G.GetAuthority and G:GetAuthority()
-    -- (right after a /reload I may not know the authority yet, or take myself for it: the raid leader or an
-    -- assistant is believed; only the authority's client sends a list)
-    if not (auth == sender or (cur and cur.by == sender) or LeadOrAssist(sender)) then
+    -- Only the authority, or whoever holds the list I have. (Not any raid leader or assistant: an assistant could
+    -- replace the reserves on every client. Right after a /reload, while I don't know the authority yet or take
+    -- myself for it, the list waits below and is taken once the authority speaks, GROUP_RULES_CHANGED.)
+    if not (auth == sender or (cur and cur.by == sender)) then
         -- (a player who just joined may not know the raid's leader yet: kept a moment, taken once they do)
         pendingList = { sender = sender, msg = msg, at = GetTime() }
         return

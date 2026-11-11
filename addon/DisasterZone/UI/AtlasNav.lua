@@ -217,7 +217,7 @@ local function Groups(cat)
     if #phases < 2 then return { { label = cat.name, sources = list } } end
     table.sort(phases)
     local out = {}
-    for _, p in ipairs(phases) do out[#out + 1] = { label = p > 0 and ("Phase " .. p) or cat.name, sources = byPhase[p] } end
+    for _, p in ipairs(phases) do out[#out + 1] = { label = p > 0 and (ns.PHASE_WORD .. " " .. p) or cat.name, sources = byPhase[p] } end
     return out
 end
 
@@ -234,7 +234,7 @@ local function CreateJump()
     f.allBtn = U:CreateSleekButton(f, "All as tiles ›", 100, 18, function()
         if jumpState.cat then AUI():OpenCategory(jumpState.cat) end
     end)
-    if A():HasEra("classic") then
+    if A():HasEraSwitch() then
         f.era = U:CreateSegments(f, {
             { key = "classic", label = A().ERA_NAMES.classic }, { key = "tbc", label = A().ERA_NAMES.tbc },
         }, function(key)
@@ -709,7 +709,7 @@ local function Items()
         out[3] = { text = label, kind = "cur", onClick = ShopMenu }
         return out
     end
-    if Atlas:HasEra("classic") then
+    if Atlas:HasEraSwitch() then
         out[#out + 1] = { text = Atlas.ERA_NAMES[Atlas:GetEra()], kind = "era", onClick = EraMenu,
                           tip = { "Era", "Classic (levels 1-60) or The Burning Crusade." } }
     end

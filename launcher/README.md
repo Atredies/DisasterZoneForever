@@ -1,5 +1,11 @@
 # DisasterZone Launcher
 
+> **DisasterZoneForever status (2026-11-09):** this launcher comes from tsumilo's TBC Anniversary original and still
+> targets it: it looks for the `_anniversary_` game folder, and its release source (`source.txt`), signing key
+> (`release_key.json`), update feed and Discord server (`server.txt`) are upstream's. The WoW Forever flavor
+> (`_forever_`, our own releases repo, keys and server) is in progress. Until then, install the addon by hand
+> (`addon/DisasterZone/README.md`). The text below describes the launcher as upstream built it.
+
 Desktop app (Windows, macOS, Linux) that installs and updates the DisasterZone addon and keeps backups you can go
 back to. A release is a set of folders, one per pack (manifest format 2, launcher 0.4): the core `DisasterZone`,
 the Extra `DisasterZone_Rooms` (3D rooms, on by default) and one `DisasterZone_<Game>` per game. The Library
@@ -19,7 +25,8 @@ Hold the Line's page works out the week's challenge as the game does (Social.lua
 Azeromon, Hold the Line and The Binding of Illidan have films (`ui/films/<id>.webm`): their Games-hub covers as they
 play in game, drawn frame by frame in the test harness by `dev/tools/film_covers.py` (`--still` to judge one frame,
 `--encode` to encode again; about 15, 15 and 25 minutes to draw). They play behind the game's page and in its Library
-card on hover, never with reduced motion.
+card on hover, never with reduced motion. (The Binding of Illidan is not part of DisasterZoneForever: that pack was
+removed.)
 
 The title bar's "online now" lists who of the guild is in game: every linked launcher tells the bot at each sync
 whether the game runs and as whom (`SyncUp.game`, Settings > Discord "Show me as in game" turns it off), the bot keeps

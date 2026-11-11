@@ -1,44 +1,7 @@
 {
- "notes": [
-  "sets/TierSets/('call', 'C_Map_GetAreaInfo', [1977]) Sets: [HORDE_DIFF] GetItemsFromDiff = ALLIANCE_DIFF (+7 rows at positions [1, 3, 16, 5, 20, 7, 9])",
-  "sets/TierSets/('call', 'C_Map_GetAreaInfo', [3428]) 20 Sets: [HORDE_DIFF] GetItemsFromDiff = ALLIANCE_DIFF (+7 rows at positions [1, 3, 16, 5, 20, 7, 9])",
-  "sets/TierSets/('call', 'C_Map_GetAreaInfo', [3428]) 40 Sets: [HORDE_DIFF] GetItemsFromDiff = ALLIANCE_DIFF (+7 rows at positions [1, 3, 16, 5, 20, 7, 9])"
- ],
- "atlasloot": "C:\\World of Warcraft\\_classic_era_\\Interface\\AddOns",
+ "notes": [],
+ "atlasloot": "/tmp/claude-1000/-home-jim-Github-own-DisasterZoneForever/cab20cbc-3a96-4f07-9f5d-9faab85a84f7/scratchpad/atlasloot/src",
  "atlasloot_names": {
-  "raid/MoltenCore2": null,
-  "raid/Onyxia2": null,
-  "raid/BlackwingLair": null,
-  "raid/Zul'Gurub": null,
-  "raid/TheRuinsofAhnQiraj": null,
-  "raid/TheTempleofAhnQiraj": null,
-  "raid/Naxxramas": null,
-  "raid/WorldBosses2": "World Bosses",
-  "dungeon/Ragefire": null,
-  "dungeon/WailingCaverns": null,
-  "dungeon/TheDeadmines": null,
-  "dungeon/ShadowfangKeep": null,
-  "dungeon/TheStockade": null,
-  "dungeon/BlackfathomDeeps2": null,
-  "dungeon/Gnomeregan2": null,
-  "dungeon/RazorfenKraul": null,
-  "dungeon/ScarletMonasteryGraveyard": "Scarlet Monastery - Graveyard",
-  "dungeon/ScarletMonasteryLibrary": "Scarlet Monastery - Library",
-  "dungeon/ScarletMonasteryArmory": "Scarlet Monastery - Armory",
-  "dungeon/ScarletMonasteryCathedral": "Scarlet Monastery - Cathedral",
-  "dungeon/RazorfenDowns": null,
-  "dungeon/Uldaman": null,
-  "dungeon/Zul'Farrak": null,
-  "dungeon/Maraudon": null,
-  "dungeon/TheTempleOfAtal'Hakkar2": null,
-  "dungeon/BlackrockDepths": null,
-  "dungeon/LowerBlackrockSpire": "Lower Blackrock Spire",
-  "dungeon/UpperBlackrockSpire": "Upper Blackrock Spire",
-  "dungeon/DireMaulEast": "Dire Maul East",
-  "dungeon/DireMaulWest": "Dire Maul West",
-  "dungeon/DireMaulNorth": "Dire Maul North",
-  "dungeon/Scholomance": null,
-  "dungeon/Stratholme": null,
   "pvp/AlteracValley": null,
   "pvp/WarsongGulch": null,
   "pvp/ArathiBasin": null,
@@ -295,11 +258,6 @@
    "reason": "Recipe.lua spell is not a craft in Profession.lua (fishing lure / book, ...)"
   },
   {
-   "id": 9214,
-   "name": "Grimoire of Inferno",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
    "id": 10507,
    "name": "Solid Dynamite",
    "spell": 12419,
@@ -402,31 +360,6 @@
    "reason": "Recipe.lua spell is not a craft in Profession.lua (fishing lure / book, ...)"
   },
   {
-   "id": 11732,
-   "name": "Libram of Rumination",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 11733,
-   "name": "Libram of Constitution",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 11734,
-   "name": "Libram of Tenacity",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 11736,
-   "name": "Libram of Resilience",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 11737,
-   "name": "Libram of Voracity",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
    "id": 12645,
    "name": "Thorium Shield Spike",
    "spell": 16623,
@@ -505,30 +438,10 @@
    "reason": "Recipe.lua spell is not a craft in Profession.lua (fishing lure / book, ...)"
   },
   {
-   "id": 16665,
-   "name": "Tome of Tranquilizing Shot",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
    "id": 18232,
    "name": "Field Repair Bot 74A",
    "spell": 22700,
    "reason": "Recipe.lua spell is not a craft in Profession.lua (fishing lure / book, ...)"
-  },
-  {
-   "id": 18332,
-   "name": "Libram of Rapidity",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 18333,
-   "name": "Libram of Focus",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 18334,
-   "name": "Libram of Protection",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
   },
   {
    "id": 18587,
@@ -667,1688 +580,231 @@
    "name": "Highlander's Silk Bandage",
    "spell": 24412,
    "reason": "Recipe.lua spell is not a craft in Profession.lua (fishing lure / book, ...)"
-  },
-  {
-   "id": 21214,
-   "name": "Tome of Frostbolt XI",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 21279,
-   "name": "Tome of Fireball XII",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 21280,
-   "name": "Tome of Arcane Missiles VIII",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 21281,
-   "name": "Grimoire of Shadow Bolt X",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 21282,
-   "name": "Grimoire of Immolate VIII",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 21283,
-   "name": "Grimoire of Corruption VII",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 21284,
-   "name": "Codex of Greater Heal V",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 21285,
-   "name": "Codex of Renew X",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 21287,
-   "name": "Codex of Prayer of Healing V",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 21288,
-   "name": "Libram: Blessing of Wisdom VI",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 21289,
-   "name": "Libram: Blessing of Might VII",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 21290,
-   "name": "Libram: Holy Light IX",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 21291,
-   "name": "Tablet of Healing Wave X",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 21292,
-   "name": "Tablet of Strength of Earth Totem V",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 21293,
-   "name": "Tablet of Grace of Air Totem III",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 21294,
-   "name": "Book of Healing Touch XI",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 21295,
-   "name": "Book of Starfire VII",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 21296,
-   "name": "Book of Rejuvenation XI",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 21297,
-   "name": "Manual of Heroic Strike IX",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 21298,
-   "name": "Manual of Battle Shout VII",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 21299,
-   "name": "Manual of Revenge VI",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 21300,
-   "name": "Handbook of Backstab IX",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 21302,
-   "name": "Handbook of Deadly Poison V",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 21303,
-   "name": "Handbook of Feint V",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 21304,
-   "name": "Guide: Multi-Shot V",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 21306,
-   "name": "Guide: Serpent Sting IX",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 21307,
-   "name": "Guide: Aspect of the Hawk VII",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 22739,
-   "name": "Tome of Polymorph: Turtle",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 22897,
-   "name": "Tome of Conjure Food VII",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 23320,
-   "name": "Tablet of Flame Shock VI",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 24101,
-   "name": "Book of Ferocious Bite V",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
-  },
-  {
-   "id": 24102,
-   "name": "Manual of Eviscerate IX",
-   "reason": "not in Recipe.lua (CLASSIC/BCC)"
   }
  ],
- "output": "C:\\Users\\emilo\\CDLoot-dev\\addon\\DisasterZone\\Data\\AtlasClassic.lua",
- "bytes": 510633,
+ "output": "/home/jim/Github/own/DisasterZoneForever/addon/DisasterZone/Data/AtlasClassic.lua",
+ "bytes": 142055,
  "validation_errors": [],
  "counts": {
-  "c_raids sources": 8,
-  "c_raids items": 1335,
-  "c_dungeons sources": 25,
-  "c_dungeons items": 1870,
   "c_crafting sources": 12,
-  "c_crafting items": 1310,
+  "c_crafting items": 2109,
   "c_reputation sources": 9,
-  "c_reputation items": 155,
+  "c_reputation items": 139,
   "c_pvp sources": 7,
   "c_pvp items": 462,
   "c_events sources": 6,
-  "c_events items": 111,
-  "c_sets sources": 11,
-  "c_sets items": 952
+  "c_events items": 109,
+  "c_sets sources": 1,
+  "c_sets items": 192
  },
- "names_written": 4443,
+ "names_written": 134,
  "name_sources": {
-  "Questie TBC item DB": 4316,
-  "crafting row comment": 127
+  "crafting row comment": 134
  },
  "ids_without_names_dropped": [
   {
-   "id": 228466,
-   "where": "c_dungeons/DireMaulEast/Books"
+   "id": 22762,
+   "where": "c_crafting/Blacksmithing/ArmorChestPlate"
   },
   {
-   "id": 228464,
-   "where": "c_dungeons/DireMaulEast/Books"
+   "id": 22763,
+   "where": "c_crafting/Blacksmithing/ArmorHandPlate"
   },
   {
-   "id": 228467,
-   "where": "c_dungeons/DireMaulEast/Books"
+   "id": 22764,
+   "where": "c_crafting/Blacksmithing/ArmorWaistPlate"
   },
   {
-   "id": 228465,
-   "where": "c_dungeons/DireMaulEast/Books"
+   "id": 11290,
+   "where": "c_crafting/Enchanting/Wands"
   },
   {
-   "id": 210708,
-   "where": "c_crafting/Alchemy/SoDPhase18"
+   "id": -1248458,
+   "where": "c_crafting/Enchanting/ForeverEnchanting175"
   },
   {
-   "id": 213372,
-   "where": "c_crafting/Alchemy/SoDPhase18"
+   "id": -1248459,
+   "where": "c_crafting/Enchanting/ForeverEnchanting76150"
   },
   {
-   "id": 215162,
-   "where": "c_crafting/Alchemy/SoDPhase18"
+   "id": -1248460,
+   "where": "c_crafting/Enchanting/ForeverEnchanting76150"
   },
   {
-   "id": 217398,
-   "where": "c_crafting/Alchemy/SoDPhase18"
+   "id": -1248757,
+   "where": "c_crafting/Enchanting/ForeverEnchanting76150"
   },
   {
-   "id": 222952,
-   "where": "c_crafting/Alchemy/SoDPhase18"
+   "id": -1248760,
+   "where": "c_crafting/Enchanting/ForeverEnchanting76150"
   },
   {
-   "id": 221024,
-   "where": "c_crafting/Alchemy/SoDPhase18"
+   "id": -1248805,
+   "where": "c_crafting/Enchanting/ForeverEnchanting76150"
   },
   {
-   "id": 221313,
-   "where": "c_crafting/Alchemy/SoDPhase18"
+   "id": -1248497,
+   "where": "c_crafting/Enchanting/ForeverEnchanting151225"
   },
   {
-   "id": 232611,
-   "where": "c_crafting/Alchemy/SoDPhase18"
+   "id": -1248498,
+   "where": "c_crafting/Enchanting/ForeverEnchanting151225"
   },
   {
-   "id": 233977,
-   "where": "c_crafting/Alchemy/SoDPhase18"
+   "id": -1248510,
+   "where": "c_crafting/Enchanting/ForeverEnchanting151225"
   },
   {
-   "id": 233967,
-   "where": "c_crafting/Alchemy/SoDPhase18"
+   "id": -1249059,
+   "where": "c_crafting/Enchanting/ForeverEnchanting151225"
   },
   {
-   "id": 233968,
-   "where": "c_crafting/Alchemy/SoDPhase18"
+   "id": -1249060,
+   "where": "c_crafting/Enchanting/ForeverEnchanting151225"
   },
   {
-   "id": 233969,
-   "where": "c_crafting/Alchemy/SoDPhase18"
+   "id": -1249058,
+   "where": "c_crafting/Enchanting/ForeverEnchanting151225"
   },
   {
-   "id": 233964,
-   "where": "c_crafting/Alchemy/SoDPhase18"
+   "id": -1249057,
+   "where": "c_crafting/Enchanting/ForeverEnchanting151225"
   },
   {
-   "id": 233962,
-   "where": "c_crafting/Alchemy/SoDPhase18"
+   "id": -1249019,
+   "where": "c_crafting/Enchanting/ForeverEnchanting151225"
   },
   {
-   "id": 233965,
-   "where": "c_crafting/Alchemy/SoDPhase18"
+   "id": -1248511,
+   "where": "c_crafting/Enchanting/ForeverEnchanting151225"
   },
   {
-   "id": 233966,
-   "where": "c_crafting/Alchemy/SoDPhase18"
+   "id": -1249071,
+   "where": "c_crafting/Enchanting/ForeverEnchanting151225"
   },
   {
-   "id": 13460,
-   "where": "c_crafting/Alchemy/SoDPhase18"
+   "id": -1248500,
+   "where": "c_crafting/Enchanting/ForeverEnchanting226300"
   },
   {
-   "id": 241650,
-   "where": "c_crafting/Alchemy/SoDPhase18"
+   "id": -1248528,
+   "where": "c_crafting/Enchanting/ForeverEnchanting226300"
   },
   {
-   "id": 238288,
-   "where": "c_crafting/Blacksmithing/SoDPhase8"
+   "id": -1328948,
+   "where": "c_crafting/Enchanting/ForeverEnchanting226300"
   },
   {
-   "id": 238289,
-   "where": "c_crafting/Blacksmithing/SoDPhase8"
+   "id": -1248668,
+   "where": "c_crafting/Enchanting/ForeverEnchanting226300"
   },
   {
-   "id": 238290,
-   "where": "c_crafting/Blacksmithing/SoDPhase8"
+   "id": -1248599,
+   "where": "c_crafting/Enchanting/ForeverEnchanting226300"
   },
   {
-   "id": 238291,
-   "where": "c_crafting/Blacksmithing/SoDPhase8"
+   "id": -1294054,
+   "where": "c_crafting/Enchanting/ForeverEnchanting226300"
   },
   {
-   "id": 238292,
-   "where": "c_crafting/Blacksmithing/SoDPhase8"
+   "id": -1248636,
+   "where": "c_crafting/Enchanting/ForeverEnchanting226300"
   },
   {
-   "id": 238293,
-   "where": "c_crafting/Blacksmithing/SoDPhase8"
+   "id": -1248607,
+   "where": "c_crafting/Enchanting/ForeverEnchanting226300"
   },
   {
-   "id": 238294,
-   "where": "c_crafting/Blacksmithing/SoDPhase8"
+   "id": -1248665,
+   "where": "c_crafting/Enchanting/ForeverEnchanting226300"
   },
   {
-   "id": 238295,
-   "where": "c_crafting/Blacksmithing/SoDPhase8"
+   "id": -1248661,
+   "where": "c_crafting/Enchanting/ForeverEnchanting226300"
   },
   {
-   "id": 234319,
-   "where": "c_crafting/Blacksmithing/SoDPhase6"
+   "id": -1248645,
+   "where": "c_crafting/Enchanting/ForeverEnchanting226300"
   },
   {
-   "id": 234288,
-   "where": "c_crafting/Blacksmithing/SoDPhase6"
+   "id": -1248640,
+   "where": "c_crafting/Enchanting/ForeverEnchanting226300"
   },
   {
-   "id": -1213711,
-   "where": "c_crafting/Blacksmithing/SoDPhase6"
-  },
-  {
-   "id": 234292,
-   "where": "c_crafting/Blacksmithing/SoDPhase6"
-  },
-  {
-   "id": 234321,
-   "where": "c_crafting/Blacksmithing/SoDPhase6"
-  },
-  {
-   "id": 234460,
-   "where": "c_crafting/Blacksmithing/SoDPhase6"
-  },
-  {
-   "id": 233795,
-   "where": "c_crafting/Blacksmithing/SoDPhase6"
-  },
-  {
-   "id": 233793,
-   "where": "c_crafting/Blacksmithing/SoDPhase6"
-  },
-  {
-   "id": 233492,
-   "where": "c_crafting/Blacksmithing/SoDPhase6"
-  },
-  {
-   "id": 234487,
-   "where": "c_crafting/Blacksmithing/SoDPhase6"
-  },
-  {
-   "id": 235040,
-   "where": "c_crafting/Blacksmithing/SoDPhase6"
-  },
-  {
-   "id": 234086,
-   "where": "c_crafting/Blacksmithing/SoDPhase6"
-  },
-  {
-   "id": 234459,
-   "where": "c_crafting/Blacksmithing/SoDPhase6"
-  },
-  {
-   "id": 233490,
-   "where": "c_crafting/Blacksmithing/SoDPhase6"
-  },
-  {
-   "id": 233801,
-   "where": "c_crafting/Blacksmithing/SoDPhase6"
-  },
-  {
-   "id": 233796,
-   "where": "c_crafting/Blacksmithing/SoDPhase6"
-  },
-  {
-   "id": 234428,
-   "where": "c_crafting/Blacksmithing/SoDPhase6"
-  },
-  {
-   "id": 233491,
-   "where": "c_crafting/Blacksmithing/SoDPhase6"
-  },
-  {
-   "id": 233798,
-   "where": "c_crafting/Blacksmithing/SoDPhase6"
-  },
-  {
-   "id": 233797,
-   "where": "c_crafting/Blacksmithing/SoDPhase6"
-  },
-  {
-   "id": 234004,
-   "where": "c_crafting/Blacksmithing/SoDPhase6"
-  },
-  {
-   "id": 227870,
-   "where": "c_crafting/Blacksmithing/SoDPhase4"
-  },
-  {
-   "id": 227872,
-   "where": "c_crafting/Blacksmithing/SoDPhase4"
-  },
-  {
-   "id": 227876,
-   "where": "c_crafting/Blacksmithing/SoDPhase4"
-  },
-  {
-   "id": 227885,
-   "where": "c_crafting/Blacksmithing/SoDPhase4"
-  },
-  {
-   "id": 227871,
-   "where": "c_crafting/Blacksmithing/SoDPhase4"
-  },
-  {
-   "id": 227884,
-   "where": "c_crafting/Blacksmithing/SoDPhase4"
-  },
-  {
-   "id": 227880,
-   "where": "c_crafting/Blacksmithing/SoDPhase4"
-  },
-  {
-   "id": 227881,
-   "where": "c_crafting/Blacksmithing/SoDPhase4"
-  },
-  {
-   "id": 228230,
-   "where": "c_crafting/Blacksmithing/SoDPhase4"
-  },
-  {
-   "id": 227857,
-   "where": "c_crafting/Blacksmithing/SoDPhase4"
-  },
-  {
-   "id": 227887,
-   "where": "c_crafting/Blacksmithing/SoDPhase4"
-  },
-  {
-   "id": 227850,
-   "where": "c_crafting/Blacksmithing/SoDPhase4"
-  },
-  {
-   "id": 227845,
-   "where": "c_crafting/Blacksmithing/SoDPhase4"
-  },
-  {
-   "id": 227684,
-   "where": "c_crafting/Blacksmithing/SoDPhase4"
-  },
-  {
-   "id": 227886,
-   "where": "c_crafting/Blacksmithing/SoDPhase4"
-  },
-  {
-   "id": 228125,
-   "where": "c_crafting/Blacksmithing/SoDPhase4"
-  },
-  {
-   "id": 210794,
-   "where": "c_crafting/Blacksmithing/SoDPhase13"
-  },
-  {
-   "id": 211845,
-   "where": "c_crafting/Blacksmithing/SoDPhase13"
-  },
-  {
-   "id": 210773,
-   "where": "c_crafting/Blacksmithing/SoDPhase13"
-  },
-  {
-   "id": 213376,
-   "where": "c_crafting/Blacksmithing/SoDPhase13"
-  },
-  {
-   "id": 215167,
-   "where": "c_crafting/Blacksmithing/SoDPhase13"
-  },
-  {
-   "id": 215161,
-   "where": "c_crafting/Blacksmithing/SoDPhase13"
-  },
-  {
-   "id": 220738,
-   "where": "c_crafting/Blacksmithing/SoDPhase13"
-  },
-  {
-   "id": 220740,
-   "where": "c_crafting/Blacksmithing/SoDPhase13"
-  },
-  {
-   "id": 220739,
-   "where": "c_crafting/Blacksmithing/SoDPhase13"
-  },
-  {
-   "id": 217275,
-   "where": "c_crafting/Blacksmithing/SoDPhase13"
-  },
-  {
-   "id": 217279,
-   "where": "c_crafting/Blacksmithing/SoDPhase13"
-  },
-  {
-   "id": 217277,
-   "where": "c_crafting/Blacksmithing/SoDPhase13"
-  },
-  {
-   "id": 217273,
-   "where": "c_crafting/Blacksmithing/SoDPhase13"
-  },
-  {
-   "id": 217285,
-   "where": "c_crafting/Blacksmithing/SoDPhase13"
-  },
-  {
-   "id": 217283,
-   "where": "c_crafting/Blacksmithing/SoDPhase13"
-  },
-  {
-   "id": 217281,
-   "where": "c_crafting/Blacksmithing/SoDPhase13"
-  },
-  {
-   "id": -1232172,
-   "where": "c_crafting/Enchanting/SoDPhase8"
-  },
-  {
-   "id": -1231128,
-   "where": "c_crafting/Enchanting/SoDPhase8"
-  },
-  {
-   "id": -1231164,
-   "where": "c_crafting/Enchanting/SoDPhase8"
-  },
-  {
-   "id": -1231139,
-   "where": "c_crafting/Enchanting/SoDPhase8"
-  },
-  {
-   "id": -1219580,
-   "where": "c_crafting/Enchanting/SoDPhase7"
-  },
-  {
-   "id": -1220624,
-   "where": "c_crafting/Enchanting/SoDPhase7"
-  },
-  {
-   "id": -1219587,
-   "where": "c_crafting/Enchanting/SoDPhase7"
-  },
-  {
-   "id": -1219586,
-   "where": "c_crafting/Enchanting/SoDPhase7"
-  },
-  {
-   "id": -1220623,
-   "where": "c_crafting/Enchanting/SoDPhase7"
-  },
-  {
-   "id": -1219577,
-   "where": "c_crafting/Enchanting/SoDPhase7"
-  },
-  {
-   "id": -1219579,
-   "where": "c_crafting/Enchanting/SoDPhase7"
-  },
-  {
-   "id": -1219578,
-   "where": "c_crafting/Enchanting/SoDPhase7"
-  },
-  {
-   "id": -1219581,
-   "where": "c_crafting/Enchanting/SoDPhase7"
-  },
-  {
-   "id": 233990,
-   "where": "c_crafting/Enchanting/SoDPhase6"
-  },
-  {
-   "id": 233991,
-   "where": "c_crafting/Enchanting/SoDPhase6"
-  },
-  {
-   "id": 233992,
-   "where": "c_crafting/Enchanting/SoDPhase6"
-  },
-  {
-   "id": 233993,
-   "where": "c_crafting/Enchanting/SoDPhase6"
-  },
-  {
-   "id": 233994,
-   "where": "c_crafting/Enchanting/SoDPhase6"
-  },
-  {
-   "id": 234000,
-   "where": "c_crafting/Enchanting/SoDPhase6"
-  },
-  {
-   "id": 234001,
-   "where": "c_crafting/Enchanting/SoDPhase6"
-  },
-  {
-   "id": 234002,
-   "where": "c_crafting/Enchanting/SoDPhase6"
-  },
-  {
-   "id": 234477,
-   "where": "c_crafting/Enchanting/SoDPhase6"
-  },
-  {
-   "id": 234476,
-   "where": "c_crafting/Enchanting/SoDPhase6"
-  },
-  {
-   "id": 234475,
-   "where": "c_crafting/Enchanting/SoDPhase6"
-  },
-  {
-   "id": 234479,
-   "where": "c_crafting/Enchanting/SoDPhase6"
-  },
-  {
-   "id": 234480,
-   "where": "c_crafting/Enchanting/SoDPhase6"
-  },
-  {
-   "id": 234478,
-   "where": "c_crafting/Enchanting/SoDPhase6"
-  },
-  {
-   "id": 234469,
-   "where": "c_crafting/Enchanting/SoDPhase6"
-  },
-  {
-   "id": 234474,
-   "where": "c_crafting/Enchanting/SoDPhase6"
-  },
-  {
-   "id": 234468,
-   "where": "c_crafting/Enchanting/SoDPhase6"
-  },
-  {
-   "id": 233996,
-   "where": "c_crafting/Enchanting/SoDPhase6"
-  },
-  {
-   "id": 233995,
-   "where": "c_crafting/Enchanting/SoDPhase6"
-  },
-  {
-   "id": -1213616,
-   "where": "c_crafting/Enchanting/SoDPhase6"
-  },
-  {
-   "id": -1213622,
-   "where": "c_crafting/Enchanting/SoDPhase6"
-  },
-  {
-   "id": -1213626,
-   "where": "c_crafting/Enchanting/SoDPhase6"
-  },
-  {
-   "id": -1217189,
-   "where": "c_crafting/Enchanting/SoDPhase6"
-  },
-  {
-   "id": -1217203,
-   "where": "c_crafting/Enchanting/SoDPhase6"
-  },
-  {
-   "id": 211848,
-   "where": "c_crafting/Enchanting/SoDPhase15"
-  },
-  {
-   "id": 215138,
-   "where": "c_crafting/Enchanting/SoDPhase15"
-  },
-  {
-   "id": 215129,
-   "where": "c_crafting/Enchanting/SoDPhase15"
-  },
-  {
-   "id": 217308,
-   "where": "c_crafting/Enchanting/SoDPhase15"
-  },
-  {
-   "id": 221028,
-   "where": "c_crafting/Enchanting/SoDPhase15"
-  },
-  {
-   "id": 220792,
-   "where": "c_crafting/Enchanting/SoDPhase15"
-  },
-  {
-   "id": 228979,
-   "where": "c_crafting/Enchanting/SoDPhase15"
-  },
-  {
-   "id": 228981,
-   "where": "c_crafting/Enchanting/SoDPhase15"
-  },
-  {
-   "id": 228982,
-   "where": "c_crafting/Enchanting/SoDPhase15"
-  },
-  {
-   "id": 217287,
-   "where": "c_crafting/Enchanting/SoDPhase15"
-  },
-  {
-   "id": 238737,
-   "where": "c_crafting/Engineering/SoDPhase8"
-  },
-  {
-   "id": 238734,
-   "where": "c_crafting/Engineering/SoDPhase8"
-  },
-  {
-   "id": 238735,
-   "where": "c_crafting/Engineering/SoDPhase8"
-  },
-  {
-   "id": 238736,
-   "where": "c_crafting/Engineering/SoDPhase8"
-  },
-  {
-   "id": 237023,
-   "where": "c_crafting/Engineering/SoDPhase8"
-  },
-  {
-   "id": 238781,
-   "where": "c_crafting/Engineering/SoDPhase8"
-  },
-  {
-   "id": 238786,
-   "where": "c_crafting/Engineering/SoDPhase8"
-  },
-  {
-   "id": 238787,
-   "where": "c_crafting/Engineering/SoDPhase8"
-  },
-  {
-   "id": 238788,
-   "where": "c_crafting/Engineering/SoDPhase8"
-  },
-  {
-   "id": 210147,
-   "where": "c_crafting/Engineering/SoDPhase17"
-  },
-  {
-   "id": 213383,
-   "where": "c_crafting/Engineering/SoDPhase17"
-  },
-  {
-   "id": 211427,
-   "where": "c_crafting/Engineering/SoDPhase17"
-  },
-  {
-   "id": 215168,
-   "where": "c_crafting/Engineering/SoDPhase17"
-  },
-  {
-   "id": 215127,
-   "where": "c_crafting/Engineering/SoDPhase17"
-  },
-  {
-   "id": 215115,
-   "where": "c_crafting/Engineering/SoDPhase17"
-  },
-  {
-   "id": 213390,
-   "where": "c_crafting/Engineering/SoDPhase17"
-  },
-  {
-   "id": 221025,
-   "where": "c_crafting/Engineering/SoDPhase17"
-  },
-  {
-   "id": 221027,
-   "where": "c_crafting/Engineering/SoDPhase17"
-  },
-  {
-   "id": 221026,
-   "where": "c_crafting/Engineering/SoDPhase17"
-  },
-  {
-   "id": 227849,
-   "where": "c_crafting/Engineering/SoDPhase17"
-  },
-  {
-   "id": 233984,
-   "where": "c_crafting/Engineering/SoDPhase17"
-  },
-  {
-   "id": 233985,
-   "where": "c_crafting/Engineering/SoDPhase17"
-  },
-  {
-   "id": 233986,
-   "where": "c_crafting/Engineering/SoDPhase17"
-  },
-  {
-   "id": 234005,
-   "where": "c_crafting/Engineering/SoDPhase17"
-  },
-  {
-   "id": 234434,
-   "where": "c_crafting/Engineering/SoDPhase17"
-  },
-  {
-   "id": 233988,
-   "where": "c_crafting/Engineering/SoDPhase17"
-  },
-  {
-   "id": 235529,
-   "where": "c_crafting/Engineering/SoDPhase17"
-  },
-  {
-   "id": 233987,
-   "where": "c_crafting/Engineering/SoDPhase17"
-  },
-  {
-   "id": 236871,
-   "where": "c_crafting/Engineering/SoDPhase17"
-  },
-  {
-   "id": 238264,
-   "where": "c_crafting/Tailoring/SoDPhase8"
-  },
-  {
-   "id": 238265,
-   "where": "c_crafting/Tailoring/SoDPhase8"
-  },
-  {
-   "id": 238266,
-   "where": "c_crafting/Tailoring/SoDPhase8"
-  },
-  {
-   "id": 238267,
-   "where": "c_crafting/Tailoring/SoDPhase8"
-  },
-  {
-   "id": 238268,
-   "where": "c_crafting/Tailoring/SoDPhase8"
-  },
-  {
-   "id": 238269,
-   "where": "c_crafting/Tailoring/SoDPhase8"
-  },
-  {
-   "id": 238270,
-   "where": "c_crafting/Tailoring/SoDPhase8"
-  },
-  {
-   "id": 238271,
-   "where": "c_crafting/Tailoring/SoDPhase8"
-  },
-  {
-   "id": 239148,
-   "where": "c_crafting/Tailoring/SoDPhase8"
-  },
-  {
-   "id": 239147,
-   "where": "c_crafting/Tailoring/SoDPhase8"
-  },
-  {
-   "id": 227860,
-   "where": "c_crafting/Tailoring/SoDPhase46"
-  },
-  {
-   "id": 227861,
-   "where": "c_crafting/Tailoring/SoDPhase46"
-  },
-  {
-   "id": 227863,
-   "where": "c_crafting/Tailoring/SoDPhase46"
-  },
-  {
-   "id": 227864,
-   "where": "c_crafting/Tailoring/SoDPhase46"
-  },
-  {
-   "id": 228476,
-   "where": "c_crafting/Tailoring/SoDPhase46"
-  },
-  {
-   "id": 234009,
-   "where": "c_crafting/Tailoring/SoDPhase46"
-  },
-  {
-   "id": 234312,
-   "where": "c_crafting/Tailoring/SoDPhase46"
-  },
-  {
-   "id": 234315,
-   "where": "c_crafting/Tailoring/SoDPhase46"
-  },
-  {
-   "id": 234317,
-   "where": "c_crafting/Tailoring/SoDPhase46"
-  },
-  {
-   "id": 233826,
-   "where": "c_crafting/Tailoring/SoDPhase46"
-  },
-  {
-   "id": 233833,
-   "where": "c_crafting/Tailoring/SoDPhase46"
-  },
-  {
-   "id": 233837,
-   "where": "c_crafting/Tailoring/SoDPhase46"
-  },
-  {
-   "id": 234485,
-   "where": "c_crafting/Tailoring/SoDPhase46"
-  },
-  {
-   "id": 234484,
-   "where": "c_crafting/Tailoring/SoDPhase46"
-  },
-  {
-   "id": 233958,
-   "where": "c_crafting/Tailoring/SoDPhase46"
-  },
-  {
-   "id": 233959,
-   "where": "c_crafting/Tailoring/SoDPhase46"
-  },
-  {
-   "id": 233960,
-   "where": "c_crafting/Tailoring/SoDPhase46"
-  },
-  {
-   "id": 233956,
-   "where": "c_crafting/Tailoring/SoDPhase46"
-  },
-  {
-   "id": 210795,
-   "where": "c_crafting/Tailoring/SoDPhase13"
-  },
-  {
-   "id": 210781,
-   "where": "c_crafting/Tailoring/SoDPhase13"
-  },
-  {
-   "id": 215366,
-   "where": "c_crafting/Tailoring/SoDPhase13"
-  },
-  {
-   "id": 215365,
-   "where": "c_crafting/Tailoring/SoDPhase13"
-  },
-  {
-   "id": 213379,
-   "where": "c_crafting/Tailoring/SoDPhase13"
-  },
-  {
-   "id": 215111,
-   "where": "c_crafting/Tailoring/SoDPhase13"
-  },
-  {
-   "id": 220749,
-   "where": "c_crafting/Tailoring/SoDPhase13"
-  },
-  {
-   "id": 220751,
-   "where": "c_crafting/Tailoring/SoDPhase13"
-  },
-  {
-   "id": 220750,
-   "where": "c_crafting/Tailoring/SoDPhase13"
-  },
-  {
-   "id": 217259,
-   "where": "c_crafting/Tailoring/SoDPhase13"
-  },
-  {
-   "id": 217261,
-   "where": "c_crafting/Tailoring/SoDPhase13"
-  },
-  {
-   "id": 217247,
-   "where": "c_crafting/Tailoring/SoDPhase13"
-  },
-  {
-   "id": 217246,
-   "where": "c_crafting/Tailoring/SoDPhase13"
-  },
-  {
-   "id": 217253,
-   "where": "c_crafting/Tailoring/SoDPhase13"
-  },
-  {
-   "id": 217255,
-   "where": "c_crafting/Tailoring/SoDPhase13"
-  },
-  {
-   "id": 217245,
-   "where": "c_crafting/Tailoring/SoDPhase13"
-  },
-  {
-   "id": 217250,
-   "where": "c_crafting/Tailoring/SoDPhase13"
-  },
-  {
-   "id": 217248,
-   "where": "c_crafting/Tailoring/SoDPhase13"
-  },
-  {
-   "id": 217256,
-   "where": "c_crafting/Tailoring/SoDPhase13"
-  },
-  {
-   "id": 217257,
-   "where": "c_crafting/Tailoring/SoDPhase13"
-  },
-  {
-   "id": 217252,
-   "where": "c_crafting/Tailoring/SoDPhase13"
-  },
-  {
-   "id": 238272,
-   "where": "c_crafting/Leatherworking/SoDPhase8"
-  },
-  {
-   "id": 238273,
-   "where": "c_crafting/Leatherworking/SoDPhase8"
-  },
-  {
-   "id": 238274,
-   "where": "c_crafting/Leatherworking/SoDPhase8"
-  },
-  {
-   "id": 238275,
-   "where": "c_crafting/Leatherworking/SoDPhase8"
-  },
-  {
-   "id": 238276,
-   "where": "c_crafting/Leatherworking/SoDPhase8"
-  },
-  {
-   "id": 238277,
-   "where": "c_crafting/Leatherworking/SoDPhase8"
-  },
-  {
-   "id": 238278,
-   "where": "c_crafting/Leatherworking/SoDPhase8"
-  },
-  {
-   "id": 238279,
-   "where": "c_crafting/Leatherworking/SoDPhase8"
-  },
-  {
-   "id": 238925,
-   "where": "c_crafting/Leatherworking/SoDPhase8"
-  },
-  {
-   "id": 238280,
-   "where": "c_crafting/Leatherworking/SoDPhase8"
-  },
-  {
-   "id": 238281,
-   "where": "c_crafting/Leatherworking/SoDPhase8"
-  },
-  {
-   "id": 238282,
-   "where": "c_crafting/Leatherworking/SoDPhase8"
-  },
-  {
-   "id": 238283,
-   "where": "c_crafting/Leatherworking/SoDPhase8"
-  },
-  {
-   "id": 238284,
-   "where": "c_crafting/Leatherworking/SoDPhase8"
-  },
-  {
-   "id": 238285,
-   "where": "c_crafting/Leatherworking/SoDPhase8"
-  },
-  {
-   "id": 238286,
-   "where": "c_crafting/Leatherworking/SoDPhase8"
-  },
-  {
-   "id": 238287,
-   "where": "c_crafting/Leatherworking/SoDPhase8"
-  },
-  {
-   "id": 238926,
-   "where": "c_crafting/Leatherworking/SoDPhase8"
-  },
-  {
-   "id": 234294,
-   "where": "c_crafting/Leatherworking/SoDPhase6"
-  },
-  {
-   "id": 234302,
-   "where": "c_crafting/Leatherworking/SoDPhase6"
-  },
-  {
-   "id": 234306,
-   "where": "c_crafting/Leatherworking/SoDPhase6"
-  },
-  {
-   "id": 234296,
-   "where": "c_crafting/Leatherworking/SoDPhase6"
-  },
-  {
-   "id": 234298,
-   "where": "c_crafting/Leatherworking/SoDPhase6"
-  },
-  {
-   "id": 234304,
-   "where": "c_crafting/Leatherworking/SoDPhase6"
-  },
-  {
-   "id": 234310,
-   "where": "c_crafting/Leatherworking/SoDPhase6"
-  },
-  {
-   "id": 234308,
-   "where": "c_crafting/Leatherworking/SoDPhase6"
-  },
-  {
-   "id": 234324,
-   "where": "c_crafting/Leatherworking/SoDPhase6"
-  },
-  {
-   "id": 233804,
-   "where": "c_crafting/Leatherworking/SoDPhase6"
-  },
-  {
-   "id": 233808,
-   "where": "c_crafting/Leatherworking/SoDPhase6"
-  },
-  {
-   "id": 233813,
-   "where": "c_crafting/Leatherworking/SoDPhase6"
-  },
-  {
-   "id": 234482,
-   "where": "c_crafting/Leatherworking/SoDPhase6"
-  },
-  {
-   "id": 233802,
-   "where": "c_crafting/Leatherworking/SoDPhase6"
-  },
-  {
-   "id": 233803,
-   "where": "c_crafting/Leatherworking/SoDPhase6"
-  },
-  {
-   "id": 227882,
-   "where": "c_crafting/Leatherworking/SoDPhase4"
-  },
-  {
-   "id": 227883,
-   "where": "c_crafting/Leatherworking/SoDPhase4"
-  },
-  {
-   "id": 227869,
-   "where": "c_crafting/Leatherworking/SoDPhase4"
-  },
-  {
-   "id": 227873,
-   "where": "c_crafting/Leatherworking/SoDPhase4"
-  },
-  {
-   "id": 227874,
-   "where": "c_crafting/Leatherworking/SoDPhase4"
-  },
-  {
-   "id": 227875,
-   "where": "c_crafting/Leatherworking/SoDPhase4"
-  },
-  {
-   "id": 227877,
-   "where": "c_crafting/Leatherworking/SoDPhase4"
-  },
-  {
-   "id": 227878,
-   "where": "c_crafting/Leatherworking/SoDPhase4"
-  },
-  {
-   "id": 227879,
-   "where": "c_crafting/Leatherworking/SoDPhase4"
-  },
-  {
-   "id": -461754,
-   "where": "c_crafting/Leatherworking/SoDPhase4"
-  },
-  {
-   "id": -461706,
-   "where": "c_crafting/Leatherworking/SoDPhase4"
-  },
-  {
-   "id": 227852,
-   "where": "c_crafting/Leatherworking/SoDPhase4"
-  },
-  {
-   "id": 227854,
-   "where": "c_crafting/Leatherworking/SoDPhase4"
-  },
-  {
-   "id": 227848,
-   "where": "c_crafting/Leatherworking/SoDPhase4"
-  },
-  {
-   "id": 227847,
-   "where": "c_crafting/Leatherworking/SoDPhase4"
-  },
-  {
-   "id": 227866,
-   "where": "c_crafting/Leatherworking/SoDPhase4"
-  },
-  {
-   "id": 227867,
-   "where": "c_crafting/Leatherworking/SoDPhase4"
-  },
-  {
-   "id": 227868,
-   "where": "c_crafting/Leatherworking/SoDPhase4"
-  },
-  {
-   "id": 227853,
-   "where": "c_crafting/Leatherworking/SoDPhase4"
-  },
-  {
-   "id": 227851,
-   "where": "c_crafting/Leatherworking/SoDPhase4"
-  },
-  {
-   "id": 211502,
-   "where": "c_crafting/Leatherworking/SoDPhase13"
-  },
-  {
-   "id": 211423,
-   "where": "c_crafting/Leatherworking/SoDPhase13"
-  },
-  {
-   "id": 213369,
-   "where": "c_crafting/Leatherworking/SoDPhase13"
-  },
-  {
-   "id": 215166,
-   "where": "c_crafting/Leatherworking/SoDPhase13"
-  },
-  {
-   "id": 215114,
-   "where": "c_crafting/Leatherworking/SoDPhase13"
-  },
-  {
-   "id": 215381,
-   "where": "c_crafting/Leatherworking/SoDPhase13"
-  },
-  {
-   "id": 215382,
-   "where": "c_crafting/Leatherworking/SoDPhase13"
-  },
-  {
-   "id": 217265,
-   "where": "c_crafting/Leatherworking/SoDPhase13"
-  },
-  {
-   "id": 217263,
-   "where": "c_crafting/Leatherworking/SoDPhase13"
-  },
-  {
-   "id": 217267,
-   "where": "c_crafting/Leatherworking/SoDPhase13"
-  },
-  {
-   "id": 217268,
-   "where": "c_crafting/Leatherworking/SoDPhase13"
-  },
-  {
-   "id": 217270,
-   "where": "c_crafting/Leatherworking/SoDPhase13"
-  },
-  {
-   "id": 220747,
-   "where": "c_crafting/Leatherworking/SoDPhase13"
-  },
-  {
-   "id": 220742,
-   "where": "c_crafting/Leatherworking/SoDPhase13"
-  },
-  {
-   "id": 220744,
-   "where": "c_crafting/Leatherworking/SoDPhase13"
-  },
-  {
-   "id": 220748,
-   "where": "c_crafting/Leatherworking/SoDPhase13"
-  },
-  {
-   "id": 220745,
-   "where": "c_crafting/Leatherworking/SoDPhase13"
-  },
-  {
-   "id": 220743,
-   "where": "c_crafting/Leatherworking/SoDPhase13"
-  },
-  {
-   "id": 234003,
-   "where": "c_crafting/Mining/Smelting"
-  },
-  {
-   "id": 234012,
-   "where": "c_crafting/Herbalism/Artisan"
-  },
-  {
-   "id": 232436,
-   "where": "c_crafting/Cooking/SoDPhase18"
-  },
-  {
-   "id": 232438,
-   "where": "c_crafting/Cooking/SoDPhase18"
-  },
-  {
-   "id": 238641,
-   "where": "c_crafting/Cooking/SoDPhase18"
-  },
-  {
-   "id": 238642,
-   "where": "c_crafting/Cooking/SoDPhase18"
-  },
-  {
-   "id": 232433,
-   "where": "c_crafting/FirstAid/FirstAid"
+   "id": -435827,
+   "where": "c_crafting/Tailoring/Misc"
   },
   {
    "id": 16082,
    "where": "c_crafting/Fishing/Fishing"
   },
   {
-   "id": 217347,
-   "where": "c_crafting/RoguePoisons/SoD"
+   "id": 6366,
+   "where": "c_crafting/Fishing/FishingPole"
   },
   {
-   "id": 217346,
-   "where": "c_crafting/RoguePoisons/SoD"
-  },
-  {
-   "id": 217345,
-   "where": "c_crafting/RoguePoisons/SoD"
-  },
-  {
-   "id": 226374,
-   "where": "c_crafting/RoguePoisons/SoD"
-  },
-  {
-   "id": 234444,
-   "where": "c_crafting/RoguePoisons/SoD"
-  },
-  {
-   "id": 227888,
-   "where": "c_reputation/ArgentDawn/Revered"
-  },
-  {
-   "id": 227818,
-   "where": "c_reputation/ArgentDawn/Revered"
-  },
-  {
-   "id": 227817,
-   "where": "c_reputation/ArgentDawn/Revered"
-  },
-  {
-   "id": 227859,
-   "where": "c_reputation/ArgentDawn/Revered"
-  },
-  {
-   "id": 227819,
-   "where": "c_reputation/ArgentDawn/Revered"
-  },
-  {
-   "id": 227816,
-   "where": "c_reputation/ArgentDawn/Honored"
-  },
-  {
-   "id": 227815,
-   "where": "c_reputation/ArgentDawn/Honored"
-  },
-  {
-   "id": 227814,
-   "where": "c_reputation/ArgentDawn/Honored"
-  },
-  {
-   "id": 227808,
-   "where": "c_reputation/Timbermaw/Revered"
-  },
-  {
-   "id": 227809,
-   "where": "c_reputation/Timbermaw/Revered"
-  },
-  {
-   "id": 227810,
-   "where": "c_reputation/Timbermaw/Revered"
-  },
-  {
-   "id": 227807,
-   "where": "c_reputation/Timbermaw/Honored"
-  },
-  {
-   "id": 227805,
-   "where": "c_reputation/Timbermaw/Honored"
-  },
-  {
-   "id": 228190,
-   "where": "c_reputation/Timbermaw/Honored"
-  },
-  {
-   "id": 227804,
+   "id": 15754,
    "where": "c_reputation/Timbermaw/Friendly"
   },
   {
-   "id": 227803,
-   "where": "c_reputation/Timbermaw/Friendly"
+   "id": 20382,
+   "where": "c_reputation/CenarionCircle/Exalted"
   },
   {
-   "id": 227862,
-   "where": "c_reputation/Timbermaw/Friendly"
+   "id": 22771,
+   "where": "c_reputation/CenarionCircle/Revered"
   },
   {
-   "id": 227842,
-   "where": "c_reputation/ThoriumBrotherhood/Exalted"
+   "id": 20508,
+   "where": "c_reputation/CenarionCircle/Revered"
   },
   {
-   "id": 227840,
-   "where": "c_reputation/ThoriumBrotherhood/Exalted"
+   "id": 20511,
+   "where": "c_reputation/CenarionCircle/Revered"
   },
   {
-   "id": 228929,
-   "where": "c_reputation/ThoriumBrotherhood/Exalted"
+   "id": 22766,
+   "where": "c_reputation/CenarionCircle/Revered"
   },
   {
-   "id": 228924,
-   "where": "c_reputation/ThoriumBrotherhood/Exalted"
+   "id": 22770,
+   "where": "c_reputation/CenarionCircle/Honored"
   },
   {
-   "id": 228927,
-   "where": "c_reputation/ThoriumBrotherhood/Exalted"
+   "id": 20507,
+   "where": "c_reputation/CenarionCircle/Honored"
   },
   {
-   "id": 228926,
-   "where": "c_reputation/ThoriumBrotherhood/Exalted"
+   "id": 20510,
+   "where": "c_reputation/CenarionCircle/Honored"
   },
   {
-   "id": 228925,
-   "where": "c_reputation/ThoriumBrotherhood/Exalted"
+   "id": 22767,
+   "where": "c_reputation/CenarionCircle/Honored"
   },
   {
-   "id": 228928,
-   "where": "c_reputation/ThoriumBrotherhood/Exalted"
+   "id": 22214,
+   "where": "c_reputation/CenarionCircle/Honored"
   },
   {
-   "id": 227839,
-   "where": "c_reputation/ThoriumBrotherhood/Revered"
+   "id": 22769,
+   "where": "c_reputation/CenarionCircle/Friendly"
   },
   {
-   "id": 227837,
-   "where": "c_reputation/ThoriumBrotherhood/Revered"
+   "id": 20506,
+   "where": "c_reputation/CenarionCircle/Friendly"
   },
   {
-   "id": 227834,
-   "where": "c_reputation/ThoriumBrotherhood/Revered"
+   "id": 20509,
+   "where": "c_reputation/CenarionCircle/Friendly"
   },
   {
-   "id": 227838,
-   "where": "c_reputation/ThoriumBrotherhood/Revered"
+   "id": 22768,
+   "where": "c_reputation/CenarionCircle/Friendly"
   },
   {
-   "id": 227835,
-   "where": "c_reputation/ThoriumBrotherhood/Revered"
-  },
-  {
-   "id": 227836,
-   "where": "c_reputation/ThoriumBrotherhood/Revered"
-  },
-  {
-   "id": 227832,
-   "where": "c_reputation/ThoriumBrotherhood/Revered"
-  },
-  {
-   "id": 227833,
-   "where": "c_reputation/ThoriumBrotherhood/Revered"
-  },
-  {
-   "id": 227830,
-   "where": "c_reputation/ThoriumBrotherhood/Honored"
-  },
-  {
-   "id": 227831,
-   "where": "c_reputation/ThoriumBrotherhood/Honored"
-  },
-  {
-   "id": 227828,
-   "where": "c_reputation/ThoriumBrotherhood/Honored"
-  },
-  {
-   "id": 227827,
-   "where": "c_reputation/ThoriumBrotherhood/Honored"
-  },
-  {
-   "id": 227829,
-   "where": "c_reputation/ThoriumBrotherhood/Honored"
-  },
-  {
-   "id": 227824,
-   "where": "c_reputation/ThoriumBrotherhood/Honored"
-  },
-  {
-   "id": 227826,
-   "where": "c_reputation/ThoriumBrotherhood/Honored"
-  },
-  {
-   "id": 227825,
-   "where": "c_reputation/ThoriumBrotherhood/Honored"
-  },
-  {
-   "id": 227823,
-   "where": "c_reputation/ThoriumBrotherhood/Friendly"
-  },
-  {
-   "id": 227821,
-   "where": "c_reputation/ThoriumBrotherhood/Friendly"
-  },
-  {
-   "id": 227822,
-   "where": "c_reputation/ThoriumBrotherhood/Friendly"
-  },
-  {
-   "id": 227820,
-   "where": "c_reputation/ThoriumBrotherhood/Friendly"
-  },
-  {
-   "id": 234034,
-   "where": "c_reputation/BroodOfNozdormu/Exalted"
-  },
-  {
-   "id": 234202,
-   "where": "c_reputation/BroodOfNozdormu/Exalted"
-  },
-  {
-   "id": 234032,
-   "where": "c_reputation/BroodOfNozdormu/Exalted"
-  },
-  {
-   "id": 234436,
-   "where": "c_reputation/BroodOfNozdormu/Exalted"
-  },
-  {
-   "id": 234035,
-   "where": "c_reputation/BroodOfNozdormu/Exalted"
-  },
-  {
-   "id": 234964,
-   "where": "c_reputation/BroodOfNozdormu/Exalted"
-  },
-  {
-   "id": 234033,
-   "where": "c_reputation/BroodOfNozdormu/Exalted"
-  },
-  {
-   "id": 234030,
-   "where": "c_reputation/BroodOfNozdormu/Revered"
-  },
-  {
-   "id": 234201,
-   "where": "c_reputation/BroodOfNozdormu/Revered"
-  },
-  {
-   "id": 234028,
-   "where": "c_reputation/BroodOfNozdormu/Revered"
-  },
-  {
-   "id": 234437,
-   "where": "c_reputation/BroodOfNozdormu/Revered"
-  },
-  {
-   "id": 234031,
-   "where": "c_reputation/BroodOfNozdormu/Revered"
-  },
-  {
-   "id": 234965,
-   "where": "c_reputation/BroodOfNozdormu/Revered"
-  },
-  {
-   "id": 234029,
-   "where": "c_reputation/BroodOfNozdormu/Revered"
-  },
-  {
-   "id": 234026,
-   "where": "c_reputation/BroodOfNozdormu/Honored"
-  },
-  {
-   "id": 234200,
-   "where": "c_reputation/BroodOfNozdormu/Honored"
-  },
-  {
-   "id": 234024,
-   "where": "c_reputation/BroodOfNozdormu/Honored"
-  },
-  {
-   "id": 234438,
-   "where": "c_reputation/BroodOfNozdormu/Honored"
-  },
-  {
-   "id": 234027,
-   "where": "c_reputation/BroodOfNozdormu/Honored"
-  },
-  {
-   "id": 234966,
-   "where": "c_reputation/BroodOfNozdormu/Honored"
-  },
-  {
-   "id": 234025,
-   "where": "c_reputation/BroodOfNozdormu/Honored"
-  },
-  {
-   "id": 234021,
-   "where": "c_reputation/BroodOfNozdormu/Friendly"
-  },
-  {
-   "id": 234199,
-   "where": "c_reputation/BroodOfNozdormu/Friendly"
-  },
-  {
-   "id": 234020,
-   "where": "c_reputation/BroodOfNozdormu/Friendly"
-  },
-  {
-   "id": 234439,
-   "where": "c_reputation/BroodOfNozdormu/Friendly"
-  },
-  {
-   "id": 234022,
-   "where": "c_reputation/BroodOfNozdormu/Friendly"
-  },
-  {
-   "id": 234967,
-   "where": "c_reputation/BroodOfNozdormu/Friendly"
-  },
-  {
-   "id": 234023,
-   "where": "c_reputation/BroodOfNozdormu/Friendly"
-  },
-  {
-   "id": 234017,
-   "where": "c_reputation/BroodOfNozdormu/Neutral"
-  },
-  {
-   "id": 234198,
-   "where": "c_reputation/BroodOfNozdormu/Neutral"
-  },
-  {
-   "id": 234016,
-   "where": "c_reputation/BroodOfNozdormu/Neutral"
-  },
-  {
-   "id": 234440,
-   "where": "c_reputation/BroodOfNozdormu/Neutral"
-  },
-  {
-   "id": 234018,
-   "where": "c_reputation/BroodOfNozdormu/Neutral"
-  },
-  {
-   "id": 234968,
-   "where": "c_reputation/BroodOfNozdormu/Neutral"
-  },
-  {
-   "id": 234019,
-   "where": "c_reputation/BroodOfNozdormu/Neutral"
-  },
-  {
-   "id": 227915,
-   "where": "c_reputation/HydraxianWaterlords/Exalted"
-  },
-  {
-   "id": 227927,
-   "where": "c_reputation/HydraxianWaterlords/Exalted"
+   "id": 22209,
+   "where": "c_reputation/CenarionCircle/Friendly"
   },
   {
    "id": 22687,
@@ -2359,16 +815,8 @@
    "where": "c_reputation/HydraxianWaterlords/Revered"
   },
   {
-   "id": 22705,
-   "where": "c_reputation/HydraxianWaterlords/Revered"
-  },
-  {
    "id": 22695,
    "where": "c_reputation/HydraxianWaterlords/Revered"
-  },
-  {
-   "id": 227926,
-   "where": "c_reputation/HydraxianWaterlords/Honored"
   },
   {
    "id": 136782,
@@ -2379,141 +827,76 @@
    "where": "c_pvp/AlteracValley/PvPRanks"
   },
   {
-   "id": 7953,
-   "where": "c_sets/World/221"
+   "id": 19028,
+   "where": "c_events/Noblegarden/BrightlyColoredEgg"
+  },
+  {
+   "id": 17712,
+   "where": "c_events/WinterVeil/Misc"
   }
  ],
- "recipes_added": 224,
+ "recipes_added": 0,
  "skipped_counts": {
-  "Season of Discovery list left out": 300,
-  "Season of Discovery page left out": 1,
-  "duplicate within page": 21,
-  "empty page dropped": 4,
-  "icon / header / marker string row": 259,
+  "craft spell not in Profession.lua - listed as a spell": 1,
+  "duplicate within page": 4,
+  "icon / header / marker string row": 126,
   "row without an id": 196,
-  "same created item twice on a page - second craft listed as its spell": 5,
+  "same created item twice on a page - second craft listed as its spell": 2,
   "secondary id in row ignored (kept the main id)": 21,
-  "set row without a known set id": 33,
-  "set sub-table (not handled here)": 2,
-  "version-gated row (AtlasLoot:GameVersion_* call, Wrath-only)": 1,
-  "version-gated sub-table (AtlasLoot:GameVersion_* call, Wrath-only)": 6
+  "set of a raid Forever does not have": 4,
+  "set row without a known set id": 30
  },
  "skipped": {
-  "Season of Discovery list left out": [
-   "raid/MoltenCore2/Lucifron [SOD_DIFF]",
-   "raid/MoltenCore2/Magmadar [SOD_DIFF]",
-   "raid/MoltenCore2/Gehennas [SOD_DIFF]",
-   "raid/MoltenCore2/Garr [SOD_DIFF]",
-   "raid/MoltenCore2/Shazzrah [SOD_DIFF]",
-   "raid/MoltenCore2/Baron Geddon [SOD_DIFF]",
-   "raid/MoltenCore2/Golemagg the Incinerator [SOD_DIFF]",
-   "raid/MoltenCore2/Sulfuron Harbinger [SOD_DIFF]",
-   "raid/MoltenCore2/Majordomo Executus [SOD_DIFF]",
-   "raid/MoltenCore2/Ragnaros [SOD_DIFF]",
-   "raid/MoltenCore2/The Molten Core [SOD_DIFF]",
-   "raid/MoltenCore2/Trash [SOD_DIFF]",
-   "raid/MoltenCore2/All bosses [SOD_DIFF]",
-   "raid/Onyxia2/Onyxia [SOD_DIFF]",
-   "raid/BlackwingLair/Razorgore the Untamed [SOD_DIFF]",
-   "raid/BlackwingLair/Vaelastrasz the Corrupt [SOD_DIFF]",
-   "raid/BlackwingLair/Broodlord Lashlayer [SOD_DIFF]",
-   "raid/BlackwingLair/Firemaw [SOD_DIFF]",
-   "raid/BlackwingLair/Ebonroc [SOD_DIFF]",
-   "raid/BlackwingLair/Flamegor [SOD_DIFF]",
-   "raid/BlackwingLair/Chromaggus [SOD_DIFF]",
-   "raid/BlackwingLair/Nefarian [SOD_DIFF]",
-   "raid/BlackwingLair/Tier 2 Tokens [SOD_DIFF]",
-   "raid/BlackwingLair/Trash [SOD_DIFF]",
-   "raid/Zul'Gurub/High Priestess Jeklik [SOD_DIFF]",
-   "raid/Zul'Gurub/High Priest Venoxis [SOD_DIFF]",
-   "raid/Zul'Gurub/High Priestess Mar'li [SOD_DIFF]",
-   "raid/Zul'Gurub/Bloodlord Mandokir [SOD_DIFF]",
-   "raid/Zul'Gurub/Gri'lek [SOD_DIFF]",
-   "raid/Zul'Gurub/Hazza'rah [SOD_DIFF]",
-   "raid/Zul'Gurub/Renataki [SOD_DIFF]",
-   "raid/Zul'Gurub/Wushoolay [SOD_DIFF]",
-   "raid/Zul'Gurub/Gahz'ranka [SOD_DIFF]",
-   "raid/Zul'Gurub/High Priest Thekal [SOD_DIFF]",
-   "raid/Zul'Gurub/High Priestess Arlokk [SOD_DIFF]",
-   "raid/Zul'Gurub/Jin'do the Hexxer [SOD_DIFF]",
-   "raid/Zul'Gurub/Hakkar [SOD_DIFF]",
-   "raid/Zul'Gurub/High Priest Shared loot [SOD_DIFF]",
-   "raid/Zul'Gurub/Trash [SOD_DIFF]",
-   "raid/Zul'Gurub/Enchants [SOD_DIFF]"
-  ],
-  "Season of Discovery page left out": [
-   "raid/WorldBosses/PrinceThunderaan"
+  "craft spell not in Profession.lua - listed as a spell": [
+   "crafting/Tailoring/Misc [NORMAL_DIFF] pos 16 435827 Hyperconductive Arcano-Filament"
   ],
   "duplicate within page": [
-   "dungeon/TheTempleOfAtal'Hakkar2/Dreamscythe and Weaver [NORMAL_DIFF] 12465",
-   "dungeon/TheTempleOfAtal'Hakkar2/Dreamscythe and Weaver [NORMAL_DIFF] 12466",
-   "dungeon/TheTempleOfAtal'Hakkar2/Dreamscythe and Weaver [NORMAL_DIFF] 12464",
-   "dungeon/TheTempleOfAtal'Hakkar2/Dreamscythe and Weaver [NORMAL_DIFF] 10797",
-   "dungeon/TheTempleOfAtal'Hakkar2/Dreamscythe and Weaver [NORMAL_DIFF] 12463",
-   "dungeon/TheTempleOfAtal'Hakkar2/Dreamscythe and Weaver [NORMAL_DIFF] 12243",
-   "dungeon/TheTempleOfAtal'Hakkar2/Dreamscythe and Weaver [NORMAL_DIFF] 10795",
-   "dungeon/TheTempleOfAtal'Hakkar2/Dreamscythe and Weaver [NORMAL_DIFF] 10796",
-   "dungeon/TheTempleOfAtal'Hakkar2/Morphaz and Hazzas [NORMAL_DIFF] 12465",
-   "dungeon/TheTempleOfAtal'Hakkar2/Morphaz and Hazzas [NORMAL_DIFF] 12466",
-   "dungeon/TheTempleOfAtal'Hakkar2/Morphaz and Hazzas [NORMAL_DIFF] 12464",
-   "dungeon/TheTempleOfAtal'Hakkar2/Morphaz and Hazzas [NORMAL_DIFF] 10797",
-   "dungeon/TheTempleOfAtal'Hakkar2/Morphaz and Hazzas [NORMAL_DIFF] 12463",
-   "dungeon/TheTempleOfAtal'Hakkar2/Morphaz and Hazzas [NORMAL_DIFF] 12243",
-   "dungeon/TheTempleOfAtal'Hakkar2/Morphaz and Hazzas [NORMAL_DIFF] 10795",
-   "dungeon/TheTempleOfAtal'Hakkar2/Morphaz and Hazzas [NORMAL_DIFF] 10796",
-   "dungeon/Scholomance/Instructor Malicia [NORMAL_DIFF] 18684",
    "reputation/ArgentDawn/Exalted [NORMAL_DIFF] 22523",
    "reputation/ArgentDawn/Revered [NORMAL_DIFF] 22523",
    "reputation/ArgentDawn/Honored [NORMAL_DIFF] 22523",
    "reputation/ArgentDawn/Friendly [NORMAL_DIFF] 22523"
   ],
-  "empty page dropped": [
-   "dungeon/BlackfathomDeeps2/Lorgus Jett [NORMAL_DIFF]",
-   "dungeon/Gnomeregan2/The Mechanical Menagerie [NORMAL_DIFF]",
-   "dungeon/TheTempleOfAtal'Hakkar2/Festering Rotslime [NORMAL_DIFF]",
-   "dungeon/TheTempleOfAtal'Hakkar2/Atal'ai Defenders [NORMAL_DIFF]"
-  ],
   "icon / header / marker string row": [
-   "raid/TheRuinsofAhnQiraj/General Rajaxx [NORMAL_DIFF] pos 9 INV_Box_01",
-   "raid/TheTempleofAhnQiraj/Twin Emperors [NORMAL_DIFF] pos 1 INV_Box_01",
-   "raid/TheTempleofAhnQiraj/Twin Emperors [NORMAL_DIFF] pos 16 INV_Box_01",
-   "dungeon/TheDeadmines/Keys [NORMAL_DIFF] pos 1 INV_Box_01",
-   "dungeon/TheDeadmines/Keys [NORMAL_DIFF] pos 16 INV_Box_01",
-   "dungeon/BlackfathomDeeps2/Lorgus Jett [NORMAL_DIFF] pos 1 INV_Box_01",
-   "dungeon/Gnomeregan2/The Mechanical Menagerie [NORMAL_DIFF] pos 1 INV_Box_01",
-   "dungeon/ScarletMonasteryGraveyard/Keys [NORMAL_DIFF] pos 1 INV_Box_01",
-   "dungeon/ScarletMonasteryGraveyard/Keys [NORMAL_DIFF] pos 16 INV_Box_01",
-   "dungeon/ScarletMonasteryLibrary/Keys [NORMAL_DIFF] pos 1 INV_Box_01",
-   "dungeon/ScarletMonasteryLibrary/Keys [NORMAL_DIFF] pos 16 INV_Box_01",
-   "dungeon/ScarletMonasteryArmory/Keys [NORMAL_DIFF] pos 1 INV_Box_01",
-   "dungeon/ScarletMonasteryArmory/Keys [NORMAL_DIFF] pos 16 INV_Box_01",
-   "dungeon/ScarletMonasteryCathedral/Keys [NORMAL_DIFF] pos 1 INV_Box_01",
-   "dungeon/ScarletMonasteryCathedral/Keys [NORMAL_DIFF] pos 16 INV_Box_01",
-   "dungeon/TheTempleOfAtal'Hakkar2/Festering Rotslime [NORMAL_DIFF] pos 1 INV_Box_01",
-   "dungeon/TheTempleOfAtal'Hakkar2/Atal'ai Defenders [NORMAL_DIFF] pos 1 INV_Box_01",
-   "dungeon/TheTempleOfAtal'Hakkar2/Dreamscythe and Weaver [NORMAL_DIFF] pos 1 INV_Box_01",
-   "dungeon/TheTempleOfAtal'Hakkar2/Dreamscythe and Weaver [NORMAL_DIFF] pos 16 INV_Box_01",
-   "dungeon/TheTempleOfAtal'Hakkar2/Jammal'an and Ogom [NORMAL_DIFF] pos 1 INV_Box_01",
-   "dungeon/TheTempleOfAtal'Hakkar2/Jammal'an and Ogom [NORMAL_DIFF] pos 6 INV_Box_01",
-   "dungeon/TheTempleOfAtal'Hakkar2/Morphaz and Hazzas [NORMAL_DIFF] pos 1 INV_Box_01",
-   "dungeon/TheTempleOfAtal'Hakkar2/Morphaz and Hazzas [NORMAL_DIFF] pos 16 INV_Box_01",
-   "dungeon/BlackrockDepths/Dark Coffer [NORMAL_DIFF] pos 1 INV_Box_01",
-   "dungeon/BlackrockDepths/Dark Coffer [NORMAL_DIFF] pos 5 INV_Box_01",
-   "dungeon/BlackrockDepths/Dark Coffer [NORMAL_DIFF] pos 12 INV_Box_01",
-   "dungeon/BlackrockDepths/Dark Coffer [NORMAL_DIFF] pos 16 INV_Box_01",
-   "dungeon/BlackrockDepths/Guzzler [NORMAL_DIFF] pos 1 INV_Box_01",
-   "dungeon/BlackrockDepths/Guzzler [NORMAL_DIFF] pos 7 INV_Box_01",
-   "dungeon/BlackrockDepths/Guzzler [NORMAL_DIFF] pos 16 INV_Box_01",
-   "dungeon/BlackrockDepths/Guzzler [NORMAL_DIFF] pos 22 INV_Box_01",
-   "dungeon/UpperBlackrockSpire/Goraluk Anvilcrack [NORMAL_DIFF] pos 11 INV_Box_01",
-   "dungeon/DireMaulEast/Books [NORMAL_DIFF] pos 16 INV_Box_01",
-   "dungeon/DireMaulEast/Keys [NORMAL_DIFF] pos 1 INV_Box_01",
-   "dungeon/DireMaulEast/Keys [NORMAL_DIFF] pos 16 INV_Box_01",
-   "dungeon/DireMaulWest/Books [NORMAL_DIFF] pos 16 INV_Box_01",
-   "dungeon/DireMaulWest/Keys [NORMAL_DIFF] pos 1 INV_Box_01",
-   "dungeon/DireMaulWest/Keys [NORMAL_DIFF] pos 16 INV_Box_01",
-   "dungeon/DireMaulNorth/Stomper Kreeg [NORMAL_DIFF] pos 16 INV_Box_01",
-   "dungeon/DireMaulNorth/Guard Fengus [NORMAL_DIFF] pos 16 INV_Box_01"
+   "crafting/Blacksmithing/Weapons - Axes [NORMAL_DIFF] pos 1 INV_sword_04",
+   "crafting/Blacksmithing/Weapons - Axes [NORMAL_DIFF] pos 16 INV_sword_04",
+   "crafting/Blacksmithing/Weapons - Maces [NORMAL_DIFF] pos 1 INV_sword_04",
+   "crafting/Blacksmithing/Weapons - Maces [NORMAL_DIFF] pos 16 INV_sword_04",
+   "crafting/Blacksmithing/Weapons - Swords [NORMAL_DIFF] pos 1 INV_sword_04",
+   "crafting/Blacksmithing/Weapons - Swords [NORMAL_DIFF] pos 16 INV_sword_06",
+   "reputation/ArgentDawn/Exalted [NORMAL_DIFF] pos 1 f529rep8",
+   "reputation/ArgentDawn/Revered [NORMAL_DIFF] pos 1 f529rep7",
+   "reputation/ArgentDawn/Honored [NORMAL_DIFF] pos 1 f529rep6",
+   "reputation/ArgentDawn/Friendly [NORMAL_DIFF] pos 1 f529rep5",
+   "reputation/Timbermaw/Exalted [NORMAL_DIFF] pos 1 f576rep8",
+   "reputation/Timbermaw/Revered [NORMAL_DIFF] pos 1 f576rep7",
+   "reputation/Timbermaw/Honored [NORMAL_DIFF] pos 1 f576rep6",
+   "reputation/Timbermaw/Friendly [NORMAL_DIFF] pos 1 f576rep5",
+   "reputation/ThoriumBrotherhood/Exalted [NORMAL_DIFF] pos 1 f59rep8",
+   "reputation/ThoriumBrotherhood/Revered [NORMAL_DIFF] pos 1 f59rep7",
+   "reputation/ThoriumBrotherhood/Honored [NORMAL_DIFF] pos 1 f59rep6",
+   "reputation/ThoriumBrotherhood/Friendly [NORMAL_DIFF] pos 1 f59rep5",
+   "reputation/CenarionCircle/Exalted [NORMAL_DIFF] pos 1 f609rep8",
+   "reputation/CenarionCircle/Revered [NORMAL_DIFF] pos 1 f609rep7",
+   "reputation/CenarionCircle/Honored [NORMAL_DIFF] pos 1 f609rep6",
+   "reputation/CenarionCircle/Friendly [NORMAL_DIFF] pos 1 f609rep5",
+   "reputation/ZandalarTribe/Exalted [NORMAL_DIFF] pos 1 f270rep8",
+   "reputation/ZandalarTribe/Revered [NORMAL_DIFF] pos 1 f270rep7",
+   "reputation/ZandalarTribe/Honored [NORMAL_DIFF] pos 1 f270rep6",
+   "reputation/ZandalarTribe/Friendly [NORMAL_DIFF] pos 1 f270rep5",
+   "reputation/BroodOfNozdormu/Exalted [NORMAL_DIFF] pos 1 f910rep8",
+   "reputation/BroodOfNozdormu/Revered [NORMAL_DIFF] pos 1 f910rep7",
+   "reputation/BroodOfNozdormu/Honored [NORMAL_DIFF] pos 1 f910rep6",
+   "reputation/BroodOfNozdormu/Friendly [NORMAL_DIFF] pos 1 f910rep5",
+   "reputation/BroodOfNozdormu/Neutral [NORMAL_DIFF] pos 1 f910rep4",
+   "reputation/HydraxianWaterlords/Revered [NORMAL_DIFF] pos 1 f749rep7",
+   "reputation/HydraxianWaterlords/Honored [NORMAL_DIFF] pos 1 f749rep6",
+   "reputation/BloodsailBuccaneers/Friendly [NORMAL_DIFF] pos 1 f87rep5",
+   "reputation/WintersaberTrainers/Exalted [ALLIANCE_DIFF] pos 1 f589rep8",
+   "pvp/AlteracValley/('index', ('ident', '_G'), ('str', 'FACTION_STANDING_LABEL8')) [ALLIANCE_DIFF] pos 1 f730rep8",
+   "pvp/AlteracValley/('index', ('ident', '_G'), ('str', 'FACTION_STANDING_LABEL8')) [HORDE_DIFF] pos 1 f729rep8",
+   "pvp/AlteracValley/('index', ('ident', '_G'), ('str', 'FACTION_STANDING_LABEL7')) [ALLIANCE_DIFF] pos 1 f730rep7",
+   "pvp/AlteracValley/('index', ('ident', '_G'), ('str', 'FACTION_STANDING_LABEL7')) [HORDE_DIFF] pos 1 f729rep7",
+   "pvp/AlteracValley/('index', ('ident', '_G'), ('str', 'FACTION_STANDING_LABEL6')) [ALLIANCE_DIFF] pos 1 f730rep6"
   ],
   "row without an id": [
    "pvp/AlteracValley/PvP Ranks [NORMAL_DIFF] pos 2",
@@ -2559,21 +942,18 @@
   ],
   "same created item twice on a page - second craft listed as its spell": [
    "crafting/Alchemy/Transmutes [NORMAL_DIFF] 7076 -> -17565",
-   "crafting/Alchemy/Transmutes [NORMAL_DIFF] 7080 -> -17563",
-   "crafting/Blacksmithing/SoD Phase 6 [NORMAL_DIFF] 234288 -> -1213711",
-   "crafting/Leatherworking/SoD Phase 4 [NORMAL_DIFF] 227882 -> -461754",
-   "crafting/Leatherworking/SoD Phase 4 [NORMAL_DIFF] 227883 -> -461706"
+   "crafting/Alchemy/Transmutes [NORMAL_DIFF] 7080 -> -17563"
   ],
   "secondary id in row ignored (kept the main id)": [
    "crafting/Herbalism/Expert [NORMAL_DIFF] pos 2 8831 (+8153)",
    "crafting/Herbalism/Apprentice [NORMAL_DIFF] pos 1 2450 (+2452)",
    "crafting/Herbalism/Apprentice [NORMAL_DIFF] pos 2 785 (+2452)",
-   "reputation/ArgentDawn/Exalted [NORMAL_DIFF] pos 4 22523 (+22524)",
-   "reputation/ArgentDawn/Exalted [NORMAL_DIFF] pos 5 22523 (+22524)",
-   "reputation/ArgentDawn/Revered [NORMAL_DIFF] pos 16 22523 (+22524)",
+   "reputation/ArgentDawn/Exalted [NORMAL_DIFF] pos 17 22523 (+22524)",
+   "reputation/ArgentDawn/Exalted [NORMAL_DIFF] pos 18 22523 (+22524)",
    "reputation/ArgentDawn/Revered [NORMAL_DIFF] pos 17 22523 (+22524)",
-   "reputation/ArgentDawn/Honored [NORMAL_DIFF] pos 9 22523 (+22524)",
-   "reputation/ArgentDawn/Honored [NORMAL_DIFF] pos 10 22523 (+22524)",
+   "reputation/ArgentDawn/Revered [NORMAL_DIFF] pos 18 22523 (+22524)",
+   "reputation/ArgentDawn/Honored [NORMAL_DIFF] pos 17 22523 (+22524)",
+   "reputation/ArgentDawn/Honored [NORMAL_DIFF] pos 18 22523 (+22524)",
    "reputation/ArgentDawn/Friendly [NORMAL_DIFF] pos 17 22523 (+22524)",
    "reputation/ArgentDawn/Friendly [NORMAL_DIFF] pos 18 22523 (+22524)",
    "events/Darkmoon/('call', 'GetFactionInfoByID', [909]) [NORMAL_DIFF] pos 1 19491 (+19182)",
@@ -2587,10 +967,13 @@
    "events/Darkmoon/('call', 'GetFactionInfoByID', [909]) [NORMAL_DIFF] pos 14 19298 (+19182)",
    "events/Darkmoon/('call', 'GetFactionInfoByID', [909]) [NORMAL_DIFF] pos 15 19295 (+19182)"
   ],
+  "set of a raid Forever does not have": [
+   "Tier1",
+   "Tier2",
+   "Tier25",
+   "Tier3"
+  ],
   "set row without a known set id": [
-   "sets/TierSets/('call', 'C_Map_GetAreaInfo', [1977]) Sets pos 24",
-   "sets/TierSets/('call', 'C_Map_GetAreaInfo', [3428]) 20 Sets pos 24",
-   "sets/TierSets/('call', 'C_Map_GetAreaInfo', [3428]) 40 Sets pos 24",
    "sets/ClassSets/PvP Ranks pos 1",
    "sets/ClassSets/PvP Ranks pos 2",
    "sets/ClassSets/PvP Ranks pos 3",
@@ -2621,21 +1004,6 @@
    "sets/ClassSets/PvP Ranks pos 28",
    "sets/ClassSets/PvP Ranks pos 29",
    "sets/ClassSets/PvP Ranks pos 30"
-  ],
-  "set sub-table (not handled here)": [
-   "raid/Zul'Gurub/Zul'Gurub Sets",
-   "raid/Naxxramas/Tier 3 Sets"
-  ],
-  "version-gated row (AtlasLoot:GameVersion_* call, Wrath-only)": [
-   "dungeon/ScarletMonasteryLibrary/Arcanist Doan [NORMAL_DIFF] #5"
-  ],
-  "version-gated sub-table (AtlasLoot:GameVersion_* call, Wrath-only)": [
-   "raid/MoltenCore2#14",
-   "dungeon/ShadowfangKeep#14",
-   "dungeon/ScarletMonasteryGraveyard#8",
-   "dungeon/BlackrockDepths#31",
-   "events/Darkmoon#3",
-   "events/Darkmoon#4"
   ]
  }
 }

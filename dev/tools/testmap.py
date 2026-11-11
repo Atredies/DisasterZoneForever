@@ -86,6 +86,7 @@ SHARDS = {
     "strategy/test_standins_gen.py": 3,     # 17 cases: one ~100 s generator run, the rest ~45 s
     "sync/test_sync_traffic.py": 2,
     "strategy/test_strategy_3d.py": 2,
+    "golive/test_golive_load.py": 2,        # 2 cases of 40 clients, ~60 s each
 }
 
 # Release-only: slow scale suites that call nearly everything, so they would rerun on almost any change. A normal

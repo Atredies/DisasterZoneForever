@@ -1039,7 +1039,9 @@ local function FlushRanks(tries)
 end
 
 local function WatchRanks()
-    ns:RegisterEvent("LEARNED_SPELL_IN_TAB", function(_, spellID)
+    -- (LEARNED_SPELL_IN_TAB on 2.5.x; the retail engine (Forever) calls it LEARNED_SPELL_IN_SKILL_LINE, spellID first
+    -- in both. ns:RegisterEvent says false for an event the client doesn't have.)
+    local function OnLearned(_, spellID)
         local v = ns.DB and ns.DB:GetSetting("actionbars.upgradeRanks")
         if v == false or type(spellID) ~= "number" then return end
         pendingRanks[spellID] = true
@@ -1048,7 +1050,10 @@ local function WatchRanks()
             rankTimer = true
             C_Timer.After(0.5, function() FlushRanks(0) end)
         end
-    end)
+    end
+    if not ns:RegisterEvent("LEARNED_SPELL_IN_TAB", OnLearned) then
+        ns:RegisterEvent("LEARNED_SPELL_IN_SKILL_LINE", OnLearned)
+    end
     ns:RegisterEvent("PLAYER_REGEN_ENABLED", function()
         if Bars.ranksAfterCombat then Bars.ranksAfterCombat = nil; FlushRanks(0) end
     end)

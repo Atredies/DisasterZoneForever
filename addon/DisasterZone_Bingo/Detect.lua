@@ -246,6 +246,8 @@ game = NewGame()
 
 -- A name without any realm (Util.ShortName), nil for no name (the square then shows nobody).
 local function ShortName(name)
+    local C = ns.Compat
+    if C and C.IsSecret and C.IsSecret(name) then return nil end   -- (WoW Forever: a secret name stays unnamed)
     return type(name) == "string" and Util.ShortName(name, true) or nil
 end
 
@@ -258,6 +260,26 @@ end
 
 local function Live()
     return ns.Bingo and ns.Bingo:IsActive() and ns.Bingo:IsHost()
+end
+
+-- WoW Forever: addons get no combat log (ns.Compat:CanUseCombatLog() false). The squares that only the log can fill
+-- are not dealt there (BingoSquares.NEEDS_LOG); deaths are polled instead (Detect:PollDeaths).
+local function NoLog()
+    local C = ns.Compat
+    return C ~= nil and C.CanUseCombatLog ~= nil and not C:CanUseCombatLog()
+end
+
+-- A secret value (WoW Forever: boss-pull chat, health, ...) is never read: the moment is skipped.
+local function IsSecret(v)
+    local C = ns.Compat
+    return C ~= nil and C.IsSecret ~= nil and C.IsSecret(v) == true
+end
+
+-- UnitGUID(unit), or nil when it is secret (never compared or used as a key then).
+local function GUIDOf(unit)
+    local g = UnitGUID(unit)
+    if IsSecret(g) then return nil end
+    return g
 end
 
 local function IsGroup(flags, typeMask)
@@ -282,13 +304,13 @@ local function UnitOfGUID(guid)
     if not guid then return nil end
     if IsInRaid() then
         for i = 1, math.min(GetNumGroupMembers() or 0, 40) do
-            if UnitGUID(RAID_UNITS[i]) == guid then return RAID_UNITS[i] end
+            if GUIDOf(RAID_UNITS[i]) == guid then return RAID_UNITS[i] end
         end
         return nil
     end
-    if UnitGUID("player") == guid then return "player" end
+    if GUIDOf("player") == guid then return "player" end
     for i = 1, 4 do
-        if UnitGUID(PARTY_UNITS[i]) == guid then return PARTY_UNITS[i] end
+        if GUIDOf(PARTY_UNITS[i]) == guid then return PARTY_UNITS[i] end
     end
     return nil
 end
@@ -521,6 +543,29 @@ end
 -- Handlers (public so the test harness can drive them directly)
 ---------------------------------------------------------------------------
 
+-- Without a combat log (WoW Forever) no UNIT_DIED comes: every TICK (and as an encounter ends) the group's dead state
+-- is read and a raider who was alive at the last look and is dead or a ghost now died (OnDeath). The first look of a
+-- game only notes who is dead already. A death is seen up to TICK seconds late, which the death squares' windows
+-- (MASS_DEATH_WINDOW, LATE_DEATH, EARLY_DEATH) allow for.
+function Detect:PollDeaths()
+    local seen = game.dead
+    local first = seen == nil
+    if first then seen = {}; game.dead = seen end
+    for _, u in ipairs(GroupUnits()) do
+        local guid, dead = UnitGUID(u), UnitIsDeadOrGhost(u)
+        if guid and not IsSecret(guid) and not IsSecret(dead) then
+            if dead then
+                if not seen[guid] then
+                    seen[guid] = true
+                    if not first then self:OnDeath(false, guid, UnitShortName(u)) end
+                end
+            else
+                seen[guid] = nil
+            end
+        end
+    end
+end
+
 -- name: the dead raider's (or pet's) name, for the card.
 function Detect:OnDeath(isPet, guid, name)
     if isPet then Hit("pet_death", name) return end
@@ -562,6 +607,7 @@ function Detect:OnEncounterStart(encounterID, encounterName)
 end
 
 function Detect:OnEncounterEnd(encounterID, success, encounterName)
+    if NoLog() and fight then self:PollDeaths() end      -- (a death in the last TICK seconds still counts)
     local f = fight
     fight = nil
     local now = GetTime()
@@ -646,7 +692,7 @@ function Detect:OnConnection(unit, isConnected)
     local name = UnitShortName(unit)
     Hit("dc", name)
     local now, dcs = GetTime(), game.dcs
-    dcs[UnitGUID(unit) or unit] = now
+    dcs[GUIDOf(unit) or unit] = now
     local n = 0
     for k, t in pairs(dcs) do
         if now - t <= BLIZZARD_WINDOW then n = n + 1 else dcs[k] = nil end
@@ -656,21 +702,26 @@ end
 
 -- author: who sent the line (the chat event's second argument).
 function Detect:OnRaidWarning(text, author)
-    if type(text) ~= "string" then return end
+    if type(text) ~= "string" or IsSecret(text) then return end
+    if IsSecret(author) then author = nil end
     local plain = Plain(text)
     local _, upper = plain:gsub("%u", "")
     if upper >= 8 and not plain:find("%l") then Hit("caps_warning", author) end
 end
 
 function Detect:OnRaidChat(text, author)
-    if type(text) ~= "string" or text:find("^%[DisasterZone") or text:find("^%[CDLoot") then return end
+    if type(text) ~= "string" or IsSecret(text) then return end
+    if text:find("^%[DisasterZone") or text:find("^%[CDLoot") then return end
+    if IsSecret(author) then author = nil end
     local s = " " .. Plain(text):lower() .. " "
     if s:find("[^%a]sor+y+[^%a]") or s:find("[^%a]sry[^%a]") or s:find("[^%a]my bad[^%a]") then Hit("sorry", author) end
 end
 
 -- CHAT_MSG_RAID_BOSS_EMOTE: text, the boss (sender), the raider it names (the event's fifth argument).
 function Detect:OnBossEmote(text, sender, target)
-    if not R or type(text) ~= "string" or #R.emote == 0 then return end
+    if not R or type(text) ~= "string" or IsSecret(text) or #R.emote == 0 then return end
+    if IsSecret(sender) then sender = nil end
+    if IsSecret(target) then target = nil end
     local plain = Plain(text)
     local lower = plain:lower()
     local now = GetTime()
@@ -685,10 +736,11 @@ end
 
 -- Every TICK seconds: releases during a fight, and long stretches without any fighting.
 function Detect:OnTick()
+    if NoLog() then self:PollDeaths() end
     local now = GetTime()
     if fight then
         for _, u in ipairs(GroupUnits()) do
-            local guid = UnitGUID(u)
+            local guid = GUIDOf(u)
             if guid and fight.died[guid] and UnitIsGhost(u) then
                 Hit("early_release", UnitShortName(u))
                 break
@@ -929,6 +981,12 @@ function Detect:OnInit()
     end)
     for _, ev in ipairs({ "CHAT_MSG_RAID", "CHAT_MSG_RAID_LEADER", "CHAT_MSG_PARTY", "CHAT_MSG_PARTY_LEADER" }) do
         ns:RegisterEvent(ev, OnRaidChat)
+    end
+    if NoLog() then
+        -- (no combat log: the host going into combat is the "action" that keeps Smoke Break from filling)
+        ns:RegisterEvent("PLAYER_REGEN_DISABLED", function()
+            if Live() then game.lastAction = GetTime() end
+        end)
     end
     C_Timer.NewTicker(TICK, function()
         if Live() then Detect:OnTick() end

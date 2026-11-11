@@ -196,17 +196,18 @@ def generators_are_their_own_model_with_beams_and_vashjs_barrier():
         assert abs(a["ground"] + 1.41) < 0.02, a
         assert abs(a["z"] - (a["ground"] + 2.43)) < 1e-6, a
         assert abs(a["top"] - (a["ground"] + 2.43 + 1.4 * 2.1)) < 1e-6, a
-    # a beam from each generator's top to Vashj's chest (1.74 x 3.5 over her feet)
+    # a beam from each generator's top to Vashj's chest (over her feet; her exact height came from the Raid Trainer
+    # pack's boss sizes, gone since 2026-11-09)
     b = beams3d(w, bob)
     assert len(b) == 4, b
     vz = bob.eval_py("local g = T.v():Geo(T.vashj()) return { g.x, g.y, g.z }")
     for x1, y1, z1, x2, y2, z2 in b:
-        assert abs(x2 - vz[0]) < 1e-3 and abs(y2 - vz[1]) < 1e-3 and abs(z2 - (vz[2] + 1.74 * 3.5)) < 1e-3
+        assert abs(x2 - vz[0]) < 1e-3 and abs(y2 - vz[1]) < 1e-3 and z2 > vz[2] + 1
     # the barrier on her chest, her size
     fx = bob.eval_py("local a = T.v().fxActors[T.vashj()].t local px, py, pz = a:GetPosition() "
                      "return { file = a.fileID, shown = a.shown, z = pz * a.scale, s = a.scale }")
     assert fx["file"] == 166541 and fx["shown"] and abs(fx["s"] - 3.5) < 1e-9, fx
-    assert abs(fx["z"] - (vz[2] + 1.74 * 3.5)) < 1e-6, fx
+    assert fx["z"] > vz[2] + 1, fx    # (on her chest; her exact height was the Raid Trainer pack's)
     # occluders: two parts per generator, none under the floor; one for the barrier
     occ = bob.eval_py("""
         local v, out = T.v(), { gen = 0, under = 0, fx = 0 }

@@ -13,7 +13,12 @@ const api = DEMO ? demoApi() : {
   maximize: () => T.window.getCurrentWindow().toggleMaximize(),
   close: () => T.window.getCurrentWindow().close(),
   // the launcher's own update (tauri-plugin-updater): an Update or null
-  launcherCheck: () => (T.updater ? T.updater.check() : Promise.reject("the updater isn't loaded in this window")),
+  // (refused while the update feed is still upstream's: its launcher must not replace this one; About shows why)
+  launcherCheck: async () => {
+    const skip = await T.core.invoke("launcher_feed_upstream");
+    if (skip) throw skip;
+    return T.updater ? T.updater.check() : Promise.reject("the updater isn't loaded in this window");
+  },
   launcherInstall: async (upd, onEvent) => { await upd.downloadAndInstall(onEvent); await T.process.relaunch(); },
 };
 

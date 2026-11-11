@@ -17,6 +17,9 @@ use twilight_model::channel::message::component::{
 };
 
 /// The guild's picture: members' snapshots merged (merge.rs, kept in merged.json).
+/// Wowhead's WoW Forever item page (its site has a /forever/ section: "<item> - Item - Forever", checked 2026-11-09).
+pub const WOWHEAD_ITEM: &str = "https://www.wowhead.com/forever/item=";
+
 static SNAP: Mutex<Option<Value>> = Mutex::new(None);
 static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
@@ -765,7 +768,7 @@ pub fn bis_text_from(snap: &Value, profiles: &bridge::Profiles, user: &str, who:
         let id = s.get(id_k).and_then(|x| x.as_i64()).filter(|i| *i > 0)?;
         let item = s.get(name_k).and_then(|x| x.as_str()).map(str::to_string).unwrap_or_else(|| format!("Item {id}"));
         let got = if s.get(got_k).and_then(|x| x.as_bool()) == Some(true) { " ✓" } else { "" };
-        Some(format!("[{item}](<https://www.wowhead.com/tbc/item={id}>){got}"))
+        Some(format!("[{item}](<{WOWHEAD_ITEM}{id}>){got}"))
     };
     for s in slots {
         let main = pick(s, "id", "name", "got").unwrap_or_else(|| "—".into());
@@ -790,7 +793,7 @@ mod bis_tests {
         p.insert("9".into(), vec![Char { name: "Lee".into(), class: "WARRIOR".into(), spec: 3, by: String::new() }]);
         let t = bis_text_from(&snap, &p, "9", None, 160);
         assert!(t.starts_with("**Lee** · Protection · Phase 2"), "{t}");
-        assert!(t.contains("**Head**: [Warbringer Greathelm](<https://www.wowhead.com/tbc/item=29011>) ✓ · *alt* [Item 29068]"), "{t}");
+        assert!(t.contains("**Head**: [Warbringer Greathelm](<https://www.wowhead.com/forever/item=29011>) ✓ · *alt* [Item 29068]"), "{t}");
         assert!(t.contains("**Neck**: [Item 28244]"), "{t}");
         assert!(bis_text_from(&snap, &p, "9", Some("rita"), 160).contains("No BiS list for **Rita**"));
         assert!(bis_text_from(&snap, &p, "other", None, 160).contains("Whose list?"));
@@ -851,7 +854,7 @@ pub fn bis_set(user: &str, name: &str, sid: i64, item: &str, who: Option<&str>, 
         "emptied".to_string()
     } else {
         let n = crate::items::name_of(id).unwrap_or_else(|| format!("item {id}"));
-        format!("{} set to [{n}](<https://www.wowhead.com/tbc/item={id}>)", if alt { "alternative" } else { "main pick" })
+        format!("{} set to [{n}](<{WOWHEAD_ITEM}{id}>)", if alt { "alternative" } else { "main pick" })
     };
     let ph = if phase == 0 { "Pre-raid".to_string() } else { format!("phase {phase}") };
     format!(

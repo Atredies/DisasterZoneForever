@@ -221,7 +221,7 @@ local function OnCLEU(_, _, sub, _, src, srcName, _, _, dst, _, _, _, a12, a13, 
             Emit({ k = "taken", amt = amt, spell = swing and "Melee" or spellName, school = swing and "phys" or School(school),
                    icon = swing and MELEE_ICON or (d == 3 and ns.Util.EnvIcon(a12)) or (Icon(spellId, spellName) or MELEE_ICON),
                    resist = (r and r > 0) and r or nil, crit = crit and true or nil,
-                   maxHP = UnitHealthMax and UnitHealthMax("player") or nil })
+                   maxHP = UnitHealthMax and ns.Compat.Plain(UnitHealthMax("player")) or nil })
         end
         return
     end
@@ -252,7 +252,7 @@ local function OnCLEU(_, _, sub, _, src, srcName, _, _, dst, _, _, _, a12, a13, 
             Emit({ k = "heal", amt = eff, spell = spellName, icon = Icon(spellId, spellName),
                    who = self and spellName or ShortName(srcName), whoClass = cls,
                    whoIcon = coords and "Interface\\TargetingFrame\\UI-Classes-Circles" or nil, whoCoords = coords,
-                   crit = crit and true or nil, maxHP = UnitHealthMax and UnitHealthMax("player") or nil })
+                   crit = crit and true or nil, maxHP = UnitHealthMax and ns.Compat.Plain(UnitHealthMax("player")) or nil })
         elseif mine and src == me then
             if eff < (tonumber(Opt("minHeal", 0)) or 0) then return end
             Emit({ k = "out", amt = eff, spell = spellName, icon = Icon(spellId, spellName), school = "heal",
@@ -317,8 +317,8 @@ function CTE:CheckAlerts()
     for name, icon in pairs(reactive) do
         local usable = IsUsableSpell and IsUsableSpell(name)
         local ready = usable and true or false
-        if ready and GetSpellCooldown then
-            local start, dur = GetSpellCooldown(name)
+        if ready then
+            local start, dur = ns.Compat.SpellCooldown(name)     -- (nil while secret on Forever: usable counts)
             if start and start > 0 and dur and start + dur - Now() > 1.6 then ready = false end
         end
         if ready and not wasUsable[name] and fighting then
@@ -331,10 +331,9 @@ end
 function CTE:CheckLow(unit, power)
     if unit ~= "player" or not (Opt("lowHealth", true) and self:IsOn()) then return end
     if not power then
-        local h, m = UnitHealth("player") or 0, UnitHealthMax("player") or 0
-        if m <= 0 then return end
-        local pct = h / m * 100
-        if pct < 35 and not low.hp and InCombat() and h > 0 then
+        local pct = ns.Compat.HealthPct("player")       -- (nil on Forever: health is secret, no low-health warning)
+        if not pct then return end
+        if pct < 35 and not low.hp and InCombat() and pct > 0 then
             low.hp = true
             Emit({ k = "lowhp", pct = floor(pct + 0.5) })
         elseif pct > 50 then
@@ -342,9 +341,8 @@ function CTE:CheckLow(unit, power)
         end
     else
         if UnitPowerType and UnitPowerType("player") ~= 0 then return end
-        local p, m = UnitPower("player", 0) or 0, UnitPowerMax("player", 0) or 0
-        if m <= 0 then return end
-        local pct = p / m * 100
+        local pct = ns.Compat.PowerPct("player", 0)     -- (nil on Forever: power is secret)
+        if not pct then return end
         if pct < 25 and not low.mana and InCombat() then
             low.mana = true
             Emit({ k = "lowhp", pct = floor(pct + 0.5), mana = true })

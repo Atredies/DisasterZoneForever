@@ -1030,7 +1030,8 @@ local function ShowDemoView(d)
     elseif key == "reserve" or key == "pull" then
         RUI:Show(view == "lead" and "list" or "pick")
     elseif key == "mine" then
-        st.boss = "Vashj"
+        -- (the demo list's raid's last boss: Core/Reserves.lua Open, Forever Hyjal Summit, else Serpentshrine)
+        st.boss = (ns.Compat and ns.Compat.isForever) and "NythusTheDreambound" or "Vashj"
         RUI:Show("pick")
     elseif key == "drop" then
         if view == "lead" then

@@ -2216,7 +2216,6 @@ STATES = [
     # the Codex: the season ladder, the legendaries witnessed, the set with what this character has seen
     ("Games - Bingo codex", opened("games", BINGO_LIVE + BINGO_CODEX + "ns.GamesUI:Select('bingo') "
                                    "ns.BingoUI:SetView('codex')")),
-    ("Games - Raid Trainer", opened("games", "ns.GamesUI:Select('trainer')")),
     ("Games - Azeromon", opened("games", "ns.GamesUI:Select('azeromon')")),
     ("Games - Azeromon title", opened("games", "ns.GamesUI:Select('azeromon') ns.AzeroUI._Focus(true)")),
     ("Games - Azeromon poster Goldshire", azero_poster(1)),
@@ -2230,8 +2229,8 @@ STATES = [
     ("Games - Azeromon poster side", opened("games", "ns.GamesUI:ShowFront('chess') ns.GamesUI:PauseAnim(true)")),
     # the dots' runner (GamesUI RunDots): stretched front end first on its way to the next game, gathering there, and
     # from the last game back along the row to the first
-    ("Games - dots running", opened("games", HUB_RUN % ("'trainer'", "i + 1", 0.12))),
-    ("Games - dots gathering", opened("games", HUB_RUN % ("'trainer'", "i + 1", 0.3))),
+    ("Games - dots running", opened("games", HUB_RUN % ("'chess'", "i + 1", 0.12))),
+    ("Games - dots gathering", opened("games", HUB_RUN % ("'chess'", "i + 1", 0.3))),
     ("Games - dots back to the first", opened("games", HUB_RUN % ("#ns.GamesUI.__posters", "i + 1", 0.2))),
     # the overworld on maps with a baked ground (gen_azeromon_ground.py): Goldshire's square, Route 1's meadows
     ("Games - Azeromon world map", azero_at("town", 12, 11, "local g = ns.Azero g.save.visited = {} for id in pairs(ns.AzeroMaps) do g.save.visited[id] = true end ns.AzeroWorld:Open() ns.AzeroUI._Focus(true)")),
@@ -2501,50 +2500,13 @@ STATES = [
     ("Games - Hold the Line naxx cleared", opened("games", "local d = ns.Games:GetData('holdtheline') d.wins, d.runs, d.frozen, d.bank, d.frostRes = 2, 9, 0, 499, 0 d.naxx = { cleared = { arachnid = true, plague = true }, best = { arachnid = 1012, plague = 1044 }, kills = { PALADIN = { n_anub = 1, n_faerlina = 1, n_maexxna = 1, n_noth = 1, n_heigan = 1, n_loatheb = 1, n_razuvious = 1 } } } d.t3 = { PALADIN = { wrist = true, hands = true, waist = true, legs = true }, MAGE = { wrist = true } } ns.GamesUI:Select('holdtheline') ns.HTLUI.Start('PALADIN', { stage = 'military' }) for _ = 1, 30 do ns.HTLUI._Tick(1 / 60) end "
                                          "local r = ns.HTLUI._Run() r.t, r.bossKills, r.frozen, r.kills = 1003, 6, 14, 1840 r.tokens = { { boss = 'n_mograine', slot = 'chest' } } "
                                          "r.over = 'victory' ns.HTLUI._ShowEnd('victory') for _ = 1, 50 do ns.HTLUI._Tick(1 / 60) end")),
-    ("Games - Illidan title", opened("games", BOI_BOARD + "ns.GamesUI:Select('illidan') ns.BoIUI._Focus(true) ns.BoIUI._Draw()")),
-    ("Games - Illidan grave", opened("games", BOI_BOARD + BOI_AUD + "local r = BOI_AUD.start(1) r.mode = 'play' "
-                                     "r.graves = { { f = 1, rx = r.room.x, ry = r.room.y, x = 200, y = 330, who = 'Xiavor', cls = 'MAGE', by = 'Felhunter' } } "
-                                     "r.daily, r.counted = ns.BoIBoard:Today(), true BOI_AUD.run(r, 30)")),
-    ("Games - Illidan room", opened("games", BOI_AUD + "BOI_AUD.room(1, 120)")),
-    ("Games - Illidan Magtheridon", opened("games", BOI_AUD + "BOI_AUD.boss(1, 300)")),
-    ("Games - Illidan Supremus", opened("games", BOI_AUD + "BOI_AUD.boss(2, 200, function(f) f.sw = 2 end)")),
-    ("Games - Illidan Teron", opened("games", BOI_AUD + "BOI_AUD.boss(3, 330, function(f) f.sodT = 1 end)")),
-    ("Games - Illidan Shahraz", opened("games", BOI_AUD + "BOI_AUD.boss(4, 150)")),
-    ("Games - Illidan Illidan", opened("games", BOI_AUD + "BOI_AUD.boss(5, 100, function(f, r) f.hp = f.max * 0.64 "
-                                       "ns.BoI.Step(r, {}) f.eye = 1 end)")),
-    ("Games - Illidan dying", opened("games", BOI_AUD + "BOI_AUD.room(2, 60) local r = ns.BoIUI._Run() r.god = nil "
-                                     "r.hp, r.soul, r.p.inv = 1, 0, 0 ns.BoI.Hurt(r, r.room.foes[1].d) "
-                                     "for _ = 1, 95 do ns.BoI.Step(r, {}) end ns.BoIUI._Focus(false) ns.BoIUI._Draw()")),
-    ("Games - Illidan dead", opened("games", BOI_AUD + "BOI_AUD.room(2, 60) local r = ns.BoIUI._Run() r.god = nil "
-                                    "r.items = { 'eye', 'pws', 'chain' } r.hp, r.soul, r.p.inv = 1, 0, 0 ns.BoI.Hurt(r, r.room.foes[1].d) "
-                                    "for _ = 1, ns.BoI.DYING + 99 do ns.BoI.Step(r, {}) end r.newBest = true "
-                                    "ns.BoIUI._Focus(false) ns.BoIUI._Draw()")),
     # the vault's padlocked portcullis, seen from the room next to it
-    ("Games - Illidan vault door", opened("games", BOI_AUD + "local r = BOI_AUD.start(1) local v "
-                                          "for _, x in ipairs(r.map.list) do if x.type == 'treasure' then v = x end end "
-                                          "local nb = ns.BoI.Neighbours(r.map, v, true)[1] r.room = nb.room r.room.cleared, r.room.foes = true, {} "
-                                          "r.p.x, r.p.y = ns.BoI.CX, ns.BoI.CY BOI_AUD.run(r, 10)")),
     # an enemy bursting (a few frames after its death) with tears splashing round it
     # every kind of stain an enemy leaves, a few seconds old (blood, fel, shadow, embers, bone dust; a boss's big one)
-    ("Games - Illidan stains", opened("games", BOI_AUD + "BOI_AUD.room(1, 30) local r = ns.BoIUI._Run() r.room.foes = {} "
-                                      "r.room.cleared = true r.room.decals = {} local K = { 'brute', 'imp', 'void', 'abyssal', 'dead', 'bat' } "
-                                      "for i, k in ipairs(K) do ns.BoI.Die(r, r.room, { kind = k, x = 130 + (i - 1) * 92, y = 150 + (i % 2) * 70, r = 14, d = {} }) end "
-                                      "ns.BoI.Die(r, r.room, { kind = 'boss', x = 360, y = 330, r = 26, d = {} }) "
-                                      "for _, dc in ipairs(r.room.decals) do dc.t = 240 end r.fx = {} ns.BoIUI._Draw()")),
-    ("Games - Illidan burst", opened("games", BOI_AUD + "BOI_AUD.room(1, 90) local r = ns.BoIUI._Run() "
-                                     "for i = 1, 2 do if r.room.foes[i] then r.room.foes[i].hp = 0 end end "
-                                     "r.room.cleared = true for _ = 1, 7 do ns.BoI.Step(r, { shoot = 'up' }) end ns.BoIUI._Focus(false) r.mode = 'dying' r.dyingT = 999 "
-                                     "r.mode = 'play' ns.BoIUI._Focus(true) ns.BoIUI._Draw()")),
     # the poster in front: the game playing itself, four seconds in
     ("Games - Hold the Line in front", opened("games", "local d = ns.Games:GetData('holdtheline') d.best, d.runs, d.wins, d.kills = 642, 7, 1, 5120 "
                                              "ns.GamesUI:ShowHub() ns.GamesUI:ShowFront('holdtheline') "
                                              "for _, p in ipairs(ns.GamesUI.__posters) do if p.id == 'holdtheline' then for _ = 1, 300 do p.cover:Tick(1 / 60) end end end")),
-    ("Games - Illidan in front", opened("games", "local d = ns.Games:GetData('illidan') d.best, d.runs = 3, 4 "
-                                        "ns.GamesUI:ShowHub() ns.GamesUI:ShowFront('illidan') "
-                                        "for _, p in ipairs(ns.GamesUI.__posters) do if p.id == 'illidan' then for _ = 1, 240 do p.cover:Tick(1 / 60) end end end")),
-    ("Games - Illidan won", opened("games", BOI_AUD + "local r = BOI_AUD.start(5) r.items = { 'eye', 'pws', 'chain', 'glaive', 'mongoose' } "
-                                   "r.mode, r.wonT, r.time, r.kills, r.gold = 'won', 99, 1385 * 60, 212, 14 "
-                                   "ns.BoIUI._Focus(false) ns.BoIUI._Draw()")),
     ("Games - Chess ladder", opened("games", CHESS_GAMES + CHESS_LADDER + "ns.GamesUI:Select('chess') "
                                     "ns.ChessUI:OpenLobby() ns.ChessUI._Tab('ladder')")),
     ("Games - Chess in front", opened("games", CHESS_GAMES + "ns.Chess:Prefs().flat = nil ns.GamesUI:ShowHub() "
@@ -2560,7 +2522,6 @@ STATES = [
     # the world map (M) with Northshire and Goldshire explored; the minimap shows in every world view
     # the Games hub's carousel with each game in front; Bingo live (a game running: a line one square away, the
     # square that just filled glowing)
-    ("Games - Raid Trainer in front", opened("games", "ns.GamesUI:ShowFront('trainer')")),
     ("Games - Azeromon in front", opened("games", "ns.GamesUI:ShowFront('azeromon')")),
     # game packs (dev/docs/GAME_PACKS.md): a game that isn't installed, one from another release, the dialog its
     # poster opens, and a member with no games at all (every poster a stand-in)
@@ -2571,8 +2532,8 @@ STATES = [
     ("Games - how to get it", opened("games", "ns.Games._pretend = { holdtheline = 'missing' } ns.GamesUI:ShowHub() "
                                               "ns.GamesUI:ShowFront('holdtheline') "
                                               "ns.Popup:Show('DISASTERZONE_GAME_PACK', ns.Games:HowToGet('holdtheline'))")),
-    ("Games - no games", opened("games", "ns.Games._pretend = { bingo = 'missing', trainer = 'missing', "
-                                         "azeromon = 'missing', chess = 'missing', illidan = 'missing', "
+    ("Games - no games", opened("games", "ns.Games._pretend = { bingo = 'missing', "
+                                         "azeromon = 'missing', chess = 'missing', "
                                          "holdtheline = 'missing' } ns.GamesUI:ShowHub() ns.GamesUI:ShowFront('azeromon')")),
     # its poster's film of Northshire, a moment into each shot (the audit ticks 0.6 s more after the state)
     ("Games - Bingo live", opened("games", "local d, me, now = ns.Games:GetData('bingo'), ns.Util.PlayerKey(), time() "

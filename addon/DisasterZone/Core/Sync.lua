@@ -249,7 +249,8 @@ local function FirePeersUpdated()
     Util.Debounce("sync-peers", 0.3, function() ns:Fire("PEERS_UPDATED") end)
 end
 
-local function NotePeer(key, v, c)
+-- (iface: the HELLO's interface number, nil when it carried none: Util.VersionComparable)
+local function NotePeer(key, v, c, iface)
     if not peersDB then return end
     local p = peersDB[key]
     if type(p) ~= "table" then
@@ -258,7 +259,8 @@ local function NotePeer(key, v, c)
     end
     if type(v) == "string" and #v <= 24 and not v:find("[%c|]") then
         p.v = v
-        if not newerVersionNoted and Util.CompareVersions(v, ns.version) > 0 then
+        p.fi = type(iface) == "number" and iface or nil
+        if not newerVersionNoted and Util.PeerVersionNewer(v, p.fi) then
             newerVersionNoted = true
             local Boot = ns.Boot
             if Boot and not Boot.isDev and Boot.svFirst ~= false then
@@ -287,10 +289,10 @@ local function OwnHash()
     return rec and type(rec.hash) == "string" and rec.hash or nil
 end
 
-local function MarkSeen(key, v, c)
+local function MarkSeen(key, v, c, iface)
     local wasSeen = sessionSeen[key]
     sessionSeen[key] = true
-    NotePeer(key, v, c)
+    NotePeer(key, v, c, iface)
     FirePeersUpdated()
     if not wasSeen then ns:Fire("SYNC_STATUS") end
 end
@@ -374,7 +376,7 @@ function Sync:GetVersions()
         for key, p in pairs(peersDB) do
             if key ~= me and type(p) == "table" and (not Guild or not Guild:IsReady() or Guild:IsInGuild(key, true)) then
                 out[#out + 1] = {
-                    key = key, v = p.v, lastSeen = p.lastSeen,
+                    key = key, v = p.v, lastSeen = p.lastSeen, fi = p.fi,
                     online = (sessionSeen[key] and Guild and Guild:IsOnline(key, true)) and true or false,
                     c = Guild and Guild:IsCouncil(key, true) or false,
                     incompatible = incompatible[key],
@@ -438,6 +440,8 @@ function Sync:SendHello(force)
         return false
     end
     local msg = { t = "H", r = OwnRev(), v = ns.version, n = sessionNonce }
+    -- a Forever build says so: only its version can be "newer" on another Forever client (Util.VersionComparable)
+    if ns.Compat and ns.Compat.isForever then msg.iface = Util.FOREVER_IFACE end
     msg.cg = OwnCouncilRev()   -- DisasterZone 0.3 (Addendum E §31): my guild council list rev
     if AmCouncil() then
         msg.c = true
@@ -772,7 +776,7 @@ end
 
 local function OnHello(sender, msg, dist)
     if dist ~= "GUILD" then return end
-    MarkSeen(sender, msg.v, msg.c and true or false)
+    MarkSeen(sender, msg.v, msg.c and true or false, msg.iface)
     for _, f in ipairs(helloFields) do
         if f.seen then f.seen(sender, msg[f.field]) end
     end

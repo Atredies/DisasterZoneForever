@@ -1,8 +1,8 @@
-## Interface: 20506
+## Interface: 16001
 ## Title: |cffff8000Disaster|rZone
-## Notes: Loot council, raid plans, guild members and games for <Casual Disaster>. Formerly CDLoot.
+## Notes: Loot council, raid plans, guild members and games for <Casual Disaster> on WoW Forever. Formerly CDLoot.
 ## Author: Casual Disaster
-## Version: 1.5.5
+## Version: 0.2.2
 ## X-CDL-Protocol: 1
 ## SavedVariables: DisasterZoneDB, DisasterZonePatchDB, DisasterZoneLogDB, DisasterZoneMeterDB, DisasterZoneBossLearnDB, DisasterZoneBridgeDB
 ## LoadSavedVariablesFirst: 1
@@ -13,6 +13,9 @@
 # Boot loader for in-game updates: must stay the first two files (Core\Boot.lua explains)
 Core\BuildInfo.lua
 Core\Boot.lua
+
+# WoW Forever client compatibility (old global names, combat log, chat lockdown): before anything that uses them
+Core\Compat.lua
 
 # Embedded libraries (no external addon dependencies)
 Libs\LibStub\LibStub.lua
@@ -35,6 +38,7 @@ Core\GroupRules.lua
 Core\Constants.lua
 Data\Items.lua
 Data\Raids.lua
+Data\ForeverRaids.lua
 Data\Dungeons.lua
 Data\Sources.lua
 Data\GroupKinds.lua
@@ -62,15 +66,7 @@ Data\StarterStrategies.lua
 Data\ModelIndex.lua
 Data\EncounterObjects.lua
 Data\EncounterSpawns.lua
-Data\BossMods\Karazhan.lua
-Data\BossMods\GruulsLair.lua
-Data\BossMods\MagtheridonsLair.lua
-Data\BossMods\SerpentshrineCavern.lua
-Data\BossMods\TempestKeep.lua
-Data\BossMods\HyjalSummit.lua
-Data\BossMods\BlackTemple.lua
-Data\BossMods\ZulAman.lua
-Data\BossMods\SunwellPlateau.lua
+Data\BossMods\Forever.lua
 Core\ItemDB.lua
 Core\DB.lua
 Core\Guild.lua
@@ -149,6 +145,7 @@ Core\RaidNights.lua
 Core\RaidPlan.lua
 Core\Attendance.lua
 Core\RaidComp.lua
+Core\RaidLearn.lua
 Core\RaidInvite.lua
 Core\RaidLink.lua
 Core\SessionInfo.lua

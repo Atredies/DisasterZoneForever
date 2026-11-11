@@ -27,7 +27,7 @@ local CARD_W = S.INNER_W - LIST_W - GAP         -- (the card's width: for measur
 local PROF_DD_W = 180
 local BOTTOM = 8
 local ROW_H, SEP_H, RECIPE_H = S.ROW.list, S.ROW.list, S.ROW.list
-local MAX_LEVEL = 70
+local MAX_LEVEL = (ns.RaidPlan and ns.RaidPlan.GetMaxLevel and ns.RaidPlan:GetMaxLevel()) or 70   -- 60 on Forever
 -- the card: the banner (class tile or recipe icon, name, meta line, the spec chips; tools and the action at its
 -- right), the card's tabs on its foot, the officer note, the list
 local HEAD_TEXT_H = 70                  -- the banner's icon and text: the hover area for the tooltip
@@ -428,6 +428,8 @@ local function versionOf(key)
     local p = Sync and Sync.GetPeer and Sync:GetPeer(key)
     if not p or not p.v then return "none" end
     local cmp = ns.Util.CompareVersions(p.v, ns.version)
+    -- (not a Forever build: never "newer", it needs ours: Util.VersionComparable)
+    if cmp > 0 and not ns.Util.VersionComparable(p.fi) then cmp = -1 end
     return (cmp < 0 and "older") or (cmp > 0 and "newer") or "same", p.v, p.lastSeen
 end
 
@@ -1371,7 +1373,8 @@ local function updateNote(right, member)
     note.key = member
     local day = (date("%d %b", rec.rev):gsub("^0", ""))
     note.head:SetCount(notes:IsLocalOnly() and S:Wrap("WARN", "debug role: test notes, kept on this PC only")
-        or ("%s · %s"):format(rec.by and ns.Util.ShortName(rec.by) or "?", day))
+        or ("%s · %s%s"):format(rec.by and ns.Util.ShortName(rec.by) or "?", day,
+            rec.via and (" · relayed by " .. ns.Util.ShortName(rec.via)) or ""))
     local tw = cardWidth() - 2 * S.IN - 4
     note.text:SetWidth(tw)
     note.text:SetText(rec.text)

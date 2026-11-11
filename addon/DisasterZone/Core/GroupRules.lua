@@ -383,7 +383,7 @@ local function Describe(v)
     elseif v.dm == false then
         parts[#parts + 1] = "dungeon mode off"
     end
-    if v.ph then parts[#parts + 1] = "phase " .. tostring(v.ph) end
+    if v.ph then parts[#parts + 1] = ns.PHASE_WORD:lower() .. " " .. tostring(v.ph) end
     return tconcat(parts, ", ")
 end
 

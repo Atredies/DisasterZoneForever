@@ -112,7 +112,7 @@ function marked(text, q) {
   return frag;
 }
 
-const FLAVOR_NAMES = { _anniversary_: "Anniversary", _classic_era_: "Classic Era", _classic_: "Classic", _retail_: "Retail" };
+const FLAVOR_NAMES = { _forever_: "WoW Forever", _anniversary_: "Anniversary", _classic_era_: "Classic Era", _classic_: "Classic", _retail_: "Retail" };
 
 // WoW's class colours (TBC: the Shaman is blue)
 const CLASSES = {

@@ -196,7 +196,7 @@ local function SanitizeItems(list)
     if type(list) ~= "table" then return out end
     for _, id in ipairs(list) do
         id = tonumber(id)
-        if id and id >= 1 and id <= 200000 and id == floor(id) then
+        if id and id >= 1 and id <= 1000000 and id == floor(id) then
             out[#out + 1] = id
             if #out >= MAX_DROP_ITEMS then break end
         end
@@ -889,12 +889,12 @@ function DropPanel:PrintOwnDrop(itemID, m, test, tries)
     if m.via then which = which .. ", " .. ((ns.VIA_TEXT and ns.VIA_TEXT[m.via]) or "via token") end
     if m.os then
         local sp = OffSpecLabel()
-        ns:Print("%s is on your off-spec list%s: %s, P%d (%s)%s", link or ItemName(itemID),
-            sp and (" (" .. sp .. ")") or "", ns.SlotLabel(m.sid), tonumber(m.phase) or 0, which, test and " [test]" or "")
+        ns:Print("%s is on your off-spec list%s: %s, %s (%s)%s", link or ItemName(itemID),
+            sp and (" (" .. sp .. ")") or "", ns.SlotLabel(m.sid), ns.PhaseLabel(tonumber(m.phase) or 0), which, test and " [test]" or "")
         return
     end
-    ns:Print("%s %s is on your BiS list: %s, P%d (%s)%s", STAR, link or ItemName(itemID),
-        ns.SlotLabel(m.sid), tonumber(m.phase) or 0, which, test and " [test]" or "")
+    ns:Print("%s %s is on your BiS list: %s, %s (%s)%s", STAR, link or ItemName(itemID),
+        ns.SlotLabel(m.sid), ns.PhaseLabel(tonumber(m.phase) or 0), which, test and " [test]" or "")
 end
 
 ---------------------------------------------------------------------------
@@ -1580,8 +1580,8 @@ local function RollRowTooltip(self, tt, vp)
     -- 1.3.5 longevity (the guild's "Longest use"): how long they keep it on their list
     local lg = tonumber(row.longevity)
     if lg and not plain then
-        tt:AddLine(lg > 0 and format("On their list to P%d (%d phase%s)", tonumber(row.longevityTo) or 0, lg,
-            lg == 1 and "" or "s") or "Not on their list from this phase on", 0.8, 0.8, 0.8)
+        tt:AddLine(lg > 0 and format("On their list to %s (%d %s%s)", ns.PhaseLabel(tonumber(row.longevityTo) or 0), lg, ns.PHASE_WORD:lower(),
+            lg == 1 and "" or "s") or "Not on their list from this " .. ns.PHASE_WORD:lower() .. " on", 0.8, 0.8, 0.8)
     end
     local specLine = ((type(row.spec) == "string" and row.spec ~= "") and (row.spec .. " ") or "") .. (ns.ClassName(row.classFile, true) or "?")
     tt:AddLine(specLine, 0.8, 0.8, 0.8)
@@ -1589,7 +1589,7 @@ local function RollRowTooltip(self, tt, vp)
         local tier = tonumber(row.tier) or 4
         local c = (tier == 1 and Color("main")) or (tier == 2 and Color("alt")) or (tier == 3 and Color("offspec")) or Color("muted")
         local p = tonumber(row.phase)
-        tt:AddLine(TierWord(row) .. ((tier <= 3 and p) and format(" in P%d", p) or ""), c[1], c[2], c[3])
+        tt:AddLine(TierWord(row) .. ((tier <= 3 and p) and format(" in %s", ns.PhaseLabel(p)) or ""), c[1], c[2], c[3])
     end
 
     local n = tonumber(row.roll)
@@ -1707,17 +1707,17 @@ local function RowOnEnter(self)
     local p = tonumber(w.phase) or 0
     if w.os then
         local o = Color("offspec")
-        tt:AddLine(format("Off-spec %s in P%d%s", w.which == "alt" and "alt pick" or "BiS", p,
+        tt:AddLine(format("Off-spec %s in %s%s", w.which == "alt" and "alt pick" or "BiS", ns.PhaseLabel(p),
             (type(w.spec) == "string" and w.spec ~= "") and (" (" .. w.spec .. ")") or ""), o[1], o[2], o[3])
         tt:AddLine("Ranked after main-spec wanters; an award counts as Offspec", 0.6, 0.6, 0.6, true)
     elseif w.which == "alt" then
-        tt:AddLine(format("Alt pick in P%d", p), Color("alt")[1], Color("alt")[2], Color("alt")[3])
+        tt:AddLine(format("Alt pick in %s", ns.PhaseLabel(p)), Color("alt")[1], Color("alt")[2], Color("alt")[3])
     else
-        tt:AddLine(format("BiS (main) in P%d", p), Color("main")[1], Color("main")[2], Color("main")[3])
+        tt:AddLine(format("BiS (main) in %s", ns.PhaseLabel(p)), Color("main")[1], Color("main")[2], Color("main")[3])
     end
     if type(w.phases) == "table" and #w.phases > 1 then
         local ps = {}
-        for i, ph in ipairs(w.phases) do ps[i] = "P" .. tostring(ph) end
+        for i, ph in ipairs(w.phases) do ps[i] = ns.PhaseLabel(tonumber(ph) or ph) end
         tt:AddLine("Listed in " .. tconcat(ps, ", "), 0.7, 0.7, 0.7)
     end
     if w.craft then
@@ -2833,7 +2833,10 @@ function DropPanel:FillBlock(b, itemID, award, drop, vp, canRoll, copy)
     if rolling then
         rvKind, rvKeys = session.rv, session.rk
     elseif ns.Reserves and ns.Reserves.Decide then
-        rvKind, rvKeys = ns.Reserves:Decide(itemID)
+        -- (a second copy: whoever got another copy of it from this drop is no reserver of this one)
+        local taken = ns.Roll and ns.Roll.CopyClaims and type(drop) == "table"
+            and ns.Roll:CopyClaims(itemID, drop.s, copy) or nil
+        rvKind, rvKeys = ns.Reserves:Decide(itemID, taken)
     end
     if not rolling and (rvKind == "s" or rvKind == "o") then plain = true end
     b.rvKind = rvKind
@@ -3840,7 +3843,7 @@ function DropPanel:ToastContent(e)
     local paren = {}
     if m.which == "alt" then paren[#paren + 1] = "alt" end
     if m.via then paren[#paren + 1] = (ns.VIA_TEXT and ns.VIA_TEXT[m.via]) or "via token" end
-    local line = format("%s · P%d", ns.SlotLabel(m.sid), tonumber(m.phase) or 0)
+    local line = format("%s · %s", ns.SlotLabel(m.sid), ns.PhaseLabel(tonumber(m.phase) or 0))
     if m.via and shown ~= e.itemID then line = ItemText(shown) .. " · " .. line end
     if #paren > 0 then line = line .. " (" .. tconcat(paren, ", ") .. ")" end
     if m.via == "craft" then

@@ -4,7 +4,9 @@ use serde::Serialize;
 use std::path::{Path, PathBuf};
 
 /// Game folders inside a WoW install, in the order the launcher prefers them.
-pub const FLAVORS: [(&str, &str); 4] = [
+/// WoW Forever (client 1.60.1, Battle.net uid `wowf`) comes first: DisasterZoneForever is its guild addon.
+pub const FLAVORS: [(&str, &str); 5] = [
+    ("_forever_", "WoW Forever"),
     ("_anniversary_", "Anniversary"),
     ("_classic_era_", "Classic Era"),
     ("_classic_", "Classic"),
@@ -14,7 +16,7 @@ pub const FLAVORS: [(&str, &str); 4] = [
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct WowInstall {
     pub root: String,
-    /// flavor folder names present in this install, e.g. ["_anniversary_"]
+    /// flavor folder names present in this install, e.g. ["_forever_"]
     pub flavors: Vec<String>,
 }
 
@@ -125,7 +127,9 @@ pub fn detect() -> Vec<WowInstall> {
     out
 }
 
-/// Is a WoW client running? (Updating still works; the game only sees the new files after a restart.)
+/// Is a WoW client running? (Updating still works; the game only sees the new files after a restart.) WoW Forever's
+/// program is `_forever_/Wow.exe`, the retail name: under Wine/Proton its process name is `Wow.exe` too (seen
+/// 2026-11-09 on the owner's Linux install).
 fn is_game(name: &str) -> bool {
     matches!(
         name.to_ascii_lowercase().as_str(),
@@ -146,6 +150,16 @@ pub fn in_folder(exe: &Path, flavor_dir: &Path) -> bool {
     norm(exe).starts_with(&(norm(flavor_dir) + "/"))
 }
 
+/// Under Wine/Proton the process's program is Wine's loader (`.../wine64-preloader`), so `in_folder` can't place it.
+/// Its command line still starts with the Windows path (`C:\\Program Files (x86)\\World of Warcraft\\_forever_\\Wow.exe`):
+/// that path lies in the game folder when the folder is that prefix's `drive_c/...` (seen 2026-11-09 with GE-Proton).
+pub fn in_folder_wine(win_exe: &str, flavor_dir: &Path) -> bool {
+    let dir = flavor_dir.to_string_lossy().replace('\\', "/");
+    let Some(i) = dir.to_lowercase().rfind("/drive_c/") else { return false };
+    let as_windows = format!("C:/{}", &dir[i + "/drive_c/".len()..]);
+    in_folder(Path::new(win_exe), Path::new(&as_windows))
+}
+
 /// The game of one game folder, when it runs: the process id of a WoW whose program sits in `flavor_dir` (so a
 /// running Classic Era isn't taken for Anniversary).
 pub fn game_process(flavor_dir: &Path) -> Option<u32> {
@@ -153,11 +167,17 @@ pub fn game_process(flavor_dir: &Path) -> Option<u32> {
     sys.refresh_processes_specifics(
         sysinfo::ProcessesToUpdate::All,
         true,
-        sysinfo::ProcessRefreshKind::nothing().with_exe(sysinfo::UpdateKind::OnlyIfNotSet),
+        sysinfo::ProcessRefreshKind::nothing()
+            .with_exe(sysinfo::UpdateKind::OnlyIfNotSet)
+            .with_cmd(sysinfo::UpdateKind::OnlyIfNotSet),
     );
     sys.processes()
         .values()
-        .find(|p| is_game(&p.name().to_string_lossy()) && p.exe().map(|e| in_folder(e, flavor_dir)).unwrap_or(false))
+        .find(|p| {
+            is_game(&p.name().to_string_lossy())
+                && (p.exe().map(|e| in_folder(e, flavor_dir)).unwrap_or(false)
+                    || p.cmd().first().map(|c| in_folder_wine(&c.to_string_lossy(), flavor_dir)).unwrap_or(false))
+        })
         .map(|p| p.pid().as_u32())
 }
 
@@ -215,6 +235,29 @@ mod tests {
         assert!(!in_folder(Path::new("C:\\World of Warcraft\\_classic_era_\\WowClassic.exe"), dir));
         assert!(!in_folder(Path::new("C:\\World of Warcraft\\_anniversary_ptr_\\WowClassic.exe"), dir));
         assert!(in_folder(Path::new("C:\\World of Warcraft\\_anniversary_\\WowClassic.exe"), Path::new("C:/World of Warcraft/_anniversary_/")));
+    }
+
+    #[test]
+    fn forever_is_a_flavor_and_comes_first() {
+        assert_eq!(FLAVORS[0], ("_forever_", "WoW Forever"));
+        assert!(is_game("Wow.exe"));
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path().join("World of Warcraft");
+        std::fs::create_dir_all(root.join("_forever_/Interface/AddOns")).unwrap();
+        std::fs::create_dir_all(root.join("_anniversary_")).unwrap();
+        assert_eq!(flavors_in(&root), vec!["_forever_", "_anniversary_"]);
+        assert_eq!(normalize(&root.join("_forever_/Interface/AddOns")), Some((root.clone(), Some("_forever_".into()))));
+    }
+
+    #[test]
+    fn the_forever_game_under_proton_is_found_by_its_command_line() {
+        let dir = Path::new("/home/u/Games/battlenet/drive_c/Program Files (x86)/World of Warcraft/_forever_");
+        let cmd0 = "C:\\Program Files (x86)\\World of Warcraft\\_forever_\\Wow.exe";
+        assert!(in_folder_wine(cmd0, dir));
+        assert!(in_folder_wine("c:/program files (x86)/world of warcraft/_FOREVER_/Wow.exe", dir));
+        assert!(!in_folder_wine("C:\\Program Files (x86)\\World of Warcraft\\_anniversary_\\WowClassic.exe", dir));
+        assert!(!in_folder_wine(cmd0, Path::new("/opt/wow/_forever_"))); // (not in a Wine prefix)
+        assert!(!in_folder(Path::new("/proton/files/lib/wine/i386-unix/wine64-preloader"), dir));
     }
 
     /// DZ_GAME=<game folder> cargo test the_running_game_here -- --ignored --nocapture: finds it, without touching it.

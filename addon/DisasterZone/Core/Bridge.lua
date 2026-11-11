@@ -163,6 +163,7 @@ local function Verify(message, sig, done)
     local key = ns.BridgeKey
     local P = ns.Patch
     if not (key and P and P.VerifySignature) or type(sig) ~= "string" then return done(false) end
+    if P.IsUntrustedKey and P.IsUntrustedKey(key) then return done(false) end   -- the TBC original's bot key
     local id = message .. "\0" .. sig
     if checked[id] ~= nil then return done(checked[id]) end
     Job(function()

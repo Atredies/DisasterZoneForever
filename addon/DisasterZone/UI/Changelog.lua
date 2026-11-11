@@ -39,6 +39,14 @@ local AREAS = {
     look = { "Look", 15, 0, 15, "tk" }, speed = { "Speed", 59, 7, 13, "mag" }, fixes = { "Fixes", 13, 0, 13, "other" },
     other = { "Other", 25, 0, 25, "other" },
 }
+-- WoW Forever: its three raids' art (Data/Raids.lua's plan keys) and, for "other", the Eastern Kingdoms (by FileDataID)
+local OTHER_ART = "outland"
+if ns.Compat and ns.Compat.isForever then
+    local FOREVER_ART = { raids = "hyjal", loot = "ony", gear = "barrow", guild = "ony", games = "barrow",
+                          class = "hyjal", look = "ony", speed = "barrow" }
+    for key, a in pairs(AREAS) do a[5] = FOREVER_ART[key] or a[5] end
+    OUTLAND, OTHER_ART = 131839, "ek"
+end
 local AREA_ORDER = { "raids", "loot", "gear", "guild", "games", "class", "look", "speed", "other", "fixes" }
 -- a heading's prefix ("Raids: ...", "Gear sim: ...") -> area, for sections without one
 local PREFIX_AREA = {
@@ -473,13 +481,14 @@ local function WrapH(fs, w, lineH)
     return max(lineH, h)
 end
 
--- The painting of an area / a section (a raid key; "other": Outland) as UI:SetArtTexture / a banner's art takes it.
+-- The painting of an area / a section (a raid key; "other": Outland, on Forever the Eastern Kingdoms) as
+-- UI:SetArtTexture / a banner's art takes it.
 local function ArtOf(key, w, h)
     local IDB = ns.ItemDB
     if key and key ~= "other" and IDB and IDB.GetRaidMeta and IDB:GetRaidMeta(key) then return key end
     local E = ns.EventUI
     if E and E.ArtCoords then
-        local path, l, r, t, b = E:ArtCoords("outland", w, h, 0.5, 0.55, 0.95)
+        local path, l, r, t, b = E:ArtCoords(OTHER_ART, w, h, 0.5, 0.55, 0.95)
         return { OUTLAND or path, l, r, t, b }
     end
     return nil

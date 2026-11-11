@@ -2941,7 +2941,8 @@ def write_lua(key, cubes=None, out_dir=OUT_DIR, recs=None, stamp=None, checked=N
     return path, len(text.encode("utf-8"))
 
 
-TOC = os.path.join(ROOMS_ADDON, "DisasterZone_Rooms.toc")
+# (the TBC fixture TOC with every room; the shipped DisasterZone_Rooms.toc lists only the chess hall on WoW Forever)
+TOC = os.path.normpath(os.path.join(HERE, "..", "fixtures", "tbc", "DisasterZone_Rooms", "DisasterZone_Rooms.toc"))
 TOC_PREFIX = "Standins\\"
 
 

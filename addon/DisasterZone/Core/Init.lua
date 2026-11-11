@@ -440,6 +440,13 @@ function ns:RegisterEvent(event, fn)
             ns:Debug("Event %s does not exist on this client; handler skipped.", event)
             return false
         end
+        -- (WoW Forever: the event exists, but registering it from an addon is forbidden and shows Blizzard's
+        -- "blocked" popup. Core/Compat.lua knows which clients.)
+        if event == "COMBAT_LOG_EVENT_UNFILTERED" and ns.Compat and not ns.Compat:CanUseCombatLog() then
+            skippedEvents[event] = true
+            ns:Debug("No addon combat log on this client; handler skipped.")
+            return false
+        end
         local ok = pcall(eventFrame.RegisterEvent, eventFrame, event)
         if not ok then
             skippedEvents[event] = true
@@ -471,12 +478,25 @@ function ns:UnregisterEvent(event, fn)
     end
 end
 
+-- Events whose payload the client may keep secret during a boss pull on Forever (SecretInChatMessagingLockdown in
+-- Blizzard_APIDocumentationGenerated): every CHAT_MSG_* plus these. A handler would raise on the first string
+-- method or comparison, so the event is skipped while its payload is not readable, like Blizzard's chat filters do.
+local LOCKDOWN_EVENTS = { READY_CHECK = true, GUILD_MOTD = true, START_PLAYER_COUNTDOWN = true,
+                          CANCEL_PLAYER_COUNTDOWN = true }
+local maySecret = setmetatable({}, { __index = function(t, event)
+    local v = LOCKDOWN_EVENTS[event] == true or event:sub(1, 9) == "CHAT_MSG_"
+    t[event] = v
+    return v
+end })
+
 -- ns.PerfProbe (Core/Perf.lua, the developer's Performance page, only while it measures) runs the handlers itself,
 -- timing them and weighing the garbage they make.
 eventFrame:SetScript("OnEvent", function(_, event, ...)
     if Boot and Boot.safeMode then return end   -- an in-game update failed to load: the addon stays inert
     local list = eventHandlers[event]
     if not list then return end
+    local C = ns.Compat
+    if C and C.secrets and maySecret[event] and not C.CanAccess(...) then return end
     local probe = ns.PerfProbe
     if probe then return probe("event", event, list, ...) end
     for i = 1, #list do

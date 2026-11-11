@@ -36,8 +36,6 @@ VIDEO = ["-crf", "36", "-b:v", "900k", "-maxrate", "1100k", "-bufsize", "2200k",
 FILMS = {
     "azeromon": ("return ns.AzeroPoster:New(F)", 38.4),          # 6 shots x (8 s - 1.6 s fade): one full round
     "holdtheline": ("return ns.HTLUI:NewPoster(F)", 32),
-    "illidan": ("local c = CreateFrame('Frame', nil, F) c:SetAllPoints(F) c:SetClipsChildren(true) "
-                "local d = ns.BoIUI:NewAttract(c) function c:Tick(e) d:Tick(e) end return c", 32),
 }
 
 SETUP = """

@@ -1190,6 +1190,24 @@ D.species = {
                   { 80, "inferno" } } },
 }
 
+-- WoW Forever has none of the TBC raids the raid rares came out of: their words name the Forever bosses that let
+-- them loose (D.raidRaresForever below). Flavour only; the species keys and displays stay.
+if ns.Compat and ns.Compat.isForever then
+    local S = D.species
+    S.nightbane.name = "Onyxian Whelpling"
+    S.nightbane.desc = "A black dragon hatchling out of Onyxia's Lair. It smells of ash and old magic."
+    S.midnight.desc = "A spectral steed loose in Elwynn since the Wild King fell on Hyjal Summit."
+    S.bigbadwolf.desc = "It slunk out of the Barrow Deeps after Elder Tangleclaw fell. My, what big teeth it has."
+    S.gronnling.desc = "A hulking youngling that followed Bandalar's killers down from Hyjal Summit. Already taller "
+        .. "than a Stormwind guard."
+    S.pitling.desc = "Something that crawled up out of the Barrow Deeps when Amethrax fell. It hates chains."
+    S.lurkling.desc = "Something from Hyjal's waters followed Old Gloomlurker's killers to the Longshore. Fishermen are "
+        .. "staying home."
+    S.ashling.desc = "A spark of Hyjal's fire, loose since Nythus the Dreambound fell."
+    S.lavasurger.desc = "A wave of the Molten Core's lava that got up and walked. Raiders who drop Sonya Darkhallow "
+        .. "sometimes see one in the Gorge."
+end
+
 -- Dex order.
 D.dexOrder = {}
 for id, s in pairs(D.species) do
@@ -1833,7 +1851,8 @@ D.classLines = {
 ---------------------------------------------------------------------------
 
 D.RAID_RARE_WEIGHT = 8          -- vs ~100 for the area's normal beasts
-D.raidRares = {
+-- The TBC original's bosses (dev/fixtures/tbc/Data/Items.lua): a TBC client's list.
+D.raidRaresTBC = {
     { boss = "Attumen",     sp = "midnight",   map = "route1",     level = 16, hours = 24 },
     { boss = "OperaWolf",   sp = "bigbadwolf", map = "route1",     level = 16, hours = 24 },   -- any Opera kill (655)
     { boss = "Nightbane",   sp = "nightbane",  map = "forestedge", level = 16, hours = 24 },
@@ -1845,6 +1864,21 @@ D.raidRares = {
     { boss = "Magtheridon", sp = "corehound",  map = "steppes",    level = 55, hours = 24 },
     { boss = "Alar",        sp = "lavasurger", map = "gorge",      level = 56, hours = 24 },
 }
+-- WoW Forever has none of those raids: the same beasts come loose when the guild kills a boss of Forever's raids
+-- (Data/Items.lua: Onyxia's Lair, Barrow Deeps, Hyjal Summit; they open 2026-12-09). Forever's raid data has no
+-- encounter ids yet, so the kill is matched on the boss's name as ENCOUNTER_END gives it (Game.lua OnEncounterEnd).
+D.raidRaresForever = {
+    { boss = "Onyxia",              sp = "nightbane",  map = "forestedge", level = 16, hours = 24 },
+    { boss = "Onyxia",              sp = "corehound",  map = "steppes",    level = 55, hours = 24 },
+    { boss = "ElderTangleclaw",     sp = "bigbadwolf", map = "route1",     level = 16, hours = 24 },
+    { boss = "Amethrax",            sp = "pitling",    map = "forestedge", level = 16, hours = 24 },
+    { boss = "SonyaDarkhallow",     sp = "lavasurger", map = "gorge",      level = 56, hours = 24 },
+    { boss = "TheWildKing",         sp = "midnight",   map = "route1",     level = 16, hours = 24 },
+    { boss = "Bandalar",            sp = "gronnling",  map = "westfall",   level = 16, hours = 24 },
+    { boss = "OldGloomlurker",      sp = "lurkling",   map = "westfall",   level = 16, hours = 24, coast = true },
+    { boss = "NythusTheDreambound", sp = "ashling",    map = "westfall",   level = 16, hours = 24 },
+}
+D.raidRares = (ns.Compat and ns.Compat.isForever) and D.raidRaresForever or D.raidRaresTBC
 
 ---------------------------------------------------------------------------
 -- 0.37 battles: cooldowns, combos and casts (designed and tuned in the dev kit's balance sim, 2026-10-17:

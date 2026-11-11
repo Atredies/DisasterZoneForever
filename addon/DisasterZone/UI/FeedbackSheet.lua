@@ -223,10 +223,10 @@ local function BuildPointer()
     bar:EnableKeyboard(true)
     bar:SetScript("OnKeyDown", function(self, key)
         if key == "ESCAPE" then
-            if self.SetPropagateKeyboardInput then self:SetPropagateKeyboardInput(false) end
+            if self.SetPropagateKeyboardInput then ns.Util.SetPropagateKeys(self, false) end
             StopPointing(nil)
         elseif self.SetPropagateKeyboardInput then
-            self:SetPropagateKeyboardInput(true)
+            ns.Util.SetPropagateKeys(self, true)
         end
     end)
     bar:Hide()

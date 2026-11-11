@@ -12,7 +12,10 @@ import lupa
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEV = os.path.dirname(HERE)
 ADDON = os.path.join(DEV, "..", "addon", "DisasterZone")
-DATA = os.path.join(ADDON, "Data", "BossMods")
+# The boss mod data is TBC's: its boss keys are in the TBC item data (dev/fixtures/tbc; the addon ships Forever's).
+_TBC_ITEMS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "fixtures", "tbc", "Data", "Items.lua")
+ITEMS_LUA = _TBC_ITEMS if os.path.exists(_TBC_ITEMS) else os.path.join(ADDON, "Data", "Items.lua")
+DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "fixtures", "tbc", "Data", "BossMods")   # (TBC mods)
 sys.path.insert(0, os.path.join(DEV, "generators"))
 
 BOSS_FIELDS = {"enc", "npc", "alerts", "fn", "phases", "engage"}
@@ -27,7 +30,7 @@ NOT_SPELLS = ("DIES", "WIDGET", "SPAWN", "BACK")      # (creature / widget ids)
 
 def boss_keys():
     keys, raid = set(), None
-    for line in open(os.path.join(ADDON, "Data", "Items.lua"), encoding="utf-8"):
+    for line in open(ITEMS_LUA, encoding="utf-8"):
         m = re.match(r'^  \{ key = "(\w+)"', line)
         if m:
             raid = m.group(1)

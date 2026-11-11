@@ -954,6 +954,7 @@ local WIN_RULE = { 0.17, 0.17, 0.19 }                 -- the rule's ends; its mi
 local WIN_GOLD = { 0.79, 0.64, 0.15 }
 local SEAL = "Interface\\AddOns\\DisasterZone\\Media\\Launcher\\seal"
 local HEAD_ART = { 131860, 0.50, 0.45 }               -- no raid planned: the Outland loading screen (RaidPlanUI's "other")
+if ns.Compat and ns.Compat.isForever then HEAD_ART = { 131839, 0.50, 0.45 } end   -- (Forever: Eastern Kingdoms)
 -- The body's finish, so the slate isn't one flat colour: a faint light under the header falling off towards the
 -- middle (light: its alpha at the top), and a client stone texture added (ADD) at `amount` over a fill that much
 -- darker, so the slate keeps its tone and only the grain shows (the client's textures are too flat to show laid

@@ -73,3 +73,35 @@ ns.ClassData.PALADIN = {
     DURATION = 600,              -- a normal blessing (TBC)
     GDURATION = 1800,            -- a Greater Blessing
 }
+
+-- WoW Forever (checked against Wowhead's Forever spell database, 2026-11-09): no Blessing of Salvation, Light or
+-- Sanctuary, no Crusader Aura, no Symbol of Kings (Greater Blessings need no reagent), no TBC ranks; every blessing
+-- lasts an hour. The gone ones keep their Pally Power index (the wire) with no ranks, so nobody "knows" them and no
+-- menu offers them.
+if ns.Compat and ns.Compat.isForever then
+    local D = ns.ClassData.PALADIN
+    local GONE = { salvation = true, light = true, sanctuary = true, crusader = true }
+    local function vanilla(id) return id < 27000 end
+    for _, b in ipairs(D.BLESSINGS) do
+        if GONE[b.key] then
+            b.ranks, b.granks, b.gone = {}, b.granks and {} or nil, true
+        else
+            for _, list in ipairs({ b.ranks, b.granks or {} }) do
+                for i = #list, 1, -1 do
+                    if not vanilla(list[i][1]) then table.remove(list, i) end
+                end
+            end
+        end
+    end
+    for _, a in ipairs(D.AURAS) do
+        if GONE[a.key] then
+            a.ranks, a.gone = {}, true
+        else
+            for i = #a.ranks, 1, -1 do
+                if not vanilla(a.ranks[i]) then table.remove(a.ranks, i) end
+            end
+        end
+    end
+    D.SYMBOL_OF_KINGS = nil
+    D.DURATION, D.GDURATION = 3600, 3600
+end

@@ -1,0 +1,704 @@
+{
+ "_about": "Boss loot AtlasLoot Classic Forever does not have yet, gathered 2026-11-09 from public Forever databases (sources per dungeon); every id checked against Wowhead's Forever tooltip API. observed = drops players recorded; unconfirmed = the dungeon's item block from the client's item list, boss not known yet: listed under one 'Loot (boss not confirmed)' entry until players record the drops. Re-check foreverchanges.pro and replace.",
+ "KroldokStronghold": {
+  "name": "Krol'dok Stronghold",
+  "status": "unconfirmed",
+  "sources": [
+   "https://foreverchanges.pro/dungeons/kroldok-stronghold",
+   "https://wowf.io/en/dungeons/kroldok-stronghold",
+   "https://wowforevertalents.com/dungeons/krol-dok-stronghold/",
+   "https://forever.warcraftdb.com/list/items",
+   "https://nether.wowhead.com/forever/tooltip/item/<id>"
+  ],
+  "bosses": [
+   {
+    "name": "Slavecrusher Grox",
+    "npcID": 258966,
+    "items": []
+   },
+   {
+    "name": "Twilight Commander Zarmok",
+    "npcID": 258972,
+    "items": []
+   },
+   {
+    "name": "War Handler Ashka",
+    "npcID": 259281,
+    "items": []
+   },
+   {
+    "name": "Nar'gurk",
+    "npcID": 258964,
+    "items": []
+   },
+   {
+    "name": "Overlord Mugg",
+    "npcID": 258968,
+    "items": []
+   },
+   {
+    "name": "Loot (boss not confirmed)",
+    "trash": true,
+    "items": [
+     274995,
+     274996,
+     274997,
+     274998,
+     274999,
+     275000,
+     275001,
+     275002,
+     275003,
+     275004,
+     275005,
+     275006,
+     275007,
+     275008,
+     275009,
+     275010,
+     287007,
+     287008,
+     287009,
+     287010,
+     287011,
+     287012,
+     287013,
+     287014,
+     287015,
+     287016
+    ]
+   }
+  ],
+  "replace": true
+ },
+ "TheDrownedCity": {
+  "name": "The Drowned City",
+  "status": "unconfirmed",
+  "sources": [
+   "https://foreverchanges.pro/dungeons/the-drowned-city",
+   "https://wowf.io/en/dungeons/drowned-city",
+   "https://forever.warcraftdb.com/list/items",
+   "https://nether.wowhead.com/forever/tooltip/item/<id>"
+  ],
+  "bosses": [
+   {
+    "name": "Zul'Alai",
+    "npcID": 258905,
+    "items": []
+   },
+   {
+    "name": "Var'Taka",
+    "npcID": 258924,
+    "items": []
+   },
+   {
+    "name": "Captain Dreadrise",
+    "npcID": 260042,
+    "items": []
+   },
+   {
+    "name": "Deathless Guardians",
+    "npcID": null,
+    "items": []
+   },
+   {
+    "name": "Primeval Elemental",
+    "npcID": 270887,
+    "items": []
+   },
+   {
+    "name": "Min'loth the Serpent",
+    "npcID": 260274,
+    "items": []
+   },
+   {
+    "name": "Loot (boss not confirmed)",
+    "trash": true,
+    "items": [
+     274598,
+     274599,
+     274600,
+     274601,
+     274603,
+     274604,
+     274615,
+     274608,
+     274609,
+     274610,
+     274602,
+     274605,
+     274606,
+     274607,
+     274611,
+     274612,
+     274613,
+     274614,
+     279885,
+     279886,
+     279887,
+     286997,
+     286998,
+     286999,
+     287000,
+     287001,
+     287002,
+     287003,
+     287004,
+     287005,
+     287006
+    ]
+   }
+  ],
+  "replace": true
+ },
+ "AlcazPrison": {
+  "name": "Alcaz Prison",
+  "status": "unconfirmed",
+  "sources": [
+   "https://foreverchanges.pro/dungeons/alcaz-prison",
+   "https://wowf.io/en/dungeons/alcaz-prison",
+   "https://forever.warcraftdb.com/list/items",
+   "https://nether.wowhead.com/forever/tooltip/item/<id>"
+  ],
+  "bosses": [
+   {
+    "name": "Overseer Wrex",
+    "npcID": null,
+    "items": []
+   },
+   {
+    "name": "Tidemistress Ca'zass",
+    "npcID": null,
+    "items": []
+   },
+   {
+    "name": "Katerina the Cleaner",
+    "npcID": null,
+    "items": []
+   },
+   {
+    "name": "The Questioner",
+    "npcID": null,
+    "items": []
+   },
+   {
+    "name": "Blazeroar",
+    "npcID": null,
+    "items": []
+   },
+   {
+    "name": "Loot (boss not confirmed)",
+    "trash": true,
+    "items": [
+     276732,
+     276733,
+     276734,
+     276735,
+     276736,
+     276737,
+     276738,
+     276739,
+     276740,
+     276741,
+     276742,
+     276743,
+     276746,
+     287017,
+     287018,
+     287019,
+     287020,
+     287021,
+     287022,
+     287023,
+     287024,
+     287025,
+     287026
+    ]
+   }
+  ],
+  "replace": true
+ },
+ "BlackmawHold": {
+  "name": "Blackmaw Hold",
+  "status": "unconfirmed",
+  "sources": [
+   "https://foreverchanges.pro/dungeons/blackmaw-hold",
+   "https://wowf.io/en/dungeons/blackmaw-hold",
+   "https://forever.warcraftdb.com/list/items",
+   "https://nether.wowhead.com/forever/tooltip/item/<id>"
+  ],
+  "bosses": [
+   {
+    "name": "Withermaw",
+    "npcID": null,
+    "items": []
+   },
+   {
+    "name": "Impaan the Imprisoner",
+    "npcID": null,
+    "items": []
+   },
+   {
+    "name": "Elder Shaman Bloodmane",
+    "npcID": null,
+    "items": []
+   },
+   {
+    "name": "Bonesnout the Unbroken",
+    "npcID": null,
+    "items": []
+   },
+   {
+    "name": "Varrox Bleakhoof",
+    "npcID": null,
+    "items": []
+   },
+   {
+    "name": "Blackmaw Behemoth",
+    "npcID": null,
+    "items": []
+   },
+   {
+    "name": "Unbound Spirit",
+    "npcID": null,
+    "items": []
+   },
+   {
+    "name": "Loot (boss not confirmed)",
+    "trash": true,
+    "items": [
+     280062,
+     280063,
+     280064,
+     280056,
+     280057,
+     280058,
+     280068,
+     280069,
+     280070,
+     280059,
+     280060,
+     280061,
+     280074,
+     280075,
+     280065,
+     280066,
+     280067,
+     280071,
+     280072,
+     280073,
+     287028,
+     287034,
+     287036,
+     287037
+    ]
+   }
+  ],
+  "replace": true
+ },
+ "ShapersTerrace": {
+  "name": "Shaper's Terrace",
+  "status": "unconfirmed",
+  "sources": [
+   "https://foreverchanges.pro/dungeons/shapers-terrace",
+   "https://wowf.io/en/dungeons/shapers-terrace",
+   "https://forever.warcraftdb.com/list/items",
+   "https://nether.wowhead.com/forever/tooltip/item/<id>"
+  ],
+  "bosses": [
+   {
+    "name": "Titanosaur",
+    "npcID": null,
+    "items": []
+   },
+   {
+    "name": "Ravasaur Hunters",
+    "npcID": null,
+    "items": []
+   },
+   {
+    "name": "Thunderhoof",
+    "npcID": null,
+    "items": []
+   },
+   {
+    "name": "Venomridge",
+    "npcID": null,
+    "items": []
+   },
+   {
+    "name": "Direhorn Matriarch",
+    "npcID": null,
+    "items": []
+   },
+   {
+    "name": "Cinder",
+    "npcID": null,
+    "items": []
+   },
+   {
+    "name": "King Op",
+    "npcID": null,
+    "items": []
+   },
+   {
+    "name": "Snowtalon",
+    "npcID": null,
+    "items": []
+   },
+   {
+    "name": "Bolt",
+    "npcID": null,
+    "items": []
+   },
+   {
+    "name": "Vitrix",
+    "npcID": null,
+    "items": []
+   },
+   {
+    "name": "Nanaya",
+    "npcID": null,
+    "items": []
+   },
+   {
+    "name": "Loot (boss not confirmed)",
+    "trash": true,
+    "items": [
+     280009,
+     280010,
+     280011,
+     280012,
+     280013,
+     280014,
+     280015,
+     280016,
+     280017,
+     280019,
+     280021,
+     280045,
+     280027,
+     280026,
+     280031,
+     280032,
+     280024,
+     280023,
+     280025,
+     280020,
+     280022
+    ]
+   }
+  ],
+  "replace": true
+ },
+ "ExcavationSiteWetlands": {
+  "name": "Excavation Site: Wetlands",
+  "status": "observed",
+  "sources": [
+   "https://foreverchanges.pro/dungeons/excavation-site",
+   "https://nether.wowhead.com/forever/tooltip/item/<id>"
+  ],
+  "bosses": [
+   {
+    "name": "Saltspine",
+    "npcID": 260322,
+    "trash": false,
+    "items": [
+     273022,
+     273023,
+     273024
+    ]
+   },
+   {
+    "name": "Shadetooth",
+    "npcID": 260325,
+    "trash": false,
+    "items": [
+     273025,
+     273026,
+     273027,
+     273106
+    ]
+   },
+   {
+    "name": "Highland Horror",
+    "npcID": 260808,
+    "trash": false,
+    "items": [
+     270180
+    ]
+   },
+   {
+    "name": "Relic Guardian",
+    "npcID": 260326,
+    "trash": false,
+    "items": [
+     273028,
+     273030,
+     270865,
+     273029,
+     273097
+    ]
+   },
+   {
+    "name": "Trash",
+    "npcID": null,
+    "trash": true,
+    "items": [
+     287068,
+     286983
+    ]
+   }
+  ]
+ },
+ "TheCityOfDalaran": {
+  "name": "City of Dalaran",
+  "status": "observed",
+  "sources": [
+   "https://foreverchanges.pro/dungeons/city-of-dalaran",
+   "https://nether.wowhead.com/forever/tooltip/item/<id>"
+  ],
+  "bosses": [
+   {
+    "name": "Atrexis the Grave Knight",
+    "npcID": 247126,
+    "trash": false,
+    "items": [
+     273036,
+     273032,
+     273033
+    ]
+   },
+   {
+    "name": "Lyn the Ignored",
+    "npcID": 247032,
+    "trash": false,
+    "items": [
+     273054,
+     273053,
+     273055
+    ]
+   },
+   {
+    "name": "Arcane Anomaly",
+    "npcID": 245999,
+    "trash": false,
+    "items": [
+     273031,
+     273034,
+     273035
+    ]
+   },
+   {
+    "name": "Arcanic Enigma",
+    "npcID": 246016,
+    "trash": false,
+    "items": [
+     273045,
+     273044,
+     273043
+    ]
+   },
+   {
+    "name": "Unstable Sentinel",
+    "npcID": 246017,
+    "trash": false,
+    "items": [
+     273046,
+     273048,
+     273047,
+     273099
+    ]
+   },
+   {
+    "name": "Mana Devourer",
+    "npcID": 246008,
+    "trash": false,
+    "items": [
+     273040,
+     273042,
+     273041
+    ]
+   },
+   {
+    "name": "Fel Ancient",
+    "npcID": 246003,
+    "trash": false,
+    "items": [
+     273039,
+     273038,
+     273037
+    ]
+   },
+   {
+    "name": "Shade of the Archmage",
+    "npcID": 246020,
+    "trash": false,
+    "items": [
+     273052,
+     273051,
+     273049,
+     273103
+    ]
+   },
+   {
+    "name": "Trash",
+    "npcID": null,
+    "trash": true,
+    "items": [
+     276160,
+     276158,
+     286987,
+     286989,
+     286988,
+     286992,
+     286995,
+     286994,
+     286991
+    ]
+   }
+  ]
+ },
+ "TheHallOfThanes": {
+  "name": "Hall of Thanes",
+  "status": "observed",
+  "sources": [
+   "https://foreverchanges.pro/dungeons/hall-of-thanes",
+   "https://nether.wowhead.com/forever/tooltip/item/<id>"
+  ],
+  "bosses": [
+   {
+    "name": "Faldrim Anvilmar",
+    "npcID": 261306,
+    "trash": false,
+    "items": [
+     270227,
+     271096,
+     271097
+    ]
+   },
+   {
+    "name": "Magmatus",
+    "npcID": 261316,
+    "trash": false,
+    "items": [
+     270230,
+     270231,
+     271095
+    ]
+   },
+   {
+    "name": "Plunder",
+    "npcID": 261311,
+    "trash": false,
+    "items": [
+     270228,
+     270229,
+     271098
+    ]
+   },
+   {
+    "name": "Durgen Dirgehammer",
+    "npcID": 261319,
+    "trash": false,
+    "items": [
+     270256,
+     270260,
+     270261,
+     274286
+    ]
+   }
+  ]
+ },
+ "TheRuinsOfLordaeron": {
+  "name": "Ruins of Lordaeron",
+  "status": "observed",
+  "sources": [
+   "https://foreverchanges.pro/dungeons/ruins-of-lordaeron",
+   "https://nether.wowhead.com/forever/tooltip/item/<id>"
+  ],
+  "bosses": [
+   {
+    "name": "The Baron",
+    "npcID": 250660,
+    "trash": false,
+    "items": [
+     271204,
+     271205,
+     271206
+    ]
+   },
+   {
+    "name": "Witherfang",
+    "npcID": 250483,
+    "trash": false,
+    "items": [
+     271201,
+     271202,
+     271203
+    ]
+   },
+   {
+    "name": "The Abandoned",
+    "npcID": 250631,
+    "trash": false,
+    "items": [
+     271207,
+     271208,
+     271216
+    ]
+   },
+   {
+    "name": "Bjork",
+    "npcID": 256097,
+    "trash": false,
+    "items": [
+     271209,
+     271210,
+     271217
+    ]
+   },
+   {
+    "name": "Rath'mael",
+    "npcID": 250657,
+    "trash": false,
+    "items": [
+     271213,
+     271214,
+     271215,
+     273085,
+     273103
+    ]
+   },
+   {
+    "name": "Viktor the Vile",
+    "npcID": 256035,
+    "trash": false,
+    "items": [
+     271211,
+     271212,
+     271218
+    ]
+   },
+   {
+    "name": "Lordaeron Captain",
+    "npcID": 255699,
+    "trash": false,
+    "items": [
+     6641,
+     6642
+    ]
+   },
+   {
+    "name": "Trash",
+    "npcID": null,
+    "trash": true,
+    "items": [
+     286980,
+     286979,
+     286978
+    ]
+   }
+  ]
+ }
+}

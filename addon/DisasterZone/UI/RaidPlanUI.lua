@@ -1725,7 +1725,7 @@ local function createRaidGroups(d)
         layout = "row",
         getSize = function()
             local v = selectedRaid()
-            return v and v.sz or 25
+            return v and v.sz or RP():GetDefaultSize()
         end,
         getMembers = raidMembers,
         getGroups = function()
@@ -2533,6 +2533,8 @@ local TV = {                -- the Teams view's sizes and helpers (one local: th
     EMPTY_TEXT = "A team is the list of players who raid together: who plays which spec and who goes in which group. "
         .. "Raids can be opened to a team, and the raid's groups then start from the team's layout.",
 }
+-- WoW Forever: its raids' planner keys (Data/ForeverRaids.lua)
+if ns.Compat and ns.Compat.isForever then TV.THEMES = { "ony", "barrow", "hyjal" } end
 
 for k, v in pairs(BAND) do TV[k] = v end            -- (the Comp view's role bands)
 
@@ -2679,7 +2681,7 @@ function TV.copyName(name)
     return name
 end
 
--- Opens team `id` as the draft (nil: an empty new team with one 25-player lineup); `copy` (a team) makes a new draft
+-- Opens team `id` as the draft (nil: an empty new team with one lineup of the planner's default size); `copy` (a team) makes a new draft
 -- with its roster and lineups (their groups, specs and target comps, as new lineups). The lineup opened: state.ln's,
 -- else the first.
 function TV.load(id, copy)
@@ -2691,7 +2693,7 @@ function TV.load(id, copy)
         lineups[i] = { id = not copy and l.id or nil, name = l.name, sz = l.size, s = copyMap(l.specs),
                        grp = copyMap(l.groups), gs = copyMap(l.seats), cp = ns.RaidComp:CopyComp(l.comp) or {} }
     end
-    if #lineups == 0 then lineups[1] = { sz = 25, s = {}, grp = {}, gs = {}, cp = {} } end
+    if #lineups == 0 then lineups[1] = { sz = RP():GetDefaultSize(), s = {}, grp = {}, gs = {}, cp = {} } end
     state.draft = {
         id = (t and not copy) and t.id or nil,
         name = copy and TV.copyName(copy.name) or (t and t.name or TV.NEW_NAME),
@@ -2865,7 +2867,7 @@ function TV.groupKeys()
     elseif IsInGroup() then
         add(ns.Util.PlayerKey())
         for i = 1, 4 do
-            local name, realm = UnitName("party" .. i)
+            local name, realm = ns.Util.UnitNameRealm("party" .. i)
             if name then add(realm and realm ~= "" and (name .. "-" .. realm) or name) end
         end
     end
@@ -3132,7 +3134,7 @@ end
 function PlanUI:SetDraftSize(size)
     local dr = state.draft
     if not dr or not RP():CanManageTeams() then return end
-    size = size == 10 and 10 or 25
+    size = RP():IsSize(size) and size or RP():GetDefaultSize()
     -- a target comp bigger than the new size: offer to start it again from the preset of that size
     local slots = ns.RaidComp:CompSize(dr.cp)
     if slots > size then
@@ -3275,7 +3277,7 @@ function PlanUI:AddLineup(size)
         return false
     end
     TV.stash()
-    dr.lineups[#dr.lineups + 1] = { sz = size == 10 and 10 or 25, s = {}, grp = {}, gs = {}, cp = {} }
+    dr.lineups[#dr.lineups + 1] = { sz = RP():IsSize(size) and size or RP():GetDefaultSize(), s = {}, grp = {}, gs = {}, cp = {} }
     TV.useLineup(#dr.lineups, true)
     self:RefreshTeams()
     return true
@@ -3374,8 +3376,9 @@ function TV.lineupMenu(owner, i)
             ns.Popup:Show("DISASTERZONE_LINEUP_NAME", nil, nil, { i = i, name = dr.lineups[i].name or "" })
         end)
         local sub = root:CreateButton("Size")
-        sub:CreateRadio("10-man", function() return dr.sz == 10 end, function() PlanUI:SetDraftSize(10) end)
-        sub:CreateRadio("25-man", function() return dr.sz == 25 end, function() PlanUI:SetDraftSize(25) end)
+        for _, n in ipairs(ns.RaidPlan:GetSizes()) do   -- (10 / 25; WoW Forever 10 / 20 / 40)
+            sub:CreateRadio(n .. "-man", function() return dr.sz == n end, function() PlanUI:SetDraftSize(n) end)
+        end
         if #dr.lineups < TV.MAX_LINEUPS then
             root:CreateButton(UI():AtlasIconText(17, 14, { 0.9, 0.9, 0.9 }) .. "  Copy", function() PlanUI:CopyLineup(i) end)
         end
@@ -3675,7 +3678,7 @@ function PlanUI:CreateTeams(parent)
     d.buffs = CreateFrame("Frame", nil, bar)
     t.grid = ns.RaidGroupsUI:CreateGrid(d.scroll, {
         layout = "row",
-        getSize = function() return state.draft and state.draft.sz or 25 end,
+        getSize = function() return state.draft and state.draft.sz or RP():GetDefaultSize() end,
         getMembers = TV.members,
         getGroups = function() return state.draft and state.draft.grp or {} end,
         getSeats = function() return state.draft and state.draft.gs or {} end,
@@ -4742,12 +4745,13 @@ function TV.createLineupTabs(d)
     local strip = d.layout.tabs
     d.lc = strip
     d.lcards = {}
-    d.lcAdd = UI():CreateTipIconButton(strip, 22, UI().ICON.plus, "New lineup", "Another 10- or 25-player setup of this "
-        .. "roster (e.g. Kara A and Kara B), with its own groups, specs, target comp and waitlist.", function(self)
+    d.lcAdd = UI():CreateTipIconButton(strip, 22, UI().ICON.plus, "New lineup", "Another setup of this roster at any "
+        .. "raid size (e.g. two 10-player groups), with its own groups, specs, target comp and waitlist.", function(self)
             UI():ContextMenu(self, function(root)
                 root:CreateTitle("New lineup")
-                root:CreateButton("10-man", function() PlanUI:AddLineup(10) end)
-                root:CreateButton("25-man", function() PlanUI:AddLineup(25) end)
+                for _, n in ipairs(ns.RaidPlan:GetSizes()) do
+                    root:CreateButton(n .. "-man", function() PlanUI:AddLineup(n) end)
+                end
             end)
         end)
     d.lcMore = UI():CreateSleekMenuButton(strip, "", 44, function(root)
@@ -6938,14 +6942,15 @@ function PlanUI:OnInit()
             hideOnEscape = true,
             preferredIndex = 3,
         }
-        -- Teams: a lineup's name (empty: its default, "25-man")
+        -- Teams: a lineup's name (empty: its default, "25-man"; Forever: the default size's)
         local function editBox(popup) return (popup.GetEditBox and popup:GetEditBox()) or popup.editBox end
         local function rename(data, text)
             if type(data) == "table" and data.i then PlanUI:RenameLineup(data.i, text) end
         end
         ns.Popup.dialogs["DISASTERZONE_LINEUP_NAME"] = {
             title = "Lineup name",
-            text = "Leave it empty for its size, e.g. \"25-man\".",
+            text = ("Leave it empty for its size, e.g. \"%d-man\"."):format(
+                (RP() and RP().GetDefaultSize and RP():GetDefaultSize()) or 25),   -- (WoW Forever: 40)
             button1 = SAVE or "Save",
             button2 = CANCEL or "Cancel",
             hasEditBox = 1,

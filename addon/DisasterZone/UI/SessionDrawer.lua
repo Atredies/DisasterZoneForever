@@ -310,11 +310,17 @@ function Sec.Bosses(y)
     local n = #bosses
     y = P.Head(y, "Bosses", ("%d of %d · %s"):format(i.kills or 0, i.total or n, Clock(i.el or 0)))
     local nextB
+    -- (more bosses than fit in one row, Hyjal Summit's 13 on WoW Forever: the faces wrap)
+    local perRow = math.max(1, math.floor((W - 2 * PAD + FACE_GAP) / (FACE_SLOT + FACE_GAP)))
+    local cols = math.min(n, perRow)
+    local rows = math.ceil(n / perRow)
+    local ROW = FACE + 4 + 16
     for k, b in ipairs(bosses) do
         if not b.killed then nextB = nextB or b end
         local st = b.killed and "k" or (b == nextB and "n" or "a")
         local f = P.Face(b, st)
-        f:SetPoint("TOP", frame, "TOPLEFT", PAD + (k - 1) * (FACE_SLOT + FACE_GAP) + FACE_SLOT / 2, -y)
+        local col, row = (k - 1) % perRow, math.floor((k - 1) / perRow)
+        f:SetPoint("TOP", frame, "TOPLEFT", PAD + col * (FACE_SLOT + FACE_GAP) + FACE_SLOT / 2, -(y + row * ROW))
         f.line = b.killed and ("Killed · %s fight"):format(b.dur and Clock(b.dur, true) or "?")
             or (b == nextB and "Next" or "Not killed yet")
         local lab = P.Text("small", b.killed and "GOLD" or "SUB")
@@ -322,9 +328,9 @@ function Sec.Bosses(y)
         lab:SetText(b.killed and (b.dur and Clock(b.dur, true) or "") or (b == nextB and "next" or ""))
         if b.killed then lab:SetTextColor(0.95, 0.86, 0.58) end
     end
-    local facesW = n * (FACE_SLOT + FACE_GAP)
-    local side = facesW + 190 <= W - 2 * PAD
-    local ny = side and y or (y + FACE + 4 + 16)
+    local facesW = cols * (FACE_SLOT + FACE_GAP)
+    local side = rows <= 1 and facesW + 190 <= W - 2 * PAD
+    local ny = side and y or (y + math.max(1, rows) * ROW)
     local right = W - PAD
     if nextB then
         local t = P.Text("body")
@@ -368,7 +374,7 @@ function Sec.Bosses(y)
             t2:SetText(("fastest %s · longest %s"):format(Clock(fast.dur, true), Clock(slow.dur, true)))
         end
     end
-    y = side and (y + FACE + 4 + 16) or (ny + 20 + BTN_H)
+    y = side and (y + ROW) or (ny + 20 + BTN_H)
     return P.Rule(y + 4)
 end
 

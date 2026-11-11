@@ -2,6 +2,9 @@ if DisasterZoneBoot and DisasterZoneBoot.Run("Core/Roll.lua", ...) then return e
 -- Roll sessions (Addendum A §19): one open roll at a time (others wait in a queue), RS/RR/RE/RW
 -- raid messages, /roll parsing from CHAT_MSG_SYSTEM, a BiS-aware winner suggestion and the award
 -- flow (master-loot hand-out or confirm, then record + announce). Sessions live in memory only.
+-- DisasterZone Forever 0.2: a raider who logs in / reloads in a group asks for open rolls (RQ); the starter of a roll
+-- still open sends its RS again on the group channel with the time left (re = 1), so the roll window comes back.
+-- Clients that already know the roll (open or closed) ignore it: a closed roll is never reopened.
 -- Dungeon mode (Addendum B §22.2): in a 5-man party the same messages run on PARTY.
 -- Addendum C §23: a loot message for a rolled item resolves its session on every client
 -- (Roll:OnItemLooted, via = "loot"), and awards made outside the roll UI go through
@@ -60,6 +63,8 @@ local MAX_NOTE_LEN = 64
 local LOOT_MATCH_AGE = 15 * 60   -- a loot message resolves sessions created at most 15 min ago
 local SOLO_DURATION = 5          -- 1.4.3: an item one player reserved: no roll, the session only names them
 local MAX_RK = 40                -- reservers named in an RS
+local RQ_DELAY, RQ_JITTER = 6, 2 -- after a login / reload in a group: ask for open rolls (after the raid council's CR)
+local RQ_REPLY_DELAY = 1         -- the starter answers RQs at most once per roll per this many seconds (coalesced)
 
 local MAX_VOTES = 40             -- voters per session (one vote per council member in the group)
 
@@ -83,7 +88,7 @@ local rollPattern        -- built lazily from RANDOM_ROLL_RESULT (false = unusab
 local DemoOn = Util.DemoOn
 
 local function IsValidItemID(id)
-    return type(id) == "number" and id == floor(id) and id >= 1 and id <= 200000
+    return type(id) == "number" and id == floor(id) and id >= 1 and id <= 1000000   -- (Forever's new items are 280000+)
 end
 
 local function Setting(path, default)
@@ -173,11 +178,17 @@ end
 -- no roll), "g" (held for the guild: the loot council among guild members), "o" (up for grabs: everyone rolls), nil
 -- (reserves are not the loot method). Decided by the starter when the roll opens (RS rv / rk). ses.force = "o": the
 -- council opened a guild item to everyone (Roll:StartUpForGrabs).
+-- Two copies of an item in one drop: each copy uses up one reservation. The players who got (or, on a closed roll, are
+-- about to get) another copy of it from this drop are no reservers of this copy (CopyClaims); when nobody is left,
+-- the copy is up for grabs. (DisasterZone 1.5.5 / 1.6.0 rolled every copy among all reservers again: one reserver got
+-- both copies.)
+local CopyClaims   -- forward declaration (Results section)
+
 local function ReserveDecision(ses)
     if ses.party then return nil end
     local R = ns.Reserves
     if not (R and R.Decide) then return nil end
-    local kind, keys = R:Decide(ses.i)
+    local kind, keys = R:Decide(ses.i, CopyClaims(ses))
     if kind and ses.force == "o" then return "o" end
     return kind, keys
 end
@@ -1018,6 +1029,62 @@ local function BuildResults(ses)
     end
     local solo = (ses.rv == "s" and type(ses.rk) == "table" and #ses.rk == 1) and ses.rk[1] or nil
     return Roll:RankRows(out, { plain = plain, mat = mat, prized = przRec, solo = solo })
+end
+
+-- Who has the other copies of itemID from drop s (copy c is the one asked about): the winners of their awarded
+-- rolls, the one suggestion of a closed roll nobody awarded yet (a reserves roll names its reserver at once, the
+-- award follows), and the loot log's awards of the item for that drop (the Award menu). { [key] = true } or nil.
+-- Only for a drop with an identity (s ~= ""): two rolls without one are not copies of one drop.
+local function ClaimsOf(itemID, s, c, demo)
+    if type(s) ~= "string" or s == "" then return nil end
+    local set
+    local function Add(key)
+        if type(key) == "string" then
+            set = set or {}
+            set[key] = true
+        end
+    end
+    for _, other in pairs(sessions) do
+        if other.i == itemID and other.s == s and other.c ~= c and (other.demo and true or false) == demo then
+            if other.state == "awarded" then
+                Add(other.winner)
+            elseif other.state == "closed" then
+                local pick, n = nil, 0
+                for _, row in ipairs(BuildResults(other)) do
+                    if row.suggested then
+                        pick = row.key
+                        n = n + 1
+                    end
+                end
+                if n == 1 then Add(pick) end   -- (a tie: nobody is sure to have it yet)
+            end
+        end
+    end
+    -- the loot log's awards of the item for this drop (Loot history)
+    local Ledger, Loot = ns.Ledger, ns.Loot
+    if not demo and Ledger and Ledger.AwardsForDrop and Loot and Loot.GetHistory then
+        local hist = Loot:GetHistory()
+        for k = #hist, 1, -1 do
+            local d = hist[k]
+            if type(d) == "table" and d.s == s then
+                for _, e in ipairs(Ledger:AwardsForDrop(d)[itemID] or {}) do Add(e.w) end
+                break
+            end
+        end
+    end
+    return set
+end
+
+CopyClaims = function(ses)
+    return ClaimsOf(ses.i, ses.s, ses.c, ses.demo and true or false)
+end
+
+-- (public) The players who have (or are about to get) the other copies of itemID from the drop with source s, for
+-- copy c: { [key] = true } or nil. The drop panel's reserves preview of a copy that has no roll yet.
+function Roll:CopyClaims(itemID, s, c)
+    itemID = tonumber(itemID)
+    if not itemID then return nil end
+    return ClaimsOf(itemID, s, tonumber(c) or 1, DemoOn() and true or false)
 end
 
 -- Orders result rows and marks the suggestion (suggested / suggestedBy / tie / split), in place; returns them.
@@ -2441,8 +2508,10 @@ local function OnRollStart(sender, msg, dist)
     local now = GetServerTime()
     local ts = tonumber(msg.ts)
     -- Clash resolution only needs same-moment starts: a claimed start far in the past (or NaN) would let any
-    -- council member / master looter pre-empt the running roll everywhere.
-    if not ts or ts ~= ts or ts < now - RS_TS_PAST or ts > now + RS_TS_FUTURE then ts = now end
+    -- council member / master looter pre-empt the running roll everywhere. A re-sent RS (re = 1, the answer to an
+    -- RQ) carries the time left as d and the real start, which may be up to a whole roll ago.
+    local past = (msg.re == 1) and (RS_TS_PAST + MAX_DURATION) or RS_TS_PAST
+    if not ts or ts ~= ts or ts < now - past or ts > now + RS_TS_FUTURE then ts = now end
 
     Prune()
     local ses = NewSession({ id = id, i = itemID, s = s, b = b, c = c, starter = sender, state = "open" })
@@ -2567,6 +2636,36 @@ local function OnRollEnd(sender, msg, dist)
     else
         CloseSession(ses)
     end
+end
+
+-- RQ {} (Forever 0.2): a group member logged in / reloaded and asks for open rolls. The starter of a roll that is
+-- still open here sends its RS again on the group channel, d = the seconds left, re = 1. Every client that knows the
+-- roll already (open, closed or awarded) drops it on the id; several RQs at once get one answer per roll.
+local function ResendStart(ses)
+    if ses.state ~= "open" or not ses.isLocal or ses.demo or not ses.endsAt then return end
+    local left = floor(ses.endsAt - GetTime())
+    if left < MIN_REMOTE_DURATION then return end   -- nearly over: a window now would only flash
+    Send({ t = "RS", id = ses.id, i = ses.i, s = ses.s, b = ses.b, d = left, ts = ses.startedAt, c = ses.c,
+           pl = (not ses.party) and (ses.plain and 1 or 0) or nil, rv = ses.rv, rk = ses.rk, re = 1 })
+end
+
+local function OnRollQuery(sender, msg, dist)
+    if DemoOn() or not GroupDist(dist) or Util.IsMe(sender) then return end
+    for _, ses in pairs(sessions) do
+        if ses.state == "open" and ses.isLocal and not ses.demo and not ses.resendPending then
+            ses.resendPending = true
+            Util.After(RQ_REPLY_DELAY, function()
+                ses.resendPending = nil
+                ResendStart(ses)
+            end)
+        end
+    end
+end
+
+-- After a login / reload: in a group without an open roll, ask once whether one is running.
+local function AskOpenRolls()
+    if DemoOn() or not GroupChannel() or Roll:GetActive() then return end
+    Send({ t = "RQ" })
 end
 
 -- Deterministic choice between two conflicting awards of one session (every client picks the same):
@@ -2810,6 +2909,14 @@ local function Guarded(fn)
     end
 end
 
+-- Login and /reload both run OnLogin: a roll that opened before it comes back (RQ, answered by its starter).
+function Roll:OnLogin()
+    -- (the jitter comes from my name, not math.random: several raiders reloading together still spread out)
+    local me, h = tostring(Util.PlayerKey() or ""), 0
+    for i = 1, #me do h = (h * 31 + me:byte(i)) % 1000 end
+    Util.After(RQ_DELAY + RQ_JITTER * h / 1000, AskOpenRolls)
+end
+
 function Roll:OnInit()
     ns:RegisterEvent("CHAT_MSG_SYSTEM", function(_, text) Roll:OnSystemMessage(text) end)
     ns:On("DEMO_TOGGLED", OnDemoToggled)
@@ -2823,6 +2930,7 @@ function Roll:OnInit()
         Comm:Register("RW", OnRollWin)
         Comm:Register("RT", OnRollTiers)
         Comm:Register("RV", OnRollVote)
+        Comm:Register("RQ", OnRollQuery)
     end
     ns:RegisterSlash("roll", SlashRoll, "<item link> - start a raid roll for an item (loot council / master looter); 'end' ends it")
 

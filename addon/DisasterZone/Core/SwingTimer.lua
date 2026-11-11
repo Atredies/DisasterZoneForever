@@ -18,6 +18,11 @@ if DisasterZoneBoot and DisasterZoneBoot.Run("Core/SwingTimer.lua", ...) then re
 -- After each fight a report counts every swing: twisted, late (Seal of Blood landed just after the swing), clipped
 -- (a GCD was running through the whole window) or plain (no Command up), plus fillers used.
 --
+-- WoW Forever (Wowhead's Forever spell database, checked 2026-11-09): no Seal of Blood, Seal of the Martyr or Crusader
+-- Strike, and Judgement no longer ends the seal, so there is no twist to plan. There it is a plain swing timer (the
+-- ring and the swings, no presses, no twist report, no practice), and the swings come from C_SwingTimer's
+-- PLAYER_SWING (no addon combat log there).
+--
 -- Settings (ns.DB settings "swing"): see Core/DB.lua defaults.
 local addonName, ns = ...
 
@@ -40,6 +45,10 @@ SwingTimer.OVERLAP, SwingTimer.MARGIN, SwingTimer.GCD = OVERLAP, MARGIN, GCD
 local IDS = {
     soc = 20375, sob = 31892, cs = 35395, judge = 20271, exo = 879, cons = 26573, hoj = 853,
 }
+local FOREVER = ns.Compat and ns.Compat.isForever
+if FOREVER then IDS.sob, IDS.cs = nil, nil end
+-- The twist can be planned (false on WoW Forever: a plain swing timer there).
+SwingTimer.twist = not FOREVER
 SwingTimer.IDS = IDS
 -- Icons: the spell's own when the client knows it (Seal of the Martyr gets its own), these otherwise
 local ICONS = {
@@ -54,13 +63,14 @@ local STUNS = { 853, 408, 1833, 20253, 7922, 12809, 20549, 5211, 9005, 22570, 24
                 12798, 16922, 1776, 6770, 20066 }
 local HOJ_CD = 60
 
-local MARTYR = 348700            -- Seal of the Martyr: the Alliance's Seal of Blood in TBC Classic, same twist
+local MARTYR = (not FOREVER) and 348700 or nil   -- Seal of the Martyr: the Alliance's Seal of Blood in TBC Classic
 local names = {}                 -- key -> localized spell name
 local function NameOf(key)
+    if not IDS[key] then return nil end
     if not names[key] and GetSpellInfo then
         local id = IDS[key]
         -- (the Alliance's is Seal of the Martyr: by faction, so it is named right before it is trained too)
-        if key == "sob" and ((IsSpellKnown and IsSpellKnown(MARTYR))
+        if key == "sob" and MARTYR and ((IsSpellKnown and IsSpellKnown(MARTYR))
             or (UnitFactionGroup and UnitFactionGroup("player") == "Alliance")) and GetSpellInfo(MARTYR) then
             id = MARTYR
         end
@@ -72,7 +82,7 @@ SwingTimer.NameOf = NameOf
 SwingTimer.ICONS = setmetatable({}, { __index = function(_, key)
     local n = IDS[key] and NameOf(key)
     local tex = n and GetSpellTexture and GetSpellTexture(n)
-    if not tex and key == "sob" and n and n == GetSpellInfo(MARTYR) and GetSpellTexture then tex = GetSpellTexture(MARTYR) end
+    if not tex and key == "sob" and n and MARTYR and n == GetSpellInfo(MARTYR) and GetSpellTexture then tex = GetSpellTexture(MARTYR) end
     return tex or ICONS[key]
 end })
 
@@ -91,7 +101,7 @@ function SwingTimer:IsEnabled() return Get("enabled", false) and true or false e
 -- A class tool (Core/ClassKit.lua) for Retribution: the most points in the third tree, or (no points yet) Seal of
 -- Command known. Its Settings section comes from UI/SwingTimerHUD.lua.
 ns.ClassKit:Register({
-    key = "swing", label = "Swing timer", class = "PALADIN", specs = { "Retribution" }, order = 20, icon = IDS.sob,
+    key = "swing", label = "Swing timer", class = "PALADIN", specs = { "Retribution" }, order = 20, icon = IDS.sob or IDS.soc,
     fallback = function() return NameOf("soc") ~= nil and (IsSpellKnown and IsSpellKnown(IDS.soc)) or false end,
 })
 
@@ -144,10 +154,9 @@ local state = {
 SwingTimer.state = state
 
 local function MainSpeed()
-    if UnitAttackSpeed then
-        local s = UnitAttackSpeed("player")
-        if s and s > 0 then return s end
-    end
+    -- (WoW Forever: secret in combat, then the last known speed stands)
+    local s = ns.Compat.AttackSpeed("player")
+    if s and s > 0 then return s end
     return state.speed
 end
 
@@ -179,24 +188,25 @@ SwingTimer.ScanSeals = ScanSeals
 -- seen running: the GCD from a seal's cooldown, a spell's own cooldown when it is longer than the GCD.
 state.gcd = GCD
 state.cd = { cs = 6, judge = 10, exo = 15, cons = 8 }
+state.gcdEnd, state.cdEnd = 0, {}                       -- (when each was last seen ending: used while secret)
 
 local function GcdLeft(now)
     local n = NameOf("soc") or NameOf("sob")
-    if not n or not GetSpellCooldown then return 0 end
-    local s, d = GetSpellCooldown(n)
-    s, d = tonumber(s) or 0, tonumber(d) or 0
+    if not n then return 0 end
+    local s, d = ns.Compat.SpellCooldown(n)
+    if s == nil then return max(0, (state.gcdEnd or 0) - now) end   -- (secret: the end last seen)
     if s == 0 or d > GCD + 0.01 then return 0 end
-    state.gcd = d
+    state.gcd, state.gcdEnd = d, s + d
     return max(0, s + d - now)
 end
 
 local function CdLeft(key, now)
     local n = NameOf(key)
-    if not n or not GetSpellCooldown then return 0 end
-    local s, d = GetSpellCooldown(n)
-    s, d = tonumber(s) or 0, tonumber(d) or 0
+    if not n then return 0 end
+    local s, d = ns.Compat.SpellCooldown(n)
+    if s == nil then return max(0, (state.cdEnd[key] or 0) - now) end   -- (secret: the end last seen)
     if s == 0 or d <= state.gcd + 0.01 then return 0 end   -- a GCD is not the spell's own cooldown
-    state.cd[key] = d
+    state.cd[key], state.cdEnd[key] = d, s + d
     return max(0, s + d - now)
 end
 
@@ -211,7 +221,7 @@ local function Known(key)
 end
 
 local function TargetType()
-    local t = UnitCreatureType and UnitCreatureType("target")
+    local t = UnitCreatureType and ns.Compat.Plain(UnitCreatureType("target"))
     return t
 end
 
@@ -249,11 +259,11 @@ function SwingTimer:Snapshot(now)
     if self.practice and self.practice.run then return self.practice:Snapshot(now) end
     state.speed = MainSpeed()
     local nxt, sp = self:NextSwing(now)
-    local mana, manaMax = UnitPower("player", 0) or 0, UnitPowerMax("player", 0) or 1
+    local manaPct = ns.Compat.PowerPct("player", 0)       -- (nil on Forever: mana is secret, no mana floor)
     local use = { cs = Known("cs"), exo = Get("use.exo", false) and Known("exo"),
                   cons = Get("use.cons", false) and Known("cons") }
     if use.exo and not UNDEAD_DEMON[TargetType() or ""] then use.exo = false end
-    if use.cons and manaMax > 0 and mana / manaMax * 100 < (tonumber(Get("consMana", 40)) or 40) then use.cons = false end
+    if use.cons and manaPct and manaPct < (tonumber(Get("consMana", 40)) or 40) then use.cons = false end
     -- against a player: Seal of Command's Judgement on a stunned target; Hammer of Justice to set it up (opt-in)
     local sit = ns.Situation:Info("swing", now)
     local player = sit.kind == "player"
@@ -289,6 +299,7 @@ end
 -- { { key, at (our clock), twist (the swing it twists into) } }; the first one at or before now is the press to make.
 -- ---------------------------------------------------------------------------------------------------------------
 function SwingTimer.Run(snap, horizon)
+    if not SwingTimer.twist then return {} end        -- (WoW Forever: swings only, nothing to press)
     horizon = horizon or (snap.now + 2 * snap.speed + 0.5)
     local lat = snap.lat
     local t = snap.now
@@ -444,7 +455,7 @@ local function OnCombatLog(_, ts, sub, _, src, _, _, _, _, _, _, _, _, spellName
 end
 
 local function StartFight()
-    fight = { start = GetTime(), swings = {}, fillers = {}, target = UnitName("target") }
+    fight = { start = GetTime(), swings = {}, fillers = {}, target = ns.Compat.Name("target") }
 end
 
 local function EndFight()
@@ -507,8 +518,18 @@ function SwingTimer:OnLogin()
         end
         state.speed = new
     end)
+    -- WoW Forever: no combat log; C_SwingTimer's PLAYER_SWING (swingDuration, swingType: 0 main hand) is the swing
+    -- (SwingTimerDocumentation.lua; UNVERIFIED in game that an addon gets it)
+    if FOREVER then
+        ns:RegisterEvent("PLAYER_SWING", function(_, duration, swingType)
+            if swingType ~= 0 or not SwingTimer.active or SwingTimer.practice then return end
+            local d = tonumber(ns.Compat.Plain(duration))
+            if d and d > 0 then state.speed = d end
+            OnSwing(GetTime())
+        end)
+    end
     ns:RegisterEvent("PLAYER_REGEN_DISABLED", function()
-        if SwingTimer.active then StartFight() end
+        if SwingTimer.active and SwingTimer.twist then StartFight() end   -- (the report counts twists)
     end)
     ns:RegisterEvent("PLAYER_REGEN_ENABLED", function()
         if fight then EndFight() end
@@ -578,6 +599,7 @@ ns:RegisterSlash("swing", function(rest)
     elseif rest == "move" or rest == "unlock" then
         if ns.EditMode then ns.EditMode:Open() end
     elseif rest == "practice" then
+        if not SwingTimer.twist then ns:Print("No twist to practise here: this client has no Seal of Blood.") return end
         if ns.SwingPracticeUI then ns.SwingPracticeUI:Open() end
     elseif rest == "report" then
         local r = SwingTimer:Reports()[1]

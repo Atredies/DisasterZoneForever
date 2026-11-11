@@ -219,7 +219,9 @@ local function SpecIcon(label)
 end
 
 local RULES = {
-    { key = "spec", title = "When I switch spec", sub = "Your talents changed, by hand or with a dual-spec swap",
+    { key = "spec", title = "When I switch spec", sub = (ns.Compat and ns.Compat.isForever)   -- (Forever: the tree
+          and "Your talents changed: the tree with the most points"                           --  with most points)
+          or "Your talents changed, by hand or with a dual-spec swap",
       icon = function(o) return SpecIcon(o.rules and o.rules.spec) end,
       value = function(o) return o.rules.spec or "Pick a spec" end },
     { key = "boss", icon = 136356, title = "At a boss or in a zone",
@@ -243,7 +245,8 @@ local function SpecMenu(o, root)
 end
 
 local function BossMenu(o, root)
-    local t = UnitName and UnitExists and UnitExists("target") and UnitName("target")
+    -- (WoW Forever: an NPC's name is secret in an instance: no "My target" there, never a secret in the rules)
+    local t = UnitExists and UnitExists("target") and ns.Compat.Name("target")
     if t then
         root:CreateButton("My target: " .. t, function() W():SetRule(o.id, "boss", { kind = "boss", name = t }) end)
     end
@@ -315,7 +318,7 @@ function WUI:ToggleRule(key, on)
                 v = specs and specs[1] and specs[1].label or nil
             end
         elseif key == "boss" then
-            local t = UnitExists and UnitExists("target") and UnitName("target")
+            local t = UnitExists and UnitExists("target") and ns.Compat.Name("target")   -- (nil when secret)
             if t then v = { kind = "boss", name = t }
             else v = { kind = "zone", name = GetRealZoneText and GetRealZoneText() or "" } end
             if v.name == "" then v = nil end

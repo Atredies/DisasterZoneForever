@@ -54,15 +54,16 @@ local DOT = "Interface\\AddOns\\DisasterZone\\Media\\Strategy\\disc"
 -- The groups (the rail) and their cards, top to bottom. icon: UI.ICON_ATLAS index. lead: the line under the group's
 -- name over its tiles. small: the Help row at the rail's foot (tutorials, demo mode, about: help, not settings).
 local CATS = {
-    { key = "general", label = "General", icon = 13, lead = "The window, the lines on item tooltips and the phase you look at.",
+    { key = "general", label = "General", icon = 13, lead = "The window, the lines on item tooltips and the " .. ns.PHASE_WORD:lower() .. " you look at.",
       cards = { "window", "tooltips", "phase" } },
     { key = "alerts", label = "Alerts", icon = 56, lead = "What reaches you, and when to stay quiet.", cards = { "quiet", "reach" } },
     { key = "loot", label = "Loot", icon = 40, lead = "Drops, rolls and what your group decided.", cards = { "session", "drops", "rolls", "rules" } },
     { key = "combat", label = "Combat", icon = 62, lead = "What runs while you fight.",
-      cards = { "meters", "bossmods", "classtools", "strategy", "mylog" } },
+      cards = (ns.Compat and ns.Compat.isForever) and { "classtools" }   -- (Forever: no combat log for meters,
+          or { "meters", "bossmods", "classtools", "strategy", "mylog" } },  -- boss mods or My Log; no boards)
     { key = "interface", label = "Interface", icon = 31, lead = "How everything looks and where it goes.", cards = { "looks", "layout" } },
     { key = "guild", label = "Guild", icon = 26, lead = "The guild's council and how attendance counts: the Guild Master sets them.",
-      cards = { "council", "attendance", "discord", "recruit", "setup" } },
+      cards = { "council", "officers", "attendance", "discord", "recruit", "setup" } },
     { key = "help", label = "Help", icon = 11, small = true, lead = "Tutorials, demo mode and what version you have.",
       cards = { "tutorials", "demo", "about" } },
 }
@@ -135,6 +136,9 @@ local CARDS = {
                lead = "Looks, layout and key binds together. A spec can switch to its own." },
     council = { label = "Loot Council", build = "BuildCouncil", scope = "guild", icon = 26,
                 lead = "Who votes on loot. The Guild Master picks the guild council." },
+    -- which guild ranks are officers (Guild:SetOfficerRanks): the GM ticks them, everyone sees them
+    officers = { label = "Officers", build = "BuildOfficers", scope = "guild", icon = 26,
+                 lead = "Which guild ranks count as officers. The Guild Master picks them for everyone." },
     -- the GM's attendance margins (Guild:SetAttendanceRules): everyone sees them, the GM changes them
     attendance = { label = "Attendance", build = "BuildAttendance", scope = "guild", icon = 61,
                    lead = "How attendance is counted. The Guild Master sets it for everyone." },
@@ -177,6 +181,12 @@ local PARTS = {
     { key = "timers", label = "Timers", tip = "The swing and shot timers: each has its own.", glyph = 59,
       kits = { "swing", "shot", "war" } },
 }
+-- WoW Forever: no combat log for addons, so no boss mods and no meters (Combat has neither card): no Looks pages
+if ns.Compat and ns.Compat.isForever then
+    for i = #PARTS, 1, -1 do
+        if PARTS[i].key == "bossmods" or PARTS[i].key == "meters" then table.remove(PARTS, i) end
+    end
+end
 local PART = {}
 for _, p in ipairs(PARTS) do PART[p.key] = p end
 -- The timer whose look the Timers part shows: my class's (the Retribution swing timer for anyone else).
@@ -204,8 +214,9 @@ local SOURCE_TEXT = {
     raid = "this raid's council",
 }
 
--- The raids of a phase, short (a dropdown is 196 wide).
-local PHASE_RAIDS = { "Kara, Gruul, Mag", "SSC, TK", "Hyjal, BT", "ZA", "Sunwell" }
+-- The raids of a phase, short (a dropdown is 196 wide). WoW Forever: one season (ns.PHASE_INFO, Core/Constants.lua).
+local PHASE_RAIDS = (ns.Compat and ns.Compat.isForever) and { "Onyxia, Barrow Deeps, Hyjal" }
+    or { "Kara, Gruul, Mag", "SSC, TK", "Hyjal, BT", "ZA", "Sunwell" }
 
 ---------------------------------------------------------------------------
 -- Helpers
@@ -335,13 +346,13 @@ end
 
 local function PhaseLabel(p)
     local raids = PHASE_RAIDS[p]
-    if raids then return format("P%d · %s", p, raids) end
-    return "P" .. p
+    if raids then return format("%s · %s", ns.PhaseLabel(p), raids) end
+    return ns.PhaseLabel(p)
 end
 
 local function ViewPhaseOptions()
     local gp = ns.Guild and ns.Guild.GetGuildPhase and ns.Guild:GetGuildPhase()
-    local out = { { value = 0, text = format("Follow guild (P%d)", tonumber(gp) or 1) } }
+    local out = { { value = 0, text = format("Follow guild (%s)", ns.PhaseLabel(tonumber(gp) or 1)) } }
     for p = 1, MaxPhase() do out[#out + 1] = { value = p, text = PhaseLabel(p) } end
     return out
 end
@@ -362,7 +373,7 @@ local function GuildCouncilPhase()
 end
 
 local function GroupPhaseOptions()
-    local out = { { value = 0, text = format("Use guild phase (P%d)", GuildCouncilPhase()) } }
+    local out = { { value = 0, text = format("Use guild %s (%s)", ns.PHASE_WORD:lower(), ns.PhaseLabel(GuildCouncilPhase())) } }
     for p = 1, MaxPhase() do out[#out + 1] = { value = p, text = PhaseLabel(p) } end
     return out
 end
@@ -405,7 +416,7 @@ function SettingsUI:OnInit()
                            "DEMO_TOGGLED", "SYNC_STATUS", "DUNGEON_MODE_CHANGED", "GROUP_UPDATED",
                            "GROUP_RULES_CHANGED", "BIS_LOCK_CHANGED", "MYLOG_CHANGED", "ATTENDANCE_RULES_CHANGED",
                            "TOUR_CHANGED", "LOOT_RULES_CHANGED", "RAIDPLAN_CHANGED", "UI_LOOK_CHANGED",
-                           "DISCORD_CHANGED", "RECRUIT_RULES_CHANGED" }) do
+                           "DISCORD_CHANGED", "RECRUIT_RULES_CHANGED", "OFFICER_RANKS_CHANGED" }) do
         ns:On(msg, changed)
     end
 end
@@ -1696,15 +1707,18 @@ local SUMMARY = {
     interface = function()
         local Look = ns.Look
         if not (Look and Look.PARTS) then return "" end
-        local all, n = Get("ui.look", "blizzard"), 0
+        local all, n, total = Get("ui.look", "blizzard"), 0, 0
         for _, p in ipairs(Look.PARTS) do
-            if Get("ui." .. p.key .. ".look", "inherit") == "inherit" and (p.key ~= "sct" or Get("ui.sct.on", false)) then
-                n = n + 1
+            if PART[p.key] then   -- (the parts with a Looks page: Forever has no boss mods)
+                total = total + 1
+                if Get("ui." .. p.key .. ".look", "inherit") == "inherit" and (p.key ~= "sct" or Get("ui.sct.on", false)) then
+                    n = n + 1
+                end
             end
         end
         local l = Look.BY_KEY[all]
-        if all == "blizzard" and n == #Look.PARTS - (Get("ui.sct.on", false) and 0 or 1) then return "The game's own frames" end
-        return format("%s on %d of %d parts", l and l.name or "Blizzard", n, #Look.PARTS)
+        if all == "blizzard" and n == total - (Get("ui.sct.on", false) and 0 or 1) then return "The game's own frames" end
+        return format("%s on %d of %d parts", l and l.name or "Blizzard", n, total)
     end,
     guild = function()
         local G = ns.Guild
@@ -2439,7 +2453,8 @@ function SettingsUI:SelectSection(key, rowTitle)
     local part = key:match("^look[.:](%a+)$")
     if part and PART[part] then return self:OpenPart(part) end
     if CAT[key] and not CARDS[key] then return self:OpenCategory(key) end
-    if not CARDS[key] then key = "window" end
+    -- (a card no group lists on this client, e.g. meters / boss mods on WoW Forever: General, not an empty page)
+    if not CARDS[key] or not CARD_CAT[key] then key = "window" end
     if not self:CardVisible(key) then return self:OpenCategory(CARD_CAT[key]) end
     self.section, self.cat, self.part, self.mode = key, CARD_CAT[key], nil, "card"
     if not self.sections then return end
@@ -3367,7 +3382,8 @@ function SettingsUI:BuildPart(sec, p)
                     TryRow("A made-up pull plays on your screen. Nothing is cast or sent.", function() ns.CombatTextUI:TryIt() end)
                 end
                 if key == "plates" and ns.Plates then
-                    TryRow("The Maulgar council's plates show on your screen for a few seconds. Nothing is read or sent.",
+                    TryRow(((ns.Compat and ns.Compat.isForever) and "The Seven's" or "The Maulgar council's")
+                        .. " plates show on your screen for a few seconds. Nothing is read or sent.",
                         function() ns.Plates:TryIt(PartLook("plates")) end)
                 end
                 self:MoreOptions(sec)
@@ -4200,8 +4216,8 @@ function SettingsUI:RefreshCouncil()
         local g = sum.guild
         local text
         if g then
-            text = "Guild council" .. Grey(format(" · set by %s %s · phase P%d", NameOf(g.by or sum.gm or "?"),
-                FormatAgo(g.rev), tonumber(g.phase) or 1))
+            text = "Guild council" .. Grey(format(" · set by %s %s · %s %s", NameOf(g.by or sum.gm or "?"),
+                FormatAgo(g.rev), ns.PHASE_WORD:lower(), ns.PhaseLabel(tonumber(g.phase) or 1)))
         elseif sum.gm then
             text = "Guild council" .. Grey(" · only the Guild Master so far")
         else
@@ -4254,6 +4270,70 @@ function SettingsUI:RefreshCouncil()
     y = y - (TextHeight(cs.info) + 8)
     cs.height = -y
     return -y
+end
+
+---------------------------------------------------------------------------
+-- Officers: a switch per guild rank below the Guild Master (Guild:SetOfficerRanks, the GM's, shared with every
+-- member; until the GM picks, ranks 0 and 1). Officers pick the raid leaders, keep the guest book and the blacklist,
+-- work on recruits and read officer notes. Ranks the guild doesn't have stay hidden.
+---------------------------------------------------------------------------
+local OFFICER_ROWS = 9               -- rank index 1-9 (0, the Guild Master, is always an officer)
+
+local function GuildRankName(ri)
+    for _, r in ipairs(ns.Guild and ns.Guild.GetRanks and ns.Guild:GetRanks() or {}) do
+        if r.index == ri then return r.name end
+    end
+    return nil
+end
+
+local function SetOfficerRank(ri, on)
+    local G = ns.Guild
+    if not (G and G.CanEditOfficerRanks and G:CanEditOfficerRanks()) then return end
+    local set = {}
+    for _, i in ipairs((G:GetOfficerRanks())) do set[i] = true end
+    set[ri] = on and true or nil
+    local ok, err = G:SetOfficerRanks(set)
+    if not ok then ns:Print("%s", tostring(err)) end
+    SettingsUI:RefreshOfficers()
+end
+
+function SettingsUI:BuildOfficers(sec)
+    self.ofc = sec
+    sec.notice = self:Notice(sec, "info")
+    sec.status = sec.notice.text
+    for ri = 1, OFFICER_ROWS do
+        local _, row = self:Switch(sec, "Rank " .. ri, "Counts as an officer",
+            function() return ns.Guild and ns.Guild.IsOfficerRank and ns.Guild:IsOfficerRank(ri) or false end,
+            function(a, b) SetOfficerRank(ri, Bool(a, b)) end)
+        row.rank = ri
+        self:Needs(row, function() return GuildRankName(ri) ~= nil end)
+    end
+    self:EndSection(sec)
+end
+
+function SettingsUI:RefreshOfficers()
+    local sec = self.ofc
+    if not sec then return end
+    local G = ns.Guild
+    local gm = G and G.CanEditOfficerRanks and G:CanEditOfficerRanks() or false
+    local _, chosen = G and G.GetOfficerRanks and G:GetOfficerRanks()
+    if not _G.IsInGuild() then
+        sec.status:SetText(Grey("Officers need a guild."))
+    elseif gm then
+        sec.status:SetText("You pick these as Guild Master." .. Grey(" Every member gets them."))
+    else
+        sec.status:SetText(Grey(chosen and "Picked by the Guild Master for the whole guild."
+            or "Not picked yet: the two highest ranks count."))
+    end
+    sec.notice:SetNotice(gm and "info" or "readonly", sec.status:GetText())
+    for _, row in ipairs(sec.rows) do
+        if row.rank then
+            local name = GuildRankName(row.rank)
+            if name then row.title:SetText(name) end
+            local on = G and G.IsOfficerRank and G:IsOfficerRank(row.rank) or false
+            SetReadOnly(row, not gm, on and "Officer" or "")
+        end
+    end
 end
 
 ---------------------------------------------------------------------------
@@ -4404,10 +4484,12 @@ function SettingsUI:BuildRecruit(sec)
         function() return RecruitRules().it ~= false end, function(a, b) SetRecruit({ it = Bool(a, b) }) end)
     choice("uc", "Remind if nobody takes someone", "Every officer, once, about an introduction nobody has taken.")
     choice("ck", "Check-ins", "Whoever invited them gets a reminder.")
-    switch("Milestones", "Level 58, level 70, their first dungeon and raid with the guild: told to whoever invited them.",
+    local msLevel = (ns.Recruit and ns.Recruit.MILESTONE_LEVEL) or { [58] = 58, [70] = 70 }
+    switch("Milestones", format("Level %d, level %d, their first dungeon and raid with the guild: told to whoever invited them.",
+            msLevel[58], msLevel[70]),
         function() local ms = RecruitRules().ms or {} return ms[70] == true end,
         function(a, b) local on = Bool(a, b) SetRecruit({ ms = { [58] = on, [70] = on, d = on, r = on } }) end)
-    switch("Raiders at 70: tell the raid leaders", "With the teams that have a place for their spec.",
+    switch(format("Raiders at %d: tell the raid leaders", msLevel[70]), "With the teams that have a place for their spec.",
         function() return RecruitRules().rl ~= false end, function(a, b) SetRecruit({ rl = Bool(a, b) }) end)
     choice("q", "Gone quiet after", "A new member offline this long: whoever invited them hears about it.")
     choice("nn", "Not now comes back", "Someone you said Not now to shows up again as a reminder.")
@@ -4513,7 +4595,7 @@ CARDS.phase.summary = function()
     local v = tonumber(Get("viewPhase", nil))
     if v and v >= 1 and v <= MaxPhase() then return PhaseLabel(v) end
     local gp = ns.Guild and ns.Guild.GetGuildPhase and ns.Guild:GetGuildPhase()
-    return format("Follows the guild · P%d", tonumber(gp) or 1)
+    return format("Follows the guild · %s", ns.PhaseLabel(tonumber(gp) or 1))
 end
 CARDS.quiet.summary = function()
     local N = ns.Notify
@@ -4604,6 +4686,15 @@ CARDS.council.summary = function()
     local n = sum and sum.guildMembers and #sum.guildMembers or 0
     return format("Council of %d · %s", n, IsCouncil() and "you are on it" or "you are not on it")
 end
+CARDS.officers.summary = function()
+    local G = ns.Guild
+    local names = {}
+    for _, r in ipairs(G and G.GetRanks and G:GetRanks() or {}) do
+        if r.officer and r.index > 0 then names[#names + 1] = r.name end
+    end
+    if #names == 0 then return "Only the Guild Master" end
+    return "Officers: " .. table.concat(names, " · ")
+end
 CARDS.attendance.summary = function()
     local G = ns.Guild
     local r = (G and G.GetAttendanceRules and G:GetAttendanceRules()) or { o = 5, d = 10 }
@@ -4686,6 +4777,7 @@ function SettingsUI:Refresh()
     self:RefreshAbout()
     self:RefreshDungeon()
     self:RefreshCouncil()
+    self:RefreshOfficers()
     self:RefreshAttendance()
     self:RefreshDiscord()
     self:RefreshRecruit()

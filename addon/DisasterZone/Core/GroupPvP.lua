@@ -12,6 +12,7 @@ local ipairs, type, tonumber = ipairs, type, tonumber
 local BRACKETS = { 2, 3, 5 }
 local demoTeams = { [3] = { index = 2, name = "Disastrous Decisions", size = 3, rating = 1712, personal = 1698,
                             members = {} } }
+if ns.Compat and ns.Compat.isForever then demoTeams = {} end   -- (WoW Forever has no arenas)
 
 
 -- My arena teams by bracket: [2|3|5] = { index (for the team API), name, size, rating, personal, members (keys) }.

@@ -41,18 +41,12 @@ PACKS = [
     {"id": "bingo", "folder": "DisasterZone_Bingo", "game": "Games/Bingo", "media": None,
      "name": "Council Bingo", "tagline": "Squares fill in as the raid happens.",
      "icon": "Interface\\Icons\\INV_Misc_Note_02"},
-    {"id": "trainer", "folder": "DisasterZone_Trainer", "game": "Games/Trainer", "media": None,
-     "name": "Raid Trainer", "tagline": "Practise each boss in 3D before the pull.",
-     "icon": "Interface\\Icons\\Spell_Shadow_DeathPact"},
     {"id": "azeromon", "folder": "DisasterZone_Azeromon", "game": "Games/Azeromon", "media": "Media/Azeromon",
      "name": "Azeromon", "tagline": "Tame and battle the beasts of Elwynn.",
      "icon": "Interface\\Icons\\Ability_Hunter_BeastTaming"},
     {"id": "chess", "folder": "DisasterZone_Chess", "game": "Games/Chess", "media": None,
      "name": "Karazhan Chess", "tagline": "Play Medivh's echo, or a guildmate.",
      "icon": "Interface\\Icons\\INV_Misc_Ogrepinata"},
-    {"id": "illidan", "folder": "DisasterZone_Illidan", "game": "Games/Illidan", "media": "Media/Illidan",
-     "name": "The Binding of Illidan", "tagline": "Five floors of the Black Temple, new every run.",
-     "icon": "Interface\\Icons\\Spell_Shadow_Metamorphosis"},
     {"id": "holdtheline", "folder": "DisasterZone_HoldTheLine", "game": "Games/HoldTheLine", "media": "Media/HoldTheLine",
      "name": "Hold the Line", "tagline": "Fifteen minutes. One class. The whole Scourge.",
      "icon": "Interface\\Icons\\Spell_Holy_InnerFire"},
@@ -120,13 +114,14 @@ def find_packs(addon_dir):
     return out
 
 
-def pack_toc_head(pack, interface):
+def pack_toc_head(pack, interface, version="0.1.0"):
     p = pack
     return "\r\n".join([
         "## Interface: %s" % interface,
         "## Title: |cffff8000Disaster|rZone · %s" % p["name"],
         "## Notes: %s" % p["tagline"],
         "## Author: Casual Disaster",
+        "## Version: %s" % version,       # (a release stamps the addon's version: release.py stage_tree)
         "## Dependencies: DisasterZone",
         "## X-DZ-Pack: %s" % p["id"],
         "## X-DZ-Kind: game",
@@ -243,7 +238,8 @@ class Splitter(object):
                 mine.append(s[len(game):].replace("/", "\\"))
             else:
                 keep.append(line)
-        interface = (read_toc(self.addon, ADDON_NAME) or ({}, []))[0].get("interface", "20506")
+        core_head = (read_toc(self.addon, ADDON_NAME) or ({}, []))[0]
+        interface = core_head.get("interface", "16001")
         pack_dir = os.path.join(self.root, "addon", p["folder"])
         pack_toc = os.path.join(pack_dir, p["folder"] + ".toc")
         if os.path.isfile(pack_toc):
@@ -258,7 +254,7 @@ class Splitter(object):
                 text = "\r\n".join(lines)
         else:
             new = mine
-            text = pack_toc_head(p, interface) + "".join(m + "\r\n" for m in mine) + PACK_LAST + "\r\n"
+            text = pack_toc_head(p, interface, core_head.get("version", "0.1.0")) + "".join(m + "\r\n" for m in mine) + PACK_LAST + "\r\n"
         if mine:
             self.note("toc", "%s.toc: %d line(s) from DisasterZone.toc" % (p["folder"], len(mine)))
         if self.dry:

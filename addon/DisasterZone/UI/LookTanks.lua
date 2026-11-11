@@ -101,22 +101,25 @@ local function MobData(tank, key, d)
     if mu and UnitExists and UnitExists(mu) then
         d.exists, d.unit = true, mu
         d.isPlayer = UnitIsPlayer(mu) and true or false
-        d.name = UnitName(mu)
+        d.name = ns.Compat.Plain(UnitName(mu))         -- (Forever: secret in instances, reads as unknown)
         if not d.isPlayer then d.name = ShortMob(d.name) end
         local _, class = UnitClass(mu)
-        d.class = class
+        d.class = ns.Compat.Plain(class)
         d.level = UnitLevel(mu)
         d.classif = UnitClassification and UnitClassification(mu)
-        d.hp, d.hpMax = UnitHealth(mu) or 0, UnitHealthMax(mu) or 1
+        local C = ns.Compat                            -- (Forever: health is secret, a full bar)
+        d.hp, d.hpMax = C.Plain(UnitHealth(mu)), C.Plain(UnitHealthMax(mu))
+        d.hpHidden = d.hp == nil and C.IsSecret(UnitHealth(mu)) or nil
+        if d.hpHidden then d.hp, d.hpMax = 1, 1 else d.hp, d.hpMax = d.hp or 0, d.hpMax or 1 end
         d.dead = UnitIsDeadOrGhost and UnitIsDeadOrGhost(mu) or false
         d.reaction = UnitReaction and UnitReaction(mu, "player") or 4
-        d.raidIcon = GetRaidTargetIndex and GetRaidTargetIndex(mu) or nil
-        d.selected = UnitExists("target") and UnitIsUnit(mu, "target") or false
+        d.raidIcon = C.RaidMark(mu)                    -- (secret on Forever: no icon)
+        d.selected = UnitExists("target") and C.SameUnit(mu, "target") or false
         if not d.dead and UnitCanAttack and UnitCanAttack("player", mu) then
             local tt = mu .. "target"
             local pct = floor(((d.hpMax > 0) and d.hp / d.hpMax or 0) * 100 + 0.5)
-            if UnitExists(tt) and not UnitIsUnit(tt, tank) then
-                local who, realm = UnitName(tt)
+            if UnitExists(tt) and not C.SameUnit(tt, tank) then
+                local who, realm = Util.UnitNameRealm(tt)
                 who = who or "?"
                 d.statusText = "on " .. who
                 local whoKey = Util.NormalizeName((realm and realm ~= "") and (who .. "-" .. realm) or who)
@@ -126,7 +129,7 @@ local function MobData(tank, key, d)
                 else
                     d.statusColor = GREY
                 end
-            else
+            elseif not d.hpHidden then
                 d.statusText = pct .. "%"
             end
         end
@@ -578,6 +581,9 @@ local FAKE = {
     { "Ironbark", "WARRIOR", 0.85, "Blindeye", 7, 0.41, "Dreadhex" },
     { "Moonwhisper", "DRUID", 0.91, "Olm", 6, 0.93 },
 }
+if ns.Compat and ns.Compat.isForever then   -- (WoW Forever: the Seven of Blackrock Depths, as the plates' demo)
+    FAKE[1][4], FAKE[2][4], FAKE[3][4] = "Anger'rel", "Vile'rel", "Doom'rel"
+end
 
 local function FillPreview()
     local cw, ch, gap, look = Geometry()
@@ -779,8 +785,8 @@ local function OnEvent(_, event, unit)
         local has = UnitExists("target")
         for _, row in ipairs(rows) do
             if row:IsShown() and row.unitKey then
-                row.face:SetTarget(has and UnitIsUnit(row.unitKey, "target"))
-                row.mob.face:SetTarget(has and UnitIsUnit(row.unitKey .. "target", "target"))
+                row.face:SetTarget(has and ns.Compat.SameUnit(row.unitKey, "target"))
+                row.mob.face:SetTarget(has and ns.Compat.SameUnit(row.unitKey .. "target", "target"))
             end
         end
         return

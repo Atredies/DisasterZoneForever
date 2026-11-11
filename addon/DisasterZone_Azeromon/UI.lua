@@ -6424,17 +6424,44 @@ local function HandleKey(key)
 end
 UI.Press = function(k) HandleKey(k) end
 
+-- SetPropagateKeyboardInput is protected in combat on the retail engine (WoW Forever): the client blocks it
+-- (ADDON_ACTION_BLOCKED, not a Lua error, so pcall does not help). In combat the wish waits for PLAYER_REGEN_ENABLED
+-- (as Core/Util.lua SetPropagateKeys does; a pack keeps its own guard).
+local SetPropagate
+do
+    local later, watch = {}, nil
+    function SetPropagate(frame, on)
+        if not (frame and frame.SetPropagateKeyboardInput) then return end
+        on = on and true or false
+        if InCombatLockdown and InCombatLockdown() then
+            later[frame] = on
+            if not watch and CreateFrame then
+                watch = CreateFrame("Frame")
+                watch:RegisterEvent("PLAYER_REGEN_ENABLED")
+                watch:SetScript("OnEvent", function()
+                    for f, v in pairs(later) do
+                        later[f] = nil
+                        pcall(f.SetPropagateKeyboardInput, f, v)
+                    end
+                end)
+            end
+            return
+        end
+        later[frame] = nil
+        pcall(frame.SetPropagateKeyboardInput, frame, on)
+    end
+end
 local function OnKeyDown(self, key)
     if key == "ESCAPE" then
         -- the first Escape pauses: the game lets the keyboard go and the overlay shows. With the keyboard released,
         -- a second Escape reaches the client and closes DisasterZone's window as usual.
         SetFocus(false, true)
-        pcall(self.SetPropagateKeyboardInput, self, false)
+        SetPropagate(self, false)
         return
     end
     local k = KEYMAP[key]
     if not InCombatLockdown() and self.SetPropagateKeyboardInput then
-        pcall(self.SetPropagateKeyboardInput, self, k == nil)
+        SetPropagate(self, k == nil)
     end
     if not k then return end
     if k == "up" or k == "down" or k == "left" or k == "right" then

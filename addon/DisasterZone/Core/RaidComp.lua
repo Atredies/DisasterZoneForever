@@ -73,6 +73,20 @@ local BUFFS = {
     { key = "jow", name = "Judgement of Wisdom", icon = "Spell_Holy_RighteousnessAura", scope = "raid", debuff = true,
       p = { { "PALADIN" } } },
 }
+-- WoW Forever (Wowhead's Forever spell database, checked 2026-11-09): no Wrath of Air Totem, Totem of Wrath,
+-- Ferocious Inspiration, Vampiric Touch, Bloodlust / Heroism, Blood Frenzy, Expose Weakness, Misery or Curse of the
+-- Elements; no Blessing of Salvation. Unleashed Rage, Moonkin Aura, Leader of the Pack, Sanctity Aura, Improved Scorch
+-- and the rest are there. Windfury is then the only air totem.
+if ns.Compat and ns.Compat.isForever then
+    local GONE = { wrathofair = true, totemofwrath = true, ferocious = true, vampirictouch = true, heroism = true,
+                   bloodfrenzy = true, exposeweakness = true, misery = true, coe = true }
+    for i = #BUFFS, 1, -1 do
+        local b = BUFFS[i]
+        if GONE[b.key] then table.remove(BUFFS, i)
+        elseif b.key == "windfury" then b.air, b.tip = nil, "Extra melee attacks."
+        elseif b.key == "blessings" then b.tip = "One Greater Blessing per paladin (Kings, Might, Wisdom...)." end
+    end
+end
 local BUFF_BY_KEY = {}
 for _, b in ipairs(BUFFS) do BUFF_BY_KEY[b.key] = b end
 
@@ -148,6 +162,7 @@ end
 -- casters and healers; nil when both show (no shaman, an even split, or two shamans and both kinds to serve).
 -- Second value: why, for the buff's tooltip.
 function RaidComp:AirTotem(members)
+    if not BUFF_BY_KEY.wrathofair then return nil end    -- (WoW Forever: Windfury is the only air totem)
     local shamans, melee, spell = 0, 0, 0
     for _, m in ipairs(members) do
         if m.c == "SHAMAN" then shamans = shamans + 1 end
@@ -193,12 +208,16 @@ end
 local THEMES = {
     [25] = { { tank = true }, { melee = true }, { melee = true }, { ranged = true }, { healer = true } },
     [10] = { { tank = true, melee = true }, { ranged = true, healer = true } },
+    -- (WoW Forever's 20 and 40: 4 and 8 groups)
+    [20] = { { tank = true, melee = true }, { melee = true }, { ranged = true }, { healer = true } },
+    [40] = { { tank = true }, { tank = true, melee = true }, { melee = true }, { ranged = true }, { ranged = true },
+             { ranged = true }, { healer = true }, { healer = true } },
 }
 local GROUP_SIZE = 5
 
 -- members: array of { key, c, sp }. Returns { [key] = group } (members that don't fit stay out).
 function RaidComp:AutoFill(members, size)
-    local themes = THEMES[size == 10 and 10 or 25]
+    local themes = THEMES[size] or THEMES[25]
     local count, grp = {}, {}
     for g = 1, #themes do count[g] = 0 end
     local function place(key, g)
@@ -302,8 +321,10 @@ function RaidComp:PlaceOpen(byGroup, open, n)
     return out
 end
 
+-- Parties of five: 10 -> 2, 25 -> 5 (WoW Forever: 20 -> 4, 40 -> 8).
 function RaidComp:GroupCount(size)
-    return size == 10 and 2 or 5
+    local n = math.ceil((tonumber(size) or 25) / 5)
+    return math.max(1, math.min(8, n))
 end
 
 RaidComp.GROUP_SIZE = GROUP_SIZE
@@ -411,8 +432,14 @@ local floor, min, max, tonumber, tostring, tconcat = math.floor, math.min, math.
 
 local COLUMNS = { "tank", "healer", "melee", "ranged" }
 local COLUMN_INDEX = { tank = 1, healer = 2, melee = 3, ranged = 4 }
-local MAX_COUNT = 25                -- slots of one spec
-local MAX_COMP = 25                 -- slots of a comp (the largest team)
+-- (WoW Forever: the largest raid size of Data/ForeverRaids.lua, 40)
+local PLANNER = ns.Data and ns.Data.PlannerRaids
+local LARGEST = 25
+if type(PLANNER) == "table" then
+    for _, n in ipairs(PLANNER.sizes or {}) do if n > LARGEST then LARGEST = n end end
+end
+local MAX_COUNT = LARGEST           -- slots of one spec
+local MAX_COMP = LARGEST            -- slots of a comp (the largest team)
 local LF_MAX = 255                  -- a chat line (bytes)
 
 -- The bundled presets (user decision 2026-10-05). Spec indexes of ns.SPECS.
@@ -444,11 +471,31 @@ local PRESETS = {
 -- A raid planner instance key's short name ("Kara", ..., "SWP"; ItemDB's raid table), nil for "other" and any other
 -- key (the planner's keys only, as before).
 local function RaidShort(key)
+    local RP = ns.RaidPlan
+    local inst = RP and RP.GetInstance and RP:GetInstance(key)
+    if inst and inst.short then return inst.short end   -- (WoW Forever: Data/ForeverRaids.lua)
     local IDB = ns.ItemDB
     return type(key) == "string" and IDB:PlanKeyOf(key) == key and IDB:RaidShort(key) or nil
 end
 
 RaidComp.COLUMNS = COLUMNS
+-- WoW Forever: presets for its 10, 20 and 40 (starting points; the organizer adjusts them).
+if type(PLANNER) == "table" then
+    PRESETS = {
+        { key = "std40", name = "Standard 40", size = 40, cp = {
+            WARRIOR = { 0, 5, 2 }, PALADIN = { 4, 1, 1 }, HUNTER = { 0, 3, 1 }, ROGUE = { 0, 4 },
+            PRIEST = { 1, 4, 1 }, SHAMAN = { 1, 1, 2 }, MAGE = { 1, 3 }, WARLOCK = { 1, 0, 2 }, DRUID = { 0, 0, 1, 1 },
+        } },
+        { key = "std20", name = "Standard 20", size = 20, cp = {
+            WARRIOR = { 0, 2, 2 }, PALADIN = { 2, 1 }, HUNTER = { 0, 2 }, ROGUE = { 0, 2 }, PRIEST = { 0, 2, 1 },
+            SHAMAN = { 0, 1, 1 }, MAGE = { 0, 2 }, WARLOCK = { 0, 0, 1 }, DRUID = { 0, 0, 0, 1 },
+        } },
+        { key = "std10", name = "Standard 10", size = 10, cp = {
+            WARRIOR = { 0, 0, 1 }, PALADIN = { 1, 1 }, HUNTER = { 0, 1 }, ROGUE = { 0, 1 }, PRIEST = { 0, 1 },
+            SHAMAN = { 0, 1 }, MAGE = { 0, 1 }, WARLOCK = { 0, 0, 1 }, DRUID = { 0, 0, 0, 1 },
+        } },
+    }
+end
 RaidComp.PRESETS = PRESETS
 RaidComp.MAX_COUNT = MAX_COUNT
 
@@ -699,7 +746,7 @@ function RaidComp:CompFromMembers(members, size)
         if Role(m.c, m.sp) then list[#list + 1] = m end
     end
     tsort(list, SeatedFirst)
-    local cap = (size == 10 or size == 25) and size or MAX_COMP
+    local cap = THEMES[size] and size or MAX_COMP
     local cp, n = {}, 0
     for _, m in ipairs(list) do
         if n >= cap then break end

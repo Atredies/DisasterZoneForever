@@ -449,7 +449,7 @@ end
 
 local function SymbolCount(Bl, me)
     local p = me and Bl.pals[me]
-    local n = GetItemCount and GetItemCount(Bl.D.SYMBOL_OF_KINGS) or (p and p.symbols) or 0
+    local n = (Bl.D.SYMBOL_OF_KINGS and GetItemCount and GetItemCount(Bl.D.SYMBOL_OF_KINGS)) or (p and p.symbols) or 0
     if Bl:IsDemo() and p and p.symbols then n = p.symbols end
     return n
 end
@@ -554,6 +554,7 @@ function Bar:Update()
     local n = SymbolCount(Bl, me)
     frame.sym.count = n
     Face():ShowPlanner(frame.plan)
+    frame.sym:SetShown(Bl.D.SYMBOL_OF_KINGS ~= nil)   -- (WoW Forever: Greater Blessings need no reagent)
     local low = n < (tonumber(Bl.Setting("symbols", 20)) or 20)
     Face():Set(frame.sym.face, { icon = Bl.D.SYMBOL_ICON, num = tostring(n), tone = low and "warn" or nil,
         numColor = low and { 1, 0.55, 0.47 } or nil })

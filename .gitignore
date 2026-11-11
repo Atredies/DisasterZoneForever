@@ -1,5 +1,6 @@
 # Python environment (recreate: see README "Setup")
 dev/luaenv/
+dev/luaenv
 __pycache__/
 *.pyc
 
@@ -50,3 +51,11 @@ dev/art/bossmod_src/
 
 # The developer's release plan, written by dev/tools/feedback.py plan (never shipped)
 addon/DisasterZone/Core/DevPlan.lua
+
+# Local caches made by test runs on Linux
+dev/.bccache/
+dev/.slots/
+
+# Local agent instructions and in-game probe dumps: kept outside the repo
+CLAUDE.local.md
+dev/probe/results/

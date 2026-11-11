@@ -2,7 +2,7 @@
 
 Covers: the GM posts, the asked answer, results on everyone; members who aren't asked never see it (but keep it);
 only the GM / officers / guild council ask (a forged poll is dropped); a member who was offline catches up from
-whoever is online, also when the asker is gone; answers can't change when the poll says so, and none come after the
+whoever is online who may vouch for it (its writer or an asker), also when the asker is gone; answers can't change when the poll says so, and none come after the
 close; a Pick days poll counts can / if needed / can't and finds the best day; a nudge reaches only who hasn't
 answered; a team target asks the team's roster; the asker adds people (never removes); removal by the asker or GM.
 Run: luaenv\\Scripts\\python.exe tests\\polls\\test_polls.py [-k name]   (from dev)"""
@@ -130,14 +130,17 @@ def everyone_poll_asks_each_member_once():
 
 @case
 def an_offline_member_catches_up_even_when_the_asker_is_gone():
-    w, (g, b, c, d, e) = guild()
+    # 2026-11-09 (authority holes, round 3): a relayed poll or answer is taken only from its writer or from someone
+    # who may ask polls (tests/forever/test_forever_authority3.py). Brakka is an officer here: the catch-up with the
+    # asker gone comes from him (before, any member's copy was taken at its word).
+    w, (g, b, c, d, e) = guild(ranks={"Brakka": 1})
     c.logout()
     w.tick(2)
     pid = post(g, "While you were away", "one", ["A", "B"], [["p", "Cora-" + w.realm], ["p", k(b)]])
     w.tick(5)
     assert vote(b, pid, [1])[0] is True
     w.tick(3)
-    g.logout()                      # the asker leaves; Brakka / Dan / Elowen still hold it
+    g.logout()                      # the asker leaves; Brakka (an officer) / Dan / Elowen still hold it
     w.tick(2)
     c.login()
     w.tick(HELLO)

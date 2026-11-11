@@ -525,14 +525,15 @@ end
 function Profiles:SetDemo(on)
     if not on then self.demo, self.demoUsing, self.demoSpecs, self.demoChars, self.demoCharUse = nil, nil, nil, nil, nil return end
     local specs = self:MySpecs()
+    local F = ns.Compat and ns.Compat.isForever   -- (WoW Forever: its raids' art)
     self.demo = {
         { id = "default", name = "Default", parts = { looks = true, layout = true }, looks = { ["ui.look"] = "blizzard" },
           frames = {} },
-        { id = "dhealer", name = "Raid healer", art = "SerpentshrineCavern", parts = { looks = true, layout = true, keys = true },
+        { id = "dhealer", name = "Raid healer", art = F and "HyjalForever" or "SerpentshrineCavern", parts = { looks = true, layout = true, keys = true },
           looks = { ["ui.look"] = "halo", ["ui.group.look"] = "flat" }, keys = { a = { "1", "2", "3" } }, frames = { a = {}, b = {} } },
-        { id = "dtank", name = "Tanking", art = "BlackTemple", parts = { layout = true, keys = true }, looks = { ["ui.look"] = "slate" },
+        { id = "dtank", name = "Tanking", art = F and "Onyxia" or "BlackTemple", parts = { layout = true, keys = true }, looks = { ["ui.look"] = "slate" },
           keys = { a = { "1" }, b = { "Q", "E" } }, frames = { a = {} } },
-        { id = "dquest", name = "Questing", art = "HyjalSummit", parts = { looks = true, layout = true, keys = true },
+        { id = "dquest", name = "Questing", art = F and "BarrowDeeps" or "HyjalSummit", parts = { looks = true, layout = true, keys = true },
           looks = { ["ui.look"] = "flat" }, keys = { a = { "1" } }, frames = {} },
     }
     self.demoUsing = "dhealer"

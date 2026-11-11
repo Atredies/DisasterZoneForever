@@ -35,7 +35,8 @@ local FIELD_MIN, FIELD_MAX = 180, 240
 local WHO_PANEL_W = 340                          -- the Who search's list
 local GOLD = S.C.GOLD_DEEP           -- (D1: the gold of fills and edges)
 local EDITOR_DAYS = 60              -- the calendar reaches this far ahead
-local MAX_LEVEL = 70                -- a new raid asks for this level unless "Level 70 only" is switched off
+-- A new raid asks for the level cap unless "Level N only" is switched off (70; WoW Forever 60: Core/RaidPlan.lua).
+local MAX_LEVEL = (ns.RaidPlan and ns.RaidPlan.GetMaxLevel and ns.RaidPlan:GetMaxLevel()) or 70
 local DISC = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 local ACCESS = {
     { key = "open", text = "Everyone", tip = { "Everyone", "Every guild member can sign up; the teams only say who is "
@@ -1210,7 +1211,11 @@ function PlanUI:OpenEditor(occId)
         sheet.noteBox:SetText(v.no or "")
     else
         local d = date("*t", Now() + 86400)
-        f.list, f.sz = { "kara" }, 10
+        -- the planner's first raid (TBC: Karazhan; WoW Forever: Barrow Deeps). In game 2026-11-09 the TBC "kara" stayed
+        -- first on Forever, hidden, and Create said "Pick a raid." whatever was clicked.
+        local first = RPm:GetInstances()[1]
+        f.list = { first and first.key ~= "other" and first.key or "kara" }
+        f.sz = first and first.size or 10
         f.hour, f.min = 20, 0
         f.y, f.m, f.d = d.year, d.month, d.day
         sheet.titleBox:SetText("")

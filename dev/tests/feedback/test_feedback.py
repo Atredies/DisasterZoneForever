@@ -10,13 +10,15 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "boot-ui"))
 
-from _common import World, Client, case, run_all  # noqa: E402
+from _common import World, Client, case, run_all, dev_client, DEV_KEY  # noqa: E402
 
 REALM = "Thunderstrike"
 F = "ns.Feedback"
 
 
 def K(name):
+    if name == "Tsumil":                  # (the developer: Arakis War on the guild's realm, _common.DEV_KEY)
+        return DEV_KEY
     return "%s-%s" % (name, REALM)
 
 
@@ -25,7 +27,8 @@ def world(names, tick=3.0):
     w = World()
     c = {}
     for name, cls, rank in names:
-        c[name] = Client(w, name, class_file=cls, guild_rank=rank)
+        c[name] = (dev_client(w, class_file=cls, guild_rank=rank) if name == "Tsumil"
+                   else Client(w, name, class_file=cls, guild_rank=rank))
     for x in c.values():
         x.load_addon()
     w.tick(tick)
@@ -167,7 +170,7 @@ def a_status_passed_on_by_a_raider_is_refused():
     # Bert makes up a "planned" by the developer and sends it on as if he passed it on
     c["Bert"].eval("""
       local id = ...
-      local rec = { k = "s", i = id, a = "Tsumil-Thunderstrike", s = "planned", rv = GetServerTime() }
+      local rec = { k = "s", i = id, a = "Arakis War-CAMWOWEU4Realm4PvP", s = "planned", rv = GetServerTime() }
       ns.Comm:Send({ t = "FBN", r = { [id .. "!"] = rec } }, "GUILD", nil, "fb")""", id_)
     w.tick(3)
     assert item(c["Alfa"], id_)["state"] is False, item(c["Alfa"], id_)

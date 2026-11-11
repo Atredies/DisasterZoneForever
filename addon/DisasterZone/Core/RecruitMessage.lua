@@ -4,7 +4,7 @@ if DisasterZoneBoot and DisasterZoneBoot.Run("Core/RecruitMessage.lua", ...) the
 --   Parts, in their order, each on or off: the officers' own words, and helpers that only fill in facts: the guild's
 --   name, the classes a team's comp still needs (one team or every team; as specs, short names or classes; any of them
 --   left out),
---   a team's raid nights, a raid icon ({rt1}: chat draws it). Nothing is written for them: the message starts empty. The parts are joined with a space
+--   a team's raid nights, a raid icon ({rt1}: Say and Yell draw it; channels get the message without icons). Nothing is written for them: the message starts empty. The parts are joined with a space
 --   (or " - ", ", ", " / "); one chat line, 255 bytes at most.
 --   Places: Say, Yell, or a chat channel by name (Trade, LookingForGroup, GuildRecruitment, General, LocalDefense, or
 --   any channel I'm in), each with its own interval (30 seconds to 12 hours) and an optional "major cities only" tick.
@@ -53,7 +53,8 @@ Msg.KINDS = {
     need = { label = "Classes we need", tip = "What a team's comp still has open: specs or classes, filled in as the "
         .. "comp changes. Leave any of them out." },
     nights = { label = "Raid nights", tip = "A team's raid nights and their start time, e.g. Thu + Sun 19:30." },
-    icon = { label = "Raid icon", tip = "A raid target icon (star, skull...): the game shows it in chat." },
+    icon = { label = "Raid icon", tip = "A raid target icon (star, skull...). Shown in Say and Yell; left out in Trade "
+        .. "and other channels, where the game doesn't draw icons." },
 }
 
 -- The raid target icons, as chat writes them: {rt1} .. {rt8} (5 bytes, any client language; {star} etc. work too).
@@ -111,8 +112,8 @@ local function PlaceId(kind, name) return kind == "CHANNEL" and ("ch:" .. tostri
 
 local function DefaultPlaces()
     return { { id = "ch:trade", kind = "CHANNEL", name = "Trade", every = 3600, u = "m", on = true, city = true },
-             { id = "ch:guildrecruitment", kind = "CHANNEL", name = "GuildRecruitment", every = 3600, u = "m", on = true,
-               city = true } }
+             { id = "ch:guildrecruitment", kind = "CHANNEL", name = "GuildRecruitment", every = 3600, u = "m", on = false,
+               city = true } }   -- (off at first: a character in a guild isn't put in GuildRecruitment by the game)
 end
 
 local function Words(s)
@@ -125,16 +126,16 @@ local function DemoStore()
     local now = Now()
     return { v = 3, nid = 8, sep = " ",
         parts = { { id = 8, k = "icon", m = 8 }, { id = 1, k = "tag" }, { id = 2, k = "text", t = "chill guild for new, returning and raiding players." },
-                  { id = 3, k = "text", t = "SSC/TK on" }, { id = 4, k = "nights", team = "demo-main" },
+                  { id = 3, k = "text", t = (ns.Compat and ns.Compat.isForever) and "Hyjal/Barrow on" or "SSC/TK on" }, { id = 4, k = "nights", team = "demo-main" },
                   { id = 5, k = "text", t = "- looking for" }, { id = 6, k = "need", team = "demo-main", by = "spec" },
                   { id = 7, k = "text", t = "/w me for a chat!" } },
         cur = 1, mid = 3,
-        msgs = { { id = 1, name = "Raiders for SSC/TK" },
+        msgs = { { id = 1, name = (ns.Compat and ns.Compat.isForever) and "Raiders for Hyjal/Barrow" or "Raiders for SSC/TK" },
                  { id = 2, name = "Levellers welcome", sep = " ",
                    parts = { { id = 9, k = "tag" }, { id = 10, k = "text", t = "is a friendly guild for levellers and returning players." },
                              { id = 11, k = "text", t = "Dungeon groups most nights, help with quests. /w me!" } } },
                  { id = 3, name = "Weekend pugs", sep = " - ",
-                   parts = { { id = 12, k = "icon", m = 1 }, { id = 13, k = "text", t = "Karazhan pug Sunday" },
+                   parts = { { id = 12, k = "icon", m = 1 }, { id = 13, k = "text", t = (ns.Compat and ns.Compat.isForever) and "Onyxia pug Sunday" or "Karazhan pug Sunday" },
                              { id = 14, k = "nights", team = "demo-main" }, { id = 15, k = "text", t = "/w for a spot" } } } },
         places = { { id = "ch:trade", kind = "CHANNEL", name = "Trade", every = 3600, u = "m", on = true, city = true },
                    { id = "ch:guildrecruitment", kind = "CHANNEL", name = "GuildRecruitment", every = 1800, u = "m",
@@ -486,13 +487,23 @@ function Msg:SetSep(sep)
     return true
 end
 
--- The message: text (nil when nothing is said), its length in bytes, too long?
-function Msg:Compose()
+-- The text without its raid icon codes ({rt1}, {star}, ...; unknown {words} stay), spaces tidied; nil when empty.
+local function NoIcons(text)
+    text = text:gsub("{([%w]+)}", function(word) if ICON_BY_NAME[word:lower()] then return "" end end)
+    return Util.Trim((text:gsub("  +", " "))) or nil
+end
+
+-- The message: text (nil when nothing is said), its length in bytes, too long? noIcons: without the raid icons (icon
+-- parts left out, codes taken out of the words), for chat channels: on Forever the server tells every client not to
+-- draw icons in Trade, General and the other channels, so they'd show as "{rt1}" (Blizzard's ChatFrameOverrides.lua,
+-- CHAT_MSG arg17).
+function Msg:Compose(noIcons)
     local bits = {}
     for _, p in ipairs(DB().parts) do
-        if not p.off then
+        if not p.off and not (noIcons and p.k == "icon") then
             local t = self:PartText(p)
-            if t then bits[#bits + 1] = t end
+            if t and noIcons then t = NoIcons(t) end
+            if t and t ~= "" then bits[#bits + 1] = t end
         end
     end
     if #bits == 0 then return nil, 0, false end
@@ -589,12 +600,12 @@ function Msg:InMajorCity()
     return (z and CITY_NAMES[z]) and true or false
 end
 
--- Why I can't post there now ("only in major cities", "you're not in <channel>"), or nil.
+-- Why I can't post there now ("only in major cities", "you're not in it, type /join <channel>"), or nil.
 function Msg:Blocker(p)
     if p.city and not self:InMajorCity() then return "only in major cities" end
     if p.kind == "CHANNEL" and not Util.DemoOn() then
         local id = GetChannelName and tonumber((GetChannelName(p.name)))
-        if not (id and id > 0) then return "you're not in " .. p.name end
+        if not (id and id > 0) then return "you're not in it, type /join " .. p.name end
     end
     return nil
 end
@@ -649,7 +660,14 @@ function Msg:NextUp()
     return best, at
 end
 
+-- What a place gets: channels without the raid icons (see Compose), Say and Yell all of it.
+function Msg:TextFor(p)
+    if p.kind == "CHANNEL" then return (self:Compose(true)) end
+    return (self:Compose())
+end
+
 local function SendTo(p, text)
+    if not text then return end
     if p.kind == "CHANNEL" then
         local id = GetChannelName and tonumber((GetChannelName(p.name)))
         if id and id > 0 then SendChatMessage(text, "CHANNEL", nil, id) end
@@ -671,10 +689,12 @@ function Msg:Post(ids)
     for _, p in ipairs(DB().places) do
         if (ids and want[p.id]) or (not ids and p.on) then
             local why = self:Blocker(p)
+            local out = not why and self:TextFor(p)
+            if not why and not out then why = "only icons, and channels don't show them" end
             if why then
                 skipped[#skipped + 1] = p.name .. ": " .. why
             else
-                if Util.DemoOn() then ns:Print("Demo mode, not sent to %s: %s", p.name, text) else SendTo(p, text) end
+                if Util.DemoOn() then ns:Print("Demo mode, not sent to %s: %s", p.name, out) else SendTo(p, out) end
                 sent[#sent + 1] = p
             end
         end

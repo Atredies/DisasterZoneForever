@@ -179,16 +179,18 @@ def crafted_entries():
             e["vts"] = vts
         E.append(e)
 
-    add("a", T)                       # hidden: 250s before the kept manual m1 (10-minute rule)
-    add("a", T + 60, by=C2K)          # hidden: same-kind within 120s
-    add("a", T + 110)                 # hidden
-    add("a", T + 200)                 # hidden: 50s before manual m1 (10-minute rule)
+    # (2026-11-09, duplicate drops: an auto entry is one loot line; another recorder's entry within 120s is the same
+    # line, the same recorder's second entry is a second line (a second copy). A kept manual hides one loot line.)
+    add("a", T)                       # hidden: line 1, the hand-out of the kept manual m1 (10-minute rule)
+    add("a", T + 60, by=C2K)          # hidden: C2's entry of line 1
+    add("a", T + 110)                 # kept: C1's second loot line (a second copy)
+    add("a", T + 200)                 # kept: C1's third loot line
     add("m", T + 250)                 # kept (m1)
     add("m", T + 300, by=C2K)         # hidden: second manual within 120s
     add("m", T + 250, by=C2K)         # same ts as m1, different id -> order by id decides
-    add("a", T + 250 + 3 * 3600)      # hidden: < 6h after m1
+    add("a", T + 250 + 3 * 3600)      # kept: m1 already hid its own loot line
     add("a", T + 250 + 7 * 3600)      # kept
-    add("a", T + 250 + 7 * 3600 + 30) # hidden
+    add("a", T + 250 + 7 * 3600 + 30) # kept: the same recorder's second line
     add("m", T + 20000, item=Y, vd=True, vts=T + 20100)   # voided manual: does not hide the auto below
     add("a", T + 20060, item=Y)       # kept
     add("a", T + 30000, item=Y, w=R2K)
@@ -225,7 +227,9 @@ def g_dedupe_view_independent_of_merge_order():
     assert all(s == sigs[0] for s in sigs), "view depends on merge order"
     visible = [v for v in sigs[0]["view"] if not v.endswith("|void")]
     r.note("(g) crafted ledger: %d entries -> %d visible: %s" % (len(entries), len(visible), visible))
-    expected = {"m%dCouncila%d" % (T + 250, ITEM_A), "a%dRaider%d" % (T + 250 + 7 * 3600, ITEM_A),
+    expected = {"m%dCouncila%d" % (T + 250, ITEM_A), "a%dRaider%d" % (T + 110, ITEM_A), "a%dRaider%d" % (T + 200, ITEM_A),
+                "a%dRaider%d" % (T + 250 + 3 * 3600, ITEM_A), "a%dRaider%d" % (T + 250 + 7 * 3600, ITEM_A),
+                "a%dRaider%d" % (T + 250 + 7 * 3600 + 30, ITEM_A),
                 "a%dRaider%d" % (T + 20060, ITEM_B), "m%dCouncilb%d" % (T + 30010, ITEM_B)}
     assert set(visible) == expected, "visible %s, expected %s" % (sorted(visible), sorted(expected))
     # a voided manual must not hide the auto that follows it

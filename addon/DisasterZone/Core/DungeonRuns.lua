@@ -122,6 +122,60 @@ local COMPLEXES = {
       rep = 1077, repName = "Shattered Sun Offensive",
       dungeons = { { "MagistersTerrace", "Magisters' Terrace", 0.62, 0.47 } } },
 }
+
+-- WoW Forever: its 35 dungeons (the old world's, some split, plus nine new ones), by level band. No heroics, no
+-- reputation keys, no dailies. A band is not a place, so each dungeon carries its own loading screen ([5]: the
+-- classic one; the new dungeons have none yet) and levels ([6]). Sources: ForeverDungeonJournal 1.6.6 (names, levels,
+-- zones, checked 2026-11-09), AtlasLootClassic (loading screens). [7]: the tile label, where the name is too long for
+-- a six-across tile (the tooltip carries the full name). Keys: AtlasLootClassic's where the dungeon is the
+-- same. Wire order as above: never reorder, only append.
+if ns.Compat and ns.Compat.isForever then
+    local ICON = "Interface\\LFGFrame\\LFGIcon-Dungeon"
+    COMPLEXES = {
+        { key = "lv13", name = "Levels 13-30", icon = ICON, cy = 0.5, dungeons = {
+            { "Ragefire", "Ragefire Chasm", 0.5, 0.5, 131862, "13-18", "Ragefire" },
+            { "HallOfThanes", "Hall of Thanes", 0.5, 0.5, nil, "13-20", "Thanes" },
+            { "WailingCaverns", "Wailing Caverns", 0.5, 0.5, 131882, "15-24", "Wailing" },
+            { "RuinsOfLordaeron", "Ruins of Lordaeron", 0.5, 0.5, nil, "15-22", "Lordaeron" },
+            { "Deadmines", "The Deadmines", 0.5, 0.5, 131833, "17-26", "Deadmines" },
+            { "ShadowfangKeep", "Shadowfang Keep", 0.5, 0.5, 131869, "20-30", "Shadowfang" } } },
+        { key = "lv24", name = "Levels 24-38", icon = ICON, cy = 0.5, dungeons = {
+            { "Stockade", "The Stockade", 0.5, 0.5, 131870, "24-32", "Stockade" },
+            { "BlackfathomDeeps", "Blackfathom Deeps", 0.5, 0.5, 131823, "24-32", "BFD" },
+            { "ExcavationSite", "Excavation Site", 0.5, 0.5, nil, "26-33", "Excavation" },
+            { "CityOfDalaran", "City of Dalaran", 0.5, 0.5, nil, "28-33", "Dalaran" },
+            { "Gnomeregan", "Gnomeregan", 0.5, 0.5, 131841, "29-38" },
+            { "RazorfenKraul", "Razorfen Kraul", 0.5, 0.5, 131865, "29-38", "RFK" } } },
+        { key = "lv30", name = "Levels 30-46", icon = ICON, cy = 0.5, dungeons = {
+            { "SMGraveyard", "SM: Graveyard", 0.5, 0.5, 131866, "30-38", "SM: GY" },
+            { "SMLibrary", "SM: Library", 0.5, 0.5, 131866, "33-41" },
+            { "SMArmory", "SM: Armory", 0.5, 0.5, 131866, "34-42" },
+            { "SMCathedral", "SM: Cathedral", 0.5, 0.5, 131866, "36-45", "SM: Cath" },
+            { "DrownedCity", "The Drowned City", 0.5, 0.5, nil, "35-40", "Drowned" },
+            { "RazorfenDowns", "Razorfen Downs", 0.5, 0.5, 131864, "37-46", "RFD" } } },
+        { key = "lv38", name = "Levels 38-56", icon = ICON, cy = 0.5, dungeons = {
+            { "Uldaman", "Uldaman", 0.5, 0.5, 131876, "38-48" },
+            { "KroldokStronghold", "Krol'dok Stronghold", 0.5, 0.5, nil, "40-45", "Krol'dok" },
+            { "ZulFarrak", "Zul'Farrak", 0.5, 0.5, 131885, "43-50" },
+            { "Maraudon", "Maraudon", 0.5, 0.5, 131850, "45-52" },
+            { "AlcazPrison", "Alcaz Prison", 0.5, 0.5, nil, "48-53", "Alcaz" },
+            { "SunkenTemple", "Sunken Temple", 0.5, 0.5, 131872, "49-56", "ST" } } },
+        { key = "lv52", name = "Levels 52-60", icon = ICON, cy = 0.5, dungeons = {
+            { "BlackrockDepths", "Blackrock Depths", 0.5, 0.5, 131824, "52-60", "BRD" },
+            { "LBRS", "Lower Blackrock Spire", 0.5, 0.5, 131825, "55-60", "LBRS" },
+            { "UBRS", "Upper Blackrock Spire", 0.5, 0.5, 131825, "55-60", "UBRS" },
+            { "DireMaulEast", "Dire Maul: East", 0.5, 0.5, 131835, "55-60", "DM: East" },
+            { "DireMaulWest", "Dire Maul: West", 0.5, 0.5, 131835, "57-60", "DM: West" },
+            { "DireMaulNorth", "Dire Maul: North", 0.5, 0.5, 131835, "57-60", "DM: North" } } },
+        { key = "lv58", name = "Level 60", icon = ICON, cy = 0.5, dungeons = {
+            { "BlackmawHold", "Blackmaw Hold", 0.5, 0.5, nil, "55-60", "Blackmaw" },
+            { "Scholomance", "Scholomance", 0.5, 0.5, 131868, "58-60", "Scholo" },
+            { "StratholmeLive", "Stratholme: Living", 0.5, 0.5, 131871, "58-60", "Strat: Live" },
+            { "StratholmeUndead", "Stratholme: Undead", 0.5, 0.5, 131871, "58-60", "Strat: UD" },
+            { "ShapersTerrace", "Shaper's Terrace", 0.5, 0.5, nil, "58-60", "Shaper's" } } },
+    }
+    HEROIC_LEVEL, RAID_LEVEL = 60, 60
+end
 local ART_W = 0.46                 -- a card's crop: this share of the loading screen's width
 
 -- What the raid info calls each dungeon (TBC prefixes the complex: "Auchindoun: Mana-Tombs"), lower case.
@@ -147,6 +201,9 @@ local DAILY_NORMAL = {
 }
 
 local DAILY_QUEST = { h = {}, n = {} }   -- [dungeon key] = the daily's quest id
+if ns.Compat and ns.Compat.isForever then   -- (no heroics, no Shattrath dailies)
+    SAVED_WORDS, DAILY_HEROIC, DAILY_NORMAL = {}, {}, {}
+end
 for id, key in pairs(DAILY_HEROIC) do DAILY_QUEST.h[key] = id end
 for id, key in pairs(DAILY_NORMAL) do DAILY_QUEST.n[key] = id end
 
@@ -157,8 +214,8 @@ for _, c in ipairs(COMPLEXES) do
     for _, d in ipairs(c.dungeons) do
         local key = d[1]
         ORDER[#ORDER + 1] = key
-        DUNGEON[key] = { key = key, i = #ORDER, short = d[2], name = d[2], complex = c, cx = d[3], cy = d[4],
-                         phase = 1 }
+        DUNGEON[key] = { key = key, i = #ORDER, short = d[7] or d[2], name = d[2], complex = c, cx = d[3], cy = d[4],
+                         screen = d[5], lv = d[6], phase = 1 }
     end
 end
 
@@ -648,6 +705,14 @@ GK.rosterAsked = {}      -- [run id] = Now() I last asked its owner for its rost
 local GENERIC_FIELDS = { "k", "a", "n", "w", "lo", "lr", "bo", "pr", "mr", "fc", "tn" }
 
 function GK.IsDungeon(run) return run.k == nil or run.k == "dungeon" end
+-- A raid of the planner's own list (WoW Forever: Data/ForeverRaids.lua, keyed "ony"), which the TBC item data lacks.
+function GK.PlannerRaidName(key)
+    local pr = ns.Data and ns.Data.PlannerRaids
+    for _, r in ipairs(pr and pr.raids or {}) do
+        if r.key == key then return r.name end
+    end
+    return nil
+end
 function GK.Kind(run) return run.k or "dungeon" end
 function GK.Size(run)
     if GK.IsDungeon(run) then return PARTY_SIZE end
@@ -699,7 +764,7 @@ function GK.Name(run)
         local name
         if run.k == "raid" then
             local raid = ns.ItemDB and ns.ItemDB.GetRaid and ns.ItemDB:GetRaid(x)
-            name = raid and raid.name
+            name = raid and raid.name or GK.PlannerRaidName(x)
         elseif run.k == "pvp" then
             name = GK.pvp[GK.pvpIndex[x] or 0] and GK.pvp[GK.pvpIndex[x]].name
         elseif run.k == "other" then
@@ -868,6 +933,7 @@ function GK.Blocker(run)
     if #saved == 1 then
         local s = GK.saved[saved[1]]
         local raid = ns.ItemDB and ns.ItemDB.GetRaid and ns.ItemDB:GetRaid(saved[1])
+        raid = raid or { name = GK.PlannerRaidName(saved[1]) }
         local done = (IsInt(s.total, 1) and IsInt(s.done, 0)) and (" (" .. s.done .. " of " .. s.total .. ")") or ""
         return "You're saved to " .. (raid and raid.name or saved[1]) .. done, "saved"
     end
@@ -1209,13 +1275,18 @@ local function StoreRun(run)
     local gone = st.gone[run.id]
     if gone and (tonumber(gone) or 0) > Now() then return false end
     local cur = st.list[run.id]
+    -- 2026-11-09 (authority holes 4): a run never changes owner, and a copy its owner didn't send me (rb = who
+    -- passed it on, OnDigest) never replaces one I hold nor ends another run (pv); the owner's own copy of the same
+    -- revision replaces it.
+    if cur and cur.o ~= run.o then return false end
+    if run.rb and cur then return false end
     -- (a run whose roster a digest left out takes its whole roster at the same revision)
-    local completes = cur and cur.pt and not run.pt and (cur.rv or 0) == (run.rv or 0)
+    local completes = cur and (cur.pt or cur.rb) and not run.pt and not run.rb and (cur.rv or 0) == (run.rv or 0)
     if cur and (cur.rv or 0) >= (run.rv or 0) and not completes then return false end
     if Expired(run) then return false end
     local fresh = cur == nil
     st.list[run.id] = run
-    if run.pv then Renamed(run) end
+    if run.pv and not run.rb then Renamed(run) end
     if run.pt then GK.AskRoster(run) end
     Changed()
     MaybePing(run, fresh)
@@ -1486,7 +1557,20 @@ local function OnDigest(sender, msg)
     for _, w in ipairs(type(msg.l) == "table" and msg.l or {}) do
         if type(w) == "table" then
             local run = ParseRun(w, sender)
-            if run and run.o ~= Me() and InGuild(run.o) then StoreRun(run) end
+            -- the owner is who says so: a run of someone else than the sender is asked for from its owner when they
+            -- are online; an offline owner's (a run later today) is kept marked with who passed it on (rb), until
+            -- the owner's own profile or run says otherwise (StoreRun, OnProfile)
+            if run and run.o ~= Me() and InGuild(run.o) then
+                if run.o == sender then
+                    StoreRun(run)
+                elseif IsOnline(run.o) then
+                    local cur = State().list[run.id]
+                    if not (cur and cur.o == run.o and (cur.rv or 0) >= (run.rv or 0)) then GK.AskRoster(run) end
+                else
+                    run.rb = sender
+                    StoreRun(run)
+                end
+            end
         end
     end
     MergeDaily(msg.dy)
@@ -1711,7 +1795,7 @@ local function GroupLeader()
     for i = 1, n do
         local unit = (raid and "raid" or "party") .. i
         if UnitExists(unit) and UnitIsGroupLeader(unit) then
-            local name, realm = UnitName(unit)
+            local name, realm = Util.UnitNameRealm(unit)
             if type(name) == "string" and name ~= "" and name ~= UNKNOWNOBJECT then
                 local key = Util.NormalizeName((type(realm) == "string" and realm ~= "") and (name .. "-" .. realm) or name)
                 if not Util.IsMe(key) then return key end
@@ -2014,19 +2098,67 @@ BuildDemo = function()
         demo.list[id] = { id = id, o = k(owner), d = d, h = h or nil, at = at, c = now - ageMin * 60, s = s, rv = 1,
                           no = note }
     end
+    local function peer(name, roles, up)
+        local set = {}
+        for _, r in ipairs(roles) do set[r] = true end
+        demo.peers[k(name)] = { roles = set, up = up and (now + 3600) or 0, nn = {}, nh = {}, seen = now }
+    end
+    local function group(id, owner, fields, at, ageMin, slots, note)
+        run(id, owner, nil, nil, at, ageMin, {}, note)
+        local g = demo.list[id]
+        GK.Copy(fields, g)
+        for _, x in ipairs(slots) do g.s[#g.s + 1] = { k = k(x[1]), r = x[2], c = x[3] } end
+    end
+    local later = now + 2 * 3600 - now % 1800
+    -- WoW Forever: level-60 dungeons (no heroics, no badges, no dailies), its raids, battlegrounds; no quest kind, no
+    -- arena teams
+    if ns.Compat and ns.Compat.isForever then
+        run("demo-1", "Aldrin", "UBRS", nil, 0, 4,
+            { { "Aldrin", "tank" }, { "Grimtusk", "dps" }, { "Elowen", "dps" }, { "Dornoth", "dps" } },
+            "Rend run, we know the gauntlet")
+        run("demo-2", "Kaelyn", "Scholomance", nil, 0, 9,
+            { { "Kaelyn", "healer" }, { "Brakka", "tank" }, { "Halvard", "dps" } })
+        run("demo-3", "Mirabel", "StratholmeUndead", nil, 0, 15, { { "Mirabel", "dps" }, { "Jorvik", "healer" } })
+        run("demo-4", "Caelith", "BlackmawHold", nil, later, 30, { { "Caelith", "tank" } })
+        peer("Isolde", { "healer" }, true)
+        peer("Nortok", { "dps" }, true)
+        peer("Orinel", { "dps" }, true)
+        peer("Quillon", { "tank", "healer" }, true)
+        peer("Faelar", { "dps" }, true)
+        peer("Pyria", { "dps" }, false)
+        demo.peers[k("Grimtusk")] = { roles = { dps = true }, up = 0, nh = {},
+                                      nn = { UBRS = true, Scholomance = true }, seen = now }
+        demo.peers[k("Nortok")].nn = { Scholomance = true, StratholmeUndead = true }
+        demo.peers[k("Orinel")].nn = { Scholomance = true }
+        demo.asked["demo-4"] = { st = "asked", r = "healer", at = now - 300 }
+        demo.peers[k("Faelar")].saved = { Scholomance = true }
+        demo.peers[k("Faelar")].savedUntil = now + 6 * 3600
+        group("demo-r1", "Aldrin", { k = "raid", a = { "BarrowDeeps" }, n = 10, w = { tank = 2, healer = 3, dps = 5 },
+                lo = "roll" },
+            0, 3, { { "Aldrin", "tank" }, { "Brakka", "tank" }, { "Isolde", "healer" }, { "Grimtusk", "dps" },
+                    { "Mirabel", "dps" }, { "Orinel", "dps" }, { "Faelar", "dps" } }, "Alt run, full clear")
+        group("demo-r2", "Caelith", { k = "raid", a = { "HyjalForever" }, n = 20,
+                w = { tank = 2, healer = 5, dps = 13 }, lo = "sr", lr = 1 },
+            later, 20, { { "Caelith", "tank" }, { "Dornoth", "tank" }, { "Jorvik", "healer" }, { "Kaelyn", "healer" },
+                         { "Lorvane", "healer" }, { "Quillon", "healer" }, { "Elowen", "dps" },
+                         { "Halvard", "dps" }, { "Nortok", "dps" }, { "Pyria", "dps" },
+                         { "Tarnok", "dps", "SHAMAN" }, { "Lumifae", "dps", "MAGE" }, { "Darkstalkerr", "dps", "HUNTER" },
+                         { "Brewbelly", "dps", "WARRIOR" } }, "Pug fill, no BoE drama")
+        group("demo-p1", "Pyria", { k = "pvp", a = { "wsg" }, n = 10, w = { tank = 0, healer = 3, dps = 7 }, fc = true },
+            0, 6, { { "Pyria", "dps" }, { "Nortok", "dps" }, { "Jorvik", "healer" } }, "Flag carrier wanted")
+        group("demo-p2", "Lorvane", { k = "pvp", a = { "ab" }, n = 15, w = { tank = 0, healer = 4, dps = 11 } },
+            now + 3600 - now % 900, 12, { { "Lorvane", "healer" }, { "Jorvik", "healer" }, { "Halvard", "dps" },
+                                          { "Elowen", "dps" }, { "Grimtusk", "dps" }, { "Mirabel", "dps" } },
+            "Premade, we call the bases")
+        return
+    end
     run("demo-1", "Aldrin", "ShatteredHalls", true, 0, 4,
         { { "Aldrin", "tank" }, { "Grimtusk", "dps" }, { "Elowen", "dps" }, { "Dornoth", "dps" } },
         "Badge run, we know the gauntlet")
     run("demo-2", "Kaelyn", "BlackMorass", true, 0, 9,
         { { "Kaelyn", "healer" }, { "Brakka", "tank" }, { "Halvard", "dps" } })
     run("demo-3", "Mirabel", "ShadowLabyrinth", true, 0, 15, { { "Mirabel", "dps" }, { "Jorvik", "healer" } })
-    local later = now + 2 * 3600 - now % 1800
     run("demo-4", "Caelith", "Steamvault", nil, later, 30, { { "Caelith", "tank" } })
-    local function peer(name, roles, up)
-        local set = {}
-        for _, r in ipairs(roles) do set[r] = true end
-        demo.peers[k(name)] = { roles = set, up = up and (now + 3600) or 0, nn = {}, nh = {}, seen = now }
-    end
     peer("Isolde", { "healer" }, true)
     peer("Nortok", { "dps" }, true)
     peer("Orinel", { "dps" }, true)
@@ -2042,12 +2174,6 @@ BuildDemo = function()
     demo.peers[k("Faelar")].savedUntil = now + 6 * 3600
     demo.daily = { x = now + 6 * 3600, at = now, h = "SethekkHalls", n = "Botanica" }
     -- (1.5) groups of the other kinds: a Karazhan now, Gruul + Magtheridon later with pugs, two PvP groups
-    local function group(id, owner, fields, at, ageMin, slots, note)
-        run(id, owner, nil, nil, at, ageMin, {}, note)
-        local g = demo.list[id]
-        GK.Copy(fields, g)
-        for _, x in ipairs(slots) do g.s[#g.s + 1] = { k = k(x[1]), r = x[2], c = x[3] } end
-    end
     group("demo-r1", "Aldrin", { k = "raid", a = { "Karazhan" }, n = 10, w = { tank = 2, healer = 3, dps = 5 }, lo = "roll" },
         0, 3, { { "Aldrin", "tank" }, { "Brakka", "tank" }, { "Isolde", "healer" }, { "Grimtusk", "dps" },
                 { "Mirabel", "dps" }, { "Orinel", "dps" }, { "Faelar", "dps" } }, "Alt run, full clear")
@@ -2095,6 +2221,7 @@ Runs.ROLES = ROLES
 Runs.ROLE_LABEL = ROLE_LABEL
 Runs.NOTE_MAX = NOTE_MAX
 Runs.AHEAD_MAX = AHEAD_MAX
+Runs.HAS_HEROICS = not (ns.Compat and ns.Compat.isForever)   -- WoW Forever: normal dungeons only
 
 -- The complexes in order with their dungeons the guild's phase has opened:
 -- { { key, name, icon, screen, cy, repName, dungeons = { info, ... } }, ... }
@@ -2146,7 +2273,7 @@ function Runs:GetArt(key, w, h, fw)
     local l, t = info.cx - fw / 2, info.cy - fh / 2
     l = min(max(l, 0), 1 - fw)
     t = min(max(t, 0.02), 0.98 - fh)
-    return info.complex.screen, l, l + fw, t, t + fh
+    return info.screen or info.complex.screen, l, l + fw, t, t + fh
 end
 
 function Runs:GetComplexArt(complexKey, w, h)
@@ -2155,7 +2282,9 @@ function Runs:GetComplexArt(complexKey, w, h)
             local fw = 0.98
             local fh = fw * (4 / 3) * (h / w)
             local t = min(max(c.cy - fh / 2, 0.02), 0.98 - fh)
-            return c.screen, 0.01, 0.01 + fw, t, t + fh
+            local screen = c.screen
+            for _, d in ipairs(c.dungeons) do screen = screen or d[5] end
+            return screen, 0.01, 0.01 + fw, t, t + fh
         end
     end
     return nil
@@ -2806,7 +2935,7 @@ function Runs:List(opts)
     local old = MyRun()
     local run = {
         id = old and old.id or ((Me() or "?") .. ":" .. now),
-        o = Me(), d = opts.d, h = opts.h and true or nil, at = floor(at), c = old and old.c or now,
+        o = Me(), d = opts.d, h = (opts.h and Runs.HAS_HEROICS) and true or nil, at = floor(at), c = old and old.c or now,
         no = TrimNote(opts.no), s = old and old.s or {}, rv = old and ((old.rv or 0) + 1) or 1,
         gf = opts.gf and true or nil,
     }

@@ -31,7 +31,7 @@ from lupa import lua51  # noqa: E402
 
 # DISASTERZONE_ADDON_DIR points the whole harness at another copy of the addon (tools/patched_run.py: a base release
 # tree whose saved DisasterZonePatchDB, named by DISASTERZONE_PATCH_SV, carries the current source as an in-game update).
-ADDON_DIR = os.environ.get("DISASTERZONE_ADDON_DIR") or r"C:\World of Warcraft\_anniversary_\Interface\AddOns\DisasterZone"
+ADDON_DIR = os.environ.get("DISASTERZONE_ADDON_DIR") or r"C:\World of Warcraft\_forever_\Interface\AddOns\DisasterZone"
 PATCH_SV_FILE = os.environ.get("DISASTERZONE_PATCH_SV") or None
 ADDON_NAME = "DisasterZone"
 # The 3D room data is an addon of its own, loaded on demand (DisasterZone_Rooms, next to the addon folder): the mock's
@@ -39,8 +39,34 @@ ADDON_NAME = "DisasterZone"
 # DISASTERZONE_ROOMS_DIR points at another copy; a copy of the addon without one next to it (a staged release tree)
 # uses the live one.
 ROOMS_NAME = "DisasterZone_Rooms"
+# The addon ships WoW Forever's data. The TBC data the upstream suites were written against lives in dev/fixtures/tbc/
+# (same relative paths): a client that is not a Forever one (forever=False, the default) runs those files instead of
+# the addon's. tbc_data_path(rel) is the file such a client reads.
+TBC_FIXTURES = os.path.normpath(os.path.join(HERE, "..", "fixtures", "tbc"))
+# The TBC original's version those fixtures are from: what a TBC-profile client of the live tree reports.
+TBC_VERSION = "1.5.5"
+
+
+# Where the addon's TOC has one Forever file and the TBC fixtures several (in the old TOC's order).
+TBC_FAN_OUT = {
+    "Data/BossMods/Forever.lua": ["Data/BossMods/%s.lua" % n for n in (
+        "Karazhan", "GruulsLair", "MagtheridonsLair", "SerpentshrineCavern", "TempestKeep", "HyjalSummit",
+        "BlackTemple", "ZulAman", "SunwellPlateau")],
+}
+
+
+def tbc_data_path(rel, addon_dir=None):
+    """The file a TBC-profile client runs for the addon's `rel` ("Data/Items.lua")."""
+    alt = os.path.join(TBC_FIXTURES, rel.replace("\\", "/"))
+    if os.path.exists(alt):
+        return alt
+    return os.path.join(addon_dir or os.environ.get("DISASTERZONE_ADDON_DIR") or "", rel)
+# DisasterZone_Rooms.toc ships what WoW Forever draws: the chess hall's room (Karazhan:Chess) and the shared stand-in
+# tables. The TBC raid rooms stay in the folder for the strategy board (hidden on Forever): a TBC-profile client
+# loads the full list from this fixture TOC (generators/gen_rooms.py and gen_standins.py rewrite its blocks).
+TBC_ROOMS_TOC_DIR = os.path.join(TBC_FIXTURES, ROOMS_NAME)
 ROOMS_DIR = os.environ.get("DISASTERZONE_ROOMS_DIR") or os.path.join(
-    os.path.dirname(os.path.normpath(r"C:\World of Warcraft\_anniversary_\Interface\AddOns\DisasterZone")), ROOMS_NAME)
+    os.path.dirname(os.path.normpath(r"C:\World of Warcraft\_forever_\Interface\AddOns\DisasterZone")), ROOMS_NAME)
 # Of it, the strategy board's rooms (Rooms/<Raid>_<Boss>.lua, ~12 MB of packed text) are left out unless LOAD_ROOMS is
 # on (env DISASTERZONE_ROOMS=1, or a suite that needs them sets harness.LOAD_ROOMS = True before its clients load
 # them): 60 mock clients holding them each run out of memory. Without them the board acts as after an update that
@@ -106,7 +132,7 @@ def packs_for(addon_dir):
 
 
 MOCK_DIR = os.path.join(HERE, "wowmock")
-MODULES = ("core.lua", "objects.lua", "ui.lua", "game.lua")
+MODULES = ("core.lua", "objects.lua", "ui.lua", "game.lua", "forever_facts.lua", "forever.lua")
 DEFAULT_RANKS = ["Guild Master", "Officer", "Raider", "Member", "Initiate"]
 lua_type = lua51.lua_type
 
@@ -618,7 +644,9 @@ def warm(addon_dir=None, addon_name=ADDON_NAME):
 # DZ_TEMPLATES=n (forkrun builds n for its suite) / tools/testserver.py; DZ_TEMPLATE_LOG=<file> logs each decision.
 TEMPLATE_NAME_CHECKS = {
     # Core/Perf.lua: the Performance page is on from the first file for the developer's character
-    ("Core/Perf.lua", 'local isDev = (UnitName and UnitName("player")) == DEV'): "Tsumil",
+    ("Core/Perf.lua", 'local isDev = UnitName ~= nil and (function(n, s) return ((s and s ~= "") and (tostring(n) .. " " .. s) '
+                      'or tostring(n)) .. "-" .. ((GetRealmName and GetRealmName()) or ""):gsub("%s", "") end)(UnitName("player")) '
+                      '== DEV'): "Arakis War",
 }
 _TEMPLATES = {}          # Client.index -> pre-loaded Client (taken by the first client of that index to load)
 _TEMPLATES_BUILT = False  # (once per process: a process that used them all up does not build more)
@@ -1793,7 +1821,7 @@ class Client:
                  online=True, level=70, race="Human", faction="Alliance", sex=2, talents=(41, 20, 0),
                  legacy_globals=False, permissive_fields=False, items_uncached=False, preload_lua=None,
                  addon_dir=None, other_addons=(), bank_requires_open=True, sv_before_files=None, lod_addons=None,
-                 packs=None, packs_off=(), pack_order=None):
+                 packs=None, packs_off=(), pack_order=None, forever=False):
         """One simulated player = one Lua runtime. Created online (runtime ready, addon not yet loaded) unless
         online=False (call .login() later). legacy_globals=True defines deprecation-gated globals (GetItemInfo,
         GetContainer*, GetAddOnMetadata, GuildRoster, GetLootMethod). permissive_fields=True makes unknown frame
@@ -1806,7 +1834,9 @@ class Client:
         rooms_dir_for(addon_dir)); {} = not installed.
         packs: {name: folder} of the game packs installed (default: every pack next to the addon folder, packs_for);
         {} = none. packs_off: names of installed packs switched off in the AddOn list (they don't load).
-        pack_order: "early" | "real" (default PACK_ORDER)."""
+        pack_order: "early" | "real" (default PACK_ORDER).
+        forever=True: the WoW Forever client (1.60.1, Interface 16001) as DZProbe measured it, wowmock/forever.lua:
+        old globals gone, no addon combat log, addon messages refused during a boss pull, secret unit values."""
         self.world = world
         self.name = name
         self.realm = realm or world.realm
@@ -1824,6 +1854,7 @@ class Client:
         self.permissive_fields = permissive_fields
         self.items_uncached = items_uncached
         self.preload_lua = preload_lua
+        self.forever = bool(forever)
         self.addon_dir = addon_dir or world.addon_dir
         self._addon_name = None
         # {global name: Lua source}: saved variables of OTHER addons this client has loaded (they load before ours,
@@ -1881,6 +1912,7 @@ class Client:
             "addon_throttle": w.addon_throttle, "onupdate_hidden": w.onupdate_hidden,
             "time_offset": self.time_offset + w.now, "server_time": w.server_time,
             "known_events": _known_events(), "bank_requires_open": self.bank_requires_open,
+            "forever": self.forever,
         })
         # The callbacks reach the client through `o` (not `self`): a pre-loaded client's runtime (build_templates)
         # changes hands when a client takes it over.
@@ -2022,7 +2054,13 @@ class Client:
         return name
 
     def toc(self):
-        return parse_toc(self.addon_dir, self.addon_name)
+        headers, files = parse_toc(self.addon_dir, self.addon_name)
+        # A TBC-profile client of the live tree runs the TBC original's data (its changelog included): it says that
+        # original's version too, not Forever's (versions restarted at 0.1.0). Copies (patch suites) keep their own.
+        if not self.forever and self.addon_name == ADDON_NAME and "version" in headers \
+                and os.path.normcase(os.path.normpath(self.addon_dir)) == os.path.normcase(os.path.normpath(ADDON_DIR)):
+            headers = dict(headers, version=TBC_VERSION)
+        return headers, files
 
     def load_addon(self, reload=False):
         """Parse DisasterZone.toc, run every listed file with ("DisasterZone", ns), apply SavedVariables, then fire
@@ -2132,6 +2170,9 @@ class Client:
                     continue
                 for lua in _xml_scripts(self.addon_dir, rel):
                     self._load_one(lua, missing)
+            elif not self.forever and rel in TBC_FAN_OUT:
+                for r in TBC_FAN_OUT[rel]:
+                    self._load_one(r, missing)
             else:
                 self._load_one(rel, missing)
         if self.pack_order == "early":           # (see PACK_ORDER: pre-loaded clients hold the packs too)
@@ -2154,7 +2195,7 @@ class Client:
             return "other load-on-demand addons"
         if self.packs != t.packs or self.packs_off != t.packs_off or self.pack_order != t.pack_order:
             return "other game packs"
-        if (self.preload_lua or self.legacy_globals or self.permissive_fields or self.items_uncached
+        if (self.preload_lua or self.forever or self.legacy_globals or self.permissive_fields or self.items_uncached
                 or not self.bank_requires_open or self.other_addons or self.other_saved or w.other_addons
                 or self.sv_before_files is not None):
             return "client options"
@@ -2230,8 +2271,8 @@ class Client:
                 out.append(_stamp(os.path.join(self.addon_dir, rel)))
                 rels = _xml_scripts(self.addon_dir, rel)
             else:
-                rels = [rel]
-            out.extend(_stamp(os.path.join(self.addon_dir, r)) for r in rels)
+                rels = TBC_FAN_OUT[rel] if (not self.forever and rel in TBC_FAN_OUT) else [rel]
+            out.extend(_stamp(os.path.join(self._data_folder(r, self.addon_name, self.addon_dir), r)) for r in rels)
         if self.pack_order == "early":               # (the packs' files are pre-loaded too)
             for name in self._active_packs():
                 folder = self.packs[name]
@@ -2297,6 +2338,13 @@ class Client:
         the next load_addon()/login() will assign."""
         self.world.saved.setdefault(self.full_name, {})[name] = lua_source
 
+    def _data_folder(self, rel, addon, folder):
+        """The folder `rel` runs from: dev/fixtures/tbc for a TBC-profile client when the fixture has the file."""
+        if addon == ADDON_NAME and not self.forever and folder == self.addon_dir \
+                and _exists(os.path.join(TBC_FIXTURES, rel)):
+            return TBC_FIXTURES
+        return folder
+
     def _load_one(self, rel, missing, addon=None, folder=None, ns=None):
         addon, folder = addon or self.addon_name, folder or self.addon_dir
         chunkname = "@Interface/AddOns/%s/%s" % (addon, rel.replace("\\", "/"))
@@ -2305,6 +2353,7 @@ class Client:
             self._set_time()
             self.M.load_file("", chunkname, addon, ns)
             return
+        folder = self._data_folder(rel, addon, folder)
         src = _chunk(os.path.join(folder, rel), chunkname)  # re-checked per boot: agents edit while tests run
         if src is None:
             missing.append(rel)
@@ -2323,6 +2372,8 @@ class Client:
             return False, "MISSING"
         _new_boot()
         headers, files = parse_toc(folder, name)
+        if name == ROOMS_NAME and not self.forever and _exists(os.path.join(TBC_ROOMS_TOC_DIR, name + ".toc")):
+            files = parse_toc(TBC_ROOMS_TOC_DIR, name)[1]        # (every TBC room: the strategy suites draw them)
         if name == ROOMS_NAME and not (LOAD_ROOMS if self._load_rooms is None else self._load_rooms):
             files = [f for f in files if not is_board_room(f)]
         ns = self.runtime.table()

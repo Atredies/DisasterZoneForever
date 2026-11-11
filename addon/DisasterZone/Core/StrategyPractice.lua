@@ -269,7 +269,7 @@ local function OnTarget()
     if not run then return end
     local c = Live():GetCurrent()
     if not (c and c.practice) then return end
-    local guid = UnitGUID("target")
+    local guid = ns.Compat.GUID("target")                 -- (nil on Forever: secret in instances)
     if not guid or (UnitIsPlayer and UnitIsPlayer("target")) then return end
     if run.marks[guid] then return end
     if IsInGroup() and not (UnitIsGroupLeader("player") or UnitIsGroupAssistant("player")) then return end

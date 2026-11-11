@@ -348,27 +348,27 @@ local function CreateWindow()
     win:SetScript("OnKeyDown", function(self, key)
         local ctrl = IsControlKeyDown and IsControlKeyDown()
         if ctrl and key == "Z" and CanEdit() then
-            self:SetPropagateKeyboardInput(false)
+            ns.Util.SetPropagateKeys(self, false)
             Builder:Undo()
         elseif ctrl and key == "Y" and CanEdit() then
-            self:SetPropagateKeyboardInput(false)
+            ns.Util.SetPropagateKeys(self, false)
             Builder:Redo()
         elseif key == "ESCAPE" and (S.drag or S.press) then
             -- Escape during a drag drops the drag (the piece goes back), not the window
-            self:SetPropagateKeyboardInput(false)
+            ns.Util.SetPropagateKeys(self, false)
             Builder:CancelDrag()
         elseif key == "ESCAPE" and ui.picker and ui.picker:IsShown() then
-            self:SetPropagateKeyboardInput(false)
+            ns.Util.SetPropagateKeys(self, false)
             Builder:ClosePicker()
         elseif key == "ESCAPE" and (Builder:ConfirmUp() or (ui.msheet and ui.msheet:IsShown())
             or (ui.qsheet and ui.qsheet:IsShown()) or (ui.dpop and ui.dpop:IsShown())) then
-            self:SetPropagateKeyboardInput(false)
+            ns.Util.SetPropagateKeys(self, false)
             if Builder:ConfirmUp() then ns.Popup:Hide(CONFIRM)
             elseif ui.msheet and ui.msheet:IsShown() then MapSheet:Close()
             elseif ui.qsheet and ui.qsheet:IsShown() then QSheet:Close()
             else Defs:Close() end
         else
-            self:SetPropagateKeyboardInput(true)
+            ns.Util.SetPropagateKeys(self, true)
         end
     end)
     win:SetScript("OnEnter", function(self) if self.EnableKeyboard then self:EnableKeyboard(true) end end)
@@ -6418,7 +6418,9 @@ function MapSheet.DrawPlaces(v, edit)
 end
 
 -- The zones a place can be on: Outland's, Kalimdor's and the Eastern Kingdoms' (the game's list), with my zone.
-local ZONE_PARENTS = { { 1945, "Outland" }, { 1414, "Kalimdor" }, { 1415, "Eastern Kingdoms" } }
+-- WoW Forever: no Outland (the continent ids as in Core/GuildMap.lua, UNVERIFIED there).
+local ZONE_PARENTS = (ns.Compat and ns.Compat.isForever) and { { 1414, "Kalimdor" }, { 1415, "Eastern Kingdoms" } }
+    or { { 1945, "Outland" }, { 1414, "Kalimdor" }, { 1415, "Eastern Kingdoms" } }
 local OUTLAND = { 1944, 1946, 1948, 1949, 1951, 1952, 1953, 1955 }
 function MapSheet.Zones()
     if MapSheet.zones then return MapSheet.zones end

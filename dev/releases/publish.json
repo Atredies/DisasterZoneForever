@@ -1,4 +1,5 @@
 {
- "repo": "tsumilo/DisasterZone-releases",
- "clone": "C:/Users/emilo/DisasterZone-releases"
+ "repo": "",
+ "clone": "",
+ "about": "DisasterZoneForever has no releases repository yet, so 'release.py publish' and 'launcher-push' refuse. Once one exists: set repo (owner/name, never the TBC original's tsumilo/DisasterZone-releases), clone (this machine's local clone of it; empty = ../DisasterZone-releases next to this repository), and point launcher/source.txt at it."
 }

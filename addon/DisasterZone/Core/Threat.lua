@@ -74,7 +74,7 @@ local function Units()
 end
 
 local function MyRole()
-    local r = UnitGroupRolesAssigned and UnitGroupRolesAssigned("player")
+    local r = UnitGroupRolesAssigned and ns.Compat.Plain(UnitGroupRolesAssigned("player"))
     return r
 end
 
@@ -98,16 +98,21 @@ function Threat:Scan()
     local mob = self:Mob()
     local st = { rows = {}, mob = mob }
     if mob then
-        st.name = UnitName(mob)
-        st.guid = UnitGUID and UnitGUID(mob)
+        -- (WoW Forever: the mob's name and GUID are secret in an instance, the threat values while threat is
+        -- restricted: each is read through Plain, so a secret one is simply unknown here; compared in Same)
+        local C = ns.Compat
+        local P_ = C.Plain
+        st.name = C.Name(mob)
+        st.guid = C.GUID(mob)
         st.combat = UnitAffectingCombat and UnitAffectingCombat(mob) or false
         for _, unit in ipairs(Units()) do
             if UnitExists(unit) and UnitDetailedThreatSituation then
                 local isTanking, _, scaled, raw, value = UnitDetailedThreatSituation(unit, mob)
+                isTanking, scaled, raw, value = P_(isTanking), P_(scaled), P_(raw), P_(value)
                 if raw or isTanking then
-                    local _, cls = UnitClass(unit)
-                    local isMe = UnitIsUnit and UnitIsUnit(unit, "player")
-                    local row = { unit = unit, guid = UnitGUID(unit), name = UnitName(unit), cls = cls,
+                    local cls = P_((select(2, UnitClass(unit))))
+                    local isMe = C.SameUnit(unit, "player")
+                    local row = { unit = unit, guid = C.GUID(unit), name = C.Name(unit), cls = cls,
                                   tank = isTanking and true or false, raw = isTanking and 100 or (tonumber(raw) or 0),
                                   scaled = isTanking and 100 or (tonumber(scaled) or 0), value = tonumber(value) or 0,
                                   me = isMe or nil }
@@ -224,11 +229,12 @@ function Threat:OnLogin()
     ns:On("SETTINGS_CHANGED", function(path)
         if type(path) == "string" and path:sub(1, 7) == "meters." then Threat:Refresh() end
     end)
-    ns:RegisterSlash("threat", function(arg)
+    -- (WoW Forever: no threat meter, so no /dz threat and no help line for it)
+    if not (ns.Compat and ns.Compat.isForever) then ns:RegisterSlash("threat", function(arg)
         arg = (arg or ""):lower()
         if arg == "on" or arg == "off" then ns.DB:SetSetting("meters.thr", arg == "on")
         elseif ns.MeterPanels then ns.MeterPanels:Toggle() end
-    end, "show or hide the threat meter (on | off)")
+    end, "show or hide the threat meter (on | off)") end
     self:Refresh()
 end
 

@@ -161,10 +161,11 @@ local function OnPartSent(state, sent)
     sent = tonumber(sent) or state.total
     if sent > state.total then sent = state.total end
     backlog[state.class] = max(0, (backlog[state.class] or 0) - (sent - state.sent))
+    Comm.OnDrained(state.class, sent - state.sent)
     state.sent = sent
 end
 
-local function SendText(class, text, distribution, target)
+local function RawSend(class, text, distribution, target)
     backlog[class] = (backlog[class] or 0) + #text
     Comm:SendCommMessage(PREFIX[class], text, distribution, target, PRIORITY[class], OnPartSent,
         { class = class, total = #text, sent = 0 })
@@ -172,6 +173,125 @@ local function SendText(class, text, distribution, target)
     Comm.stats.bytesSent = Comm.stats.bytesSent + #text
     local net = ns.PerfNet              -- (the developer's Performance page: Core/Perf.lua)
     if net then net("out", PREFIX[class], #text, target or distribution) end
+end
+
+---------------------------------------------------------------------------
+-- Chat lockdown (WoW Forever): for the whole of a boss pull the client refuses every addon message
+-- (AddOnMessageLockdown, measured by dev/probe). Messages sent then wait here, in order, and leave once the pull is
+-- over; live-only traffic (positions, presence, minigame frames) is dropped instead, since it is stale by then.
+-- Elsewhere Compat:InChatLockdown() is always false and this costs one function call per message.
+---------------------------------------------------------------------------
+
+local LOCK_DROP = { walk = true, map = true, craft = true, craftev = true, live = true }
+local LOCK_MAX = 300             -- messages held through one pull; the oldest go first past this
+local lockQueue = {}
+local lockTicker
+
+local function InLockdown()
+    local C = ns.Compat
+    return C ~= nil and C:InChatLockdown()
+end
+
+-- A message ChatThrottleLib is still sending when a pull starts: its remaining parts would each be refused
+-- (AddOnMessageLockdown), and ChatThrottleLib drops a refused part, so the receivers never get the message (found by
+-- the Deadmines replay, dev/tests/forever). ChatThrottleLib despools through its own Despool method, looked up on the
+-- shared table every update: while the client is in a chat lockdown it now waits instead, its queue intact, and
+-- carries on when the lockdown ends. It pauses every addon's queued messages this way, which only spares them the same
+-- loss. Wrapped at login, once every addon has loaded (a newer ChatThrottleLib from another addon replaces the
+-- methods when it loads), and checked again before each send.
+local ctlWrapped, ctlDespool
+local function CtlDespool(self, Prio)
+    if InLockdown() then
+        -- (no bandwidth saved up past one burst for the end of the pull)
+        local cap = self.BURST or 4000
+        if Prio.avail and Prio.avail > cap then Prio.avail = cap end
+        Comm.stats.lockPaused = (Comm.stats.lockPaused or 0) + 1
+        return
+    end
+    return ctlDespool(self, Prio)
+end
+
+local function WrapThrottleLib()
+    local CTL = _G.ChatThrottleLib     -- (comes with AceComm-3.0)
+    if type(CTL) ~= "table" or type(CTL.Despool) ~= "function" or CTL.Despool == ctlWrapped then return end
+    ctlDespool = CTL.Despool
+    ctlWrapped = CtlDespool
+    CTL.Despool = CtlDespool
+end
+Comm.WrapThrottleLib = WrapThrottleLib
+
+local function FlushLocked()
+    if #lockQueue == 0 then
+        if lockTicker then lockTicker:Cancel(); lockTicker = nil end
+        return
+    end
+    if InLockdown() then return end
+    local q = lockQueue
+    lockQueue = {}
+    if lockTicker then lockTicker:Cancel(); lockTicker = nil end
+    for i = 1, #q do
+        local e = q[i]
+        if e.fn then   -- (another module's own send: Comm:SendOrHold)
+            local ok, err = pcall(e.fn, unpack(e.args, 1, e.n))
+            if not ok and geterrorhandler then geterrorhandler()(err) end
+        else
+            RawSend(e.class, e.text, e.distribution, e.target)
+        end
+    end
+    Comm.stats.lockFlushed = (Comm.stats.lockFlushed or 0) + #q
+end
+Comm.FlushLocked = FlushLocked
+
+local function SendText(class, text, distribution, target)
+    WrapThrottleLib()
+    if not InLockdown() then return RawSend(class, text, distribution, target) end
+    local st = Comm.stats
+    if LOCK_DROP[class] then
+        st.lockDropped = (st.lockDropped or 0) + 1
+        return
+    end
+    if #lockQueue >= LOCK_MAX then
+        table.remove(lockQueue, 1)
+        st.lockDropped = (st.lockDropped or 0) + 1
+    end
+    lockQueue[#lockQueue + 1] = { class = class, text = text, distribution = distribution, target = target }
+    st.lockHeld = (st.lockHeld or 0) + 1
+    if not lockTicker and C_Timer and C_Timer.NewTicker then
+        lockTicker = C_Timer.NewTicker(1, FlushLocked)   -- (and on the restriction / encounter events, OnInit)
+    end
+end
+
+-- Messages waiting for the end of a chat lockdown (the Performance page, the tests).
+function Comm:GetLockHeldCount()
+    return #lockQueue
+end
+
+-- True during a chat lockdown (a boss pull on WoW Forever): addon messages sent now are refused.
+function Comm:InLockdown()
+    return InLockdown()
+end
+
+-- The modules that send on their own (BossMod's DBM / BigWigs break, ClassPlanner, ReserveLR, Patch, chat lines):
+-- send(...) runs now, or, during a chat lockdown, waits in the same queue as Comm's own messages (in order) and runs
+-- once the lockdown ends. Returns true when it ran now, false when it waits.
+function Comm:SendOrHold(send, ...)
+    if type(send) ~= "function" then return false end
+    WrapThrottleLib()
+    if not InLockdown() then
+        send(...)
+        return true
+    end
+    local st = Comm.stats
+    if #lockQueue >= LOCK_MAX then
+        table.remove(lockQueue, 1)
+        st.lockDropped = (st.lockDropped or 0) + 1
+    end
+    lockQueue[#lockQueue + 1] = { fn = send, args = { ... }, n = select("#", ...) }
+    st.lockHeld = (st.lockHeld or 0) + 1
+    if not lockTicker and C_Timer and C_Timer.NewTicker then
+        lockTicker = C_Timer.NewTicker(1, FlushLocked)
+    end
+    return false
 end
 
 -- Bytes handed to ChatThrottleLib and not on the wire yet, all classes together (the Performance page).
@@ -267,6 +387,17 @@ end
 -- and prefix): who has a backlog leaves answering a question to somebody whose queue is empty.
 function Comm:Backlog(class)
     return backlog[class or "ctrl"] or 0
+end
+
+-- Bytes of this class that left my send queue since login (with Backlog: has a message queued at some point left yet?
+-- DigestSync's SendItem gives an item once while it still waits).
+local drained = {}
+function Comm:Drained(class)
+    return drained[class or "ctrl"] or 0
+end
+
+function Comm.OnDrained(class, bytes)
+    if type(bytes) == "number" and bytes > 0 then drained[class] = (drained[class] or 0) + bytes end
 end
 
 function Comm:Register(msgType, handler)
@@ -518,9 +649,13 @@ function Comm:OnInit()
         Comm:RegisterComm(prefix, "OnCommReceived")
     end
     ns:On("ROSTER_UPDATED", function() ProcessHeld(false) end)
+    -- the end of a pull lifts the chat lockdown: send what waited (ns:RegisterEvent skips events a client lacks)
+    ns:RegisterEvent("ADDON_RESTRICTION_STATE_CHANGED", function() FlushLocked() end)
+    ns:RegisterEvent("ENCOUNTER_END", function() FlushLocked() end)
 end
 
 function Comm:OnLogin()
+    WrapThrottleLib()
     if type(ERR_CHAT_PLAYER_NOT_FOUND_S) == "string" and ERR_CHAT_PLAYER_NOT_FOUND_S ~= "" then
         notFoundPattern = FormatToPattern(ERR_CHAT_PLAYER_NOT_FOUND_S)
         local addFilter = (ChatFrameUtil and ChatFrameUtil.AddMessageEventFilter) or ChatFrame_AddMessageEventFilter

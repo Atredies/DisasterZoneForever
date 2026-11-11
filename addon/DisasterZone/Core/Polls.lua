@@ -10,7 +10,8 @@ if DisasterZoneBoot and DisasterZoneBoot.Run("Core/Polls.lua", ...) then return 
 -- days: o = "YYYY-MM-DD" or "YYYY-MM-DD HH:MM"; an answer says for each day 1 = can, 2 = if needed, 0 = can't).
 -- rv: "live" (results always), "vote" (after you answered), "close" (once it closes). Names are always shown.
 -- A poll is shown only to the people it asks and its asker; everyone's client still keeps and relays it, so a member
--- who was offline gets it from whoever is online.
+-- who was offline gets it from whoever is online (taken from its asker or another asker; a plain member's copy is
+-- held back and asked for from them, see SYNC.vouch).
 -- Sync works like the events library (Core/Events.lua): the guild HELLO carries a digest hash (od); a member whose hash
 -- differs gets a digest (PLD) from one other member and asks for what it lacks (PLW -> PLG). A change goes to the guild
 -- at once (PLU). PLN: the asker nudges the people who haven't answered (a pop-up on their screen, no chat).
@@ -98,6 +99,7 @@ local SYNC = {
     audit = "pl",                    -- (Core/Audit.lua: the audit log's kinds pl.P, pl.V)
 }
 local sync = ns.DigestSync.New(SYNC)
+Polls.sync = sync                    -- (tests: the held-back relays, sync.hold)
 local Newer = sync.Newer
 
 local function Root(create) return sync:Root(create) end
@@ -567,6 +569,18 @@ local function Merge(root, kind, rec, live)
 end
 
 SYNC.clean, SYNC.merge, SYNC.state = CleanRecord, Merge, State
+
+-- 2026-11-09 (authority holes, rounds 2 and 3): a relayed record (PLG) names its writer (rec.by) in a field the sender
+-- controls. A poll (new, changed or removed) and an answer are taken only from their writer (any of their characters)
+-- or from someone who may ask polls: every client takes relays only that way, so an asker's store holds only copies
+-- taken first-hand or from another asker, and the askers answer a newcomer's sync first. (Round 2 still took a poll new
+-- to me and the answers at their writer's word: a member could slip a whole poll "by" the GM, or another member's
+-- answer, onto a client that never had it.) Anyone else's copy is held back and asked for from its writer or an asker
+-- online (DigestSync Hold).
+SYNC.vouch = function(root, kind, rec, via)
+    return SamePlayer(via, rec.by) or Polls:CanAsk(via)
+end
+SYNC.relayer = function(key) return Polls:CanAsk(key) end      -- (who vouches for any record: DigestSync WantFrom)
 -- demo mode: an answer must still fit its poll
 SYNC.demoCheck = function(st, kind, clean)
     if kind ~= "V" then return true end
@@ -1035,13 +1049,15 @@ function Polls:BuildDemo()
         def.a = def.a or { { "g" } }
         demo.P[id] = CleanPoll(def)
     end
-    poll("pdemo1", { q = "Which nights can you raid SSC next week?", k = "days", cl = now + 3 * DAY, rv = "live", ch = true,
+    poll("pdemo1", { q = (ns.Compat and ns.Compat.isForever) and "Which nights can you raid Hyjal next week?" or "Which nights can you raid SSC next week?", k = "days", cl = now + 3 * DAY, rv = "live", ch = true,
                      o = { day(3, "20:00"), day(5, "20:00"), day(6, "20:00"), day(8, "19:30"), day(9, "19:30") } })
     poll("pdemo2", { q = "Should we start Thursdays 30 minutes earlier?", k = "yn", o = { "Yes", "No" },
                      cl = now + DAY, rv = "vote", ch = true })
     poll("pdemo3", { q = "Which raid should we do next Wednesday?", k = "one", cl = now + 2 * DAY, rv = "vote", ch = true,
-                     o = { "Gruul's Lair", "Magtheridon's Lair", "Karazhan", "A night off" } })
-    poll("pdemo4", { q = "Loot: allow off-spec rolls on tier tokens?", k = "one", by = me, cl = now + 4 * DAY,
+                     o = (ns.Compat and ns.Compat.isForever) and { "Barrow Deeps", "Onyxia's Lair", "UBRS", "A night off" }
+                         or { "Gruul's Lair", "Magtheridon's Lair", "Karazhan", "A night off" } })
+    poll("pdemo4", { q = (ns.Compat and ns.Compat.isForever) and "Loot: allow off-spec rolls on raid epics?"
+                         or "Loot: allow off-spec rolls on tier tokens?", k = "one", by = me, cl = now + 4 * DAY,
                      rv = "vote", ch = true, o = { "Yes, after main spec", "No, main spec only", "Council decides" } })
     -- (1.4.1) a poll of three questions
     local group = {
@@ -1081,6 +1097,7 @@ end
 
 function Polls:OnInit()
     sync:Register(OnUpdate, OnGive)
+    sync:EnableHold()                -- (relayed records nobody vouches for: held back and asked for, SYNC.vouch)
     local Comm = ns.Comm
     if Comm and Comm.Register then Comm:Register("PLN", OnNudge) end
     ns:On("DEMO_TOGGLED", function(on)

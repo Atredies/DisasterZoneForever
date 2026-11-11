@@ -18,6 +18,8 @@ fn spawn(mut cmd: Command) -> Result<()> {
 /// Battle.net's id for the game version a folder holds.
 pub fn battlenet_uid(flavor: &str) -> Option<&'static str> {
     match flavor {
+        // (WoW Forever: "wowf" in Battle.net.config's "Games" and the running game's `-uid wowf`, seen 2026-11-09)
+        "_forever_" => Some("wowf"),
         "_retail_" => Some("wow"),
         "_classic_" => Some("wow_classic"),
         "_classic_era_" => Some("wow_classic_era"),
@@ -119,6 +121,7 @@ mod tests {
         assert_eq!(exec_command("", "_anniversary_").as_deref(), Some("launch_uid wow_classic_anniversary"));
         assert_eq!(exec_command("  ", "_classic_era_").as_deref(), Some("launch_uid wow_classic_era"));
         assert_eq!(exec_command("", "_retail_").as_deref(), Some("launch_uid wow"));
+        assert_eq!(exec_command("", "_forever_").as_deref(), Some("launch_uid wowf"));
         assert_eq!(exec_command("", "_something_new_"), None);
     }
 

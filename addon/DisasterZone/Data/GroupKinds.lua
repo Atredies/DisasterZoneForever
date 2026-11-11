@@ -61,3 +61,39 @@ ns.Data.GroupKinds = {
     -- a raid group's loot method: rolls, soft reserves (n each), the loot council (guild members only)
     loot = { "roll", "sr", "lc" },
 }
+
+-- WoW Forever: its own lists (only Forever clients talk to each other, so these are a fresh wire order: from here on
+-- never reorder, only append). Raids by the item data's key (Data/Items.lua, Data/Raids.lua); no arenas, no Outland
+-- world PvP, no attunements.
+if ns.Compat and ns.Compat.isForever then
+    local K = ns.Data.GroupKinds
+    K.kinds = { "dungeon", "raid", "pvp", "other" }   -- (no Quest kind: Forever's group quests aren't listed yet)
+    K.raids = {
+        { key = "BarrowDeeps", size = 10 },
+        { key = "HyjalForever", size = 20 },
+        { key = "Onyxia", size = 40 },
+    }
+    K.pvp = {
+        { key = "wsg", name = "Warsong Gulch", size = 10, mode = "bg", screen = 131883, cx = 0.5, cy = 0.5, icon = 134420 },
+        { key = "ab", name = "Arathi Basin", size = 15, mode = "bg", screen = 131820, cx = 0.5, cy = 0.5, icon = 133282 },
+        { key = "av", name = "Alterac Valley", size = 40, mode = "bg", screen = 131861, cx = 0.5, cy = 0.45, icon = 133308 },
+        -- new on Forever (15 v 15, levels 30-60; Blizzard, 2026-11): no loading screen file known yet
+        { key = "darkspear", name = "Darkspear Islands", size = 15, mode = "bg", cx = 0.5, cy = 0.5,
+          icon = "Interface\\Icons\\INV_BannerPVP_01" },
+    }
+    K.other = {
+        { key = "worldboss", name = "World boss", icon = "Interface\\Icons\\Spell_Fire_FelFlameRing",
+          hint = "Which one, e.g. \"Azuregos\"" },
+        { key = "farm", name = "Farming", icon = "Interface\\Icons\\INV_Misc_Herb_BlackLotus",
+          hint = "What and where, e.g. \"Black Lotus, Winterspring\"" },
+        { key = "rep", name = "Reputation", icon = "Interface\\Icons\\INV_Misc_Note_02",
+          hint = "Which faction, e.g. \"Timbermaw Hold\"" },
+        { key = "any", name = "Anything else", icon = "Interface\\Icons\\INV_Misc_QuestionMark",
+          hint = "What the group is for (needed)" },
+    }
+    -- (no Outland: Kalimdor 131848 and Eastern Kingdoms 131839, as Core/EventBlocks.lua and Data/Raids.lua show them)
+    K.art = {
+        quest = { screen = 131848, cx = 0.5, cy = 0.55, icon = 136349 },
+        other = { screen = 131839, cx = 0.5, cy = 0.45, icon = 136366 },
+    }
+end

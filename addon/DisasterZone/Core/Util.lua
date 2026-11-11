@@ -30,6 +30,74 @@ function Util.GetPlayerRealm()
     return realm
 end
 
+-- WoW Forever has regionally unique names: a character is "Arakis War", first name and surname. There UnitName(unit)
+-- (and UnitNameUnmodified / UnitFullName) return the two parts, "Arakis", "War", where other clients return name and
+-- realm; the guild roster, chat and addon-message senders carry the whole "Arakis War" (Blizzard's Forever UI:
+-- Blizzard_FrameXMLUtil/Camelot/NameUtil.lua). Measured 2026-11-08: UnitName("player") "Arakis", roster "Arakis War".
+-- Util.UnitNameRealm(unit) returns the name as the roster writes it and the realm (nil = mine): use it wherever a unit
+-- becomes a name key. Plain UnitName stays right for display ("Good evening, Arakis").
+local SURNAME_SEP = (Constants and Constants.CharacterNameSeparatorConsts
+    and Constants.CharacterNameSeparatorConsts.CHARACTERNAME_SURNAME_SEPARATOR) or " "
+
+function Util.UsesSurnames()
+    return RegionalUniqueNamesEnabled ~= nil and RegionalUniqueNamesEnabled() == true
+end
+
+-- The addon's developer (owner decision 2026-11-09): the owner's character, as a name key (the roster's whole name and
+-- the realm without spaces). The only power tied to a name: the feedback "developer" badge and staff replies
+-- (Core/Feedback.lua), the Performance page on from the first file (Core/Perf.lua), the boss-learning review
+-- (Core/BossLearn.lua) and /dz role (Core/Guild.lua, my own client's view only). A name is weak proof: anyone could take
+-- "Arakis War" on another realm, so the key carries the guild's realm and a character of any other realm never counts.
+-- (Core/Perf.lua compares the same key at file time, before Util's realm helpers are safe to call.)
+Util.DEV_KEY = "Arakis War-CAMWOWEU4Realm4PvP"
+
+function Util.IsDevKey(key)
+    return type(key) == "string" and key == Util.DEV_KEY
+end
+
+function Util.UnitNameRealm(unit)
+    local name, second = UnitName(unit)
+    local C = ns.Compat
+    if C and C.IsSecret(name) then return nil, nil end    -- (WoW Forever: an NPC's name is secret in an instance)
+    if C then second = C.Plain(second) end
+    if Util.UsesSurnames() then
+        if type(name) == "string" and type(second) == "string" and second ~= "" then
+            return name .. SURNAME_SEP .. second, nil
+        end
+        return name, nil
+    end
+    return name, second
+end
+
+-- Frame:SetPropagateKeyboardInput is protected in combat on the modern clients: an addon calling it then gets
+-- ADDON_ACTION_BLOCKED (seen on WoW Forever 2026-11-09 with the Atlas page first opened in a fight). Every call goes
+-- through here: in combat it is not made (returns false); the last value asked for is applied when combat ends, so a
+-- panel built during a fight still lets keys through to the game afterwards.
+local propagateLater = setmetatable({}, { __mode = "k" })   -- frame -> the value to apply after combat
+local propagateWatch
+local function ApplyPropagateLater()
+    for frame, on in pairs(propagateLater) do
+        propagateLater[frame] = nil
+        frame:SetPropagateKeyboardInput(on)
+    end
+end
+function Util.SetPropagateKeys(frame, on)
+    if not (frame and frame.SetPropagateKeyboardInput) then return false end
+    on = on and true or false
+    if InCombatLockdown and InCombatLockdown() then
+        propagateLater[frame] = on
+        if not propagateWatch and CreateFrame then
+            propagateWatch = CreateFrame("Frame")
+            propagateWatch:RegisterEvent("PLAYER_REGEN_ENABLED")
+            propagateWatch:SetScript("OnEvent", ApplyPropagateLater)
+        end
+        return false
+    end
+    propagateLater[frame] = nil
+    frame:SetPropagateKeyboardInput(on)
+    return true
+end
+
 function Util.Trim(s)
     if type(s) ~= "string" then return s end
     return (strmatch(s, "^%s*(.-)%s*$"))
@@ -164,7 +232,7 @@ local playerKey
 -- Own name key. Reliable only after PLAYER_LOGIN (cached from then on).
 function Util.PlayerKey()
     if playerKey then return playerKey end
-    local name = (UnitNameUnmodified and UnitNameUnmodified("player")) or (UnitName and UnitName("player"))
+    local name = Util.UnitNameRealm("player")
     if type(name) ~= "string" or name == "" or name == UNKNOWNOBJECT then
         return nil
     end
@@ -434,8 +502,37 @@ function Util.ItemIDsFromText(text)
     return out
 end
 
--- Numeric dotted compare: "0.10.0" > "0.9.3". Missing / non-numeric parts count as 0.
+-- WoW Forever restarted the version numbers at 0.1.0 (2026-11-09; go-live is 1.0.0). Every development copy that
+-- ran on Forever before that said "1.5.5" (the TBC original's last release, where the fork began), so that label can
+-- still come from a guildmate's old copy (sync hello, feedback, boss summaries) or from saved data (changelogSeen,
+-- peers). It counts as OLDER than every other version: an old copy never looks newer than 0.x ("please update"
+-- nags, What's New staying shut). The Forever line therefore never ships 1.5.5 itself (1.5.4 is followed by 1.5.6).
+-- (On Forever only: elsewhere, the TBC original's test profile, 1.5.5 is that original's real release.)
+Util.PRE_FOREVER_VERSION = "1.5.5"
+
+-- 2026-11-09: whose version may say "a newer DisasterZone is out"? On Forever only a Forever build's: its HELLO
+-- carries iface = 16001 (Sync:SendHello; clients before the field ignore it). An upstream TBC copy someone loaded on
+-- Forever (1.5.6 and up) or a build before the field sends none, and its version is no reason to update (it would
+-- otherwise tell every 0.x player to). Elsewhere (the TBC original's test profile) every version counts, as before.
+Util.FOREVER_IFACE = 16001
+
+function Util.VersionComparable(iface)
+    if not (ns.Compat and ns.Compat.isForever) then return true end
+    return iface == Util.FOREVER_IFACE
+end
+
+-- Is a peer's version (v, with the iface its HELLO carried) newer than mine, and from a build that counts?
+function Util.PeerVersionNewer(v, iface)
+    return type(v) == "string" and Util.VersionComparable(iface) and Util.CompareVersions(v, ns.version) > 0
+end
+
+-- Numeric dotted compare: "0.10.0" > "0.9.3". Missing / non-numeric parts count as 0. On Forever,
+-- PRE_FOREVER_VERSION is below everything else.
 function Util.CompareVersions(a, b)
+    if ns.Compat and ns.Compat.isForever then
+        local la, lb = a == Util.PRE_FOREVER_VERSION, b == Util.PRE_FOREVER_VERSION
+        if la ~= lb then return la and -1 or 1 end
+    end
     local pa, pb = {}, {}
     for part in tostring(a or ""):gmatch("[^%.]+") do pa[#pa + 1] = tonumber(strmatch(part, "^%d+")) or 0 end
     for part in tostring(b or ""):gmatch("[^%.]+") do pb[#pb + 1] = tonumber(strmatch(part, "^%d+")) or 0 end
@@ -578,7 +675,7 @@ local function MasterLooterMethod()
 end
 
 local function UnitKey(unit)
-    local name, realm = UnitName(unit)
+    local name, realm = Util.UnitNameRealm(unit)
     if type(name) ~= "string" or name == "" or name == UNKNOWNOBJECT then return nil end
     if type(realm) == "string" and realm ~= "" then
         return Util.NormalizeName(name .. "-" .. realm)
@@ -593,7 +690,8 @@ function Util.RefreshGroup()
     if IsInRaid() then
         for i = 1, (GetNumGroupMembers() or 0) do
             local name, rank, subgroup, _, _, fileName, _, online, _, _, isML = GetRaidRosterInfo(i)
-            local key = (name ~= UNKNOWNOBJECT) and Util.NormalizeName(name) or nil
+            if ns.Compat then name = ns.Compat.Plain(name) end   -- (UNVERIFIED on Forever whether a raid instance keeps it secret)
+            local key = (type(name) == "string" and name ~= UNKNOWNOBJECT) and Util.NormalizeName(name) or nil
             if key then
                 newGroup[key] = {
                     classFile = fileName,
@@ -666,7 +764,7 @@ function Util.IsPlayerMasterLooter()
     local method, partyID, raidID = LootMethod()
     if method == nil or method ~= MasterLooterMethod() then return false end
     if raidID then
-        return UnitIsUnit("raid" .. raidID, "player") and true or false
+        return ns.Compat.SameUnit("raid" .. raidID, "player")
     end
     return partyID == 0
 end
@@ -712,6 +810,7 @@ function Util.GetGroupRole(key)
         if n > 40 then n = 40 end
         for i = 1, n do
             local name, rank, _, _, _, _, _, _, _, _, isML = GetRaidRosterInfo(i)
+            if ns.Compat then name = ns.Compat.Plain(name) end
             if type(name) == "string" and name ~= UNKNOWNOBJECT and Util.NormalizeName(name) == key then
                 return tonumber(rank) or 0, isML and true or false
             end

@@ -12,7 +12,7 @@ local floor = math.floor
 local tsort = table.sort
 
 -- Validation limits (SPEC §8.1)
-local MAX_ITEM_ID = 200000
+local MAX_ITEM_ID = 1000000   -- (Forever's new items are 280000+)
 local MAX_OB = 200
 local MAX_STRING = 24
 local MAX_HASH_LEN = 16
@@ -37,12 +37,15 @@ local lockNotes = {}            -- [key] = GetServerTime(): a list that claims a
                                 -- one (soft marker: a warning, never excluded from suggestions)
 local lockSeenAt                -- GetServerTime() when this client learned the lock
 local confirmed = {}            -- [key] = { rev=, at= }: the owner's own push (direct L) of that rev arrived here
+local rejectNoted = {}          -- [key] = true: "couldn't take their list" was printed this session (0.2.2)
 local LOCK_NOTE_WINDOW = 60     -- lists arriving this long after I learned the lock are late for a pre-lock commit
 local LOCK_GRACE = 3            -- lists committed up to this long after the lock started count as before it
                                 -- (BiS commits a pending edit as soon as the lock arrives)
 local WARN_ICON = "|TInterface\\DialogFrame\\UI-Dialog-Icon-AlertNew:0|t"   -- the default font has no warning sign
 
-local function MaxPhase() return ns.MAX_PHASE or 5 end
+-- Stored and received lists keep every phase up to the wire limit (ns.WIRE_MAX_PHASE), even when this client shows
+-- fewer (WoW Forever shows one), so a list made by a newer release is not refused.
+local function MaxPhase() return ns.WIRE_MAX_PHASE or ns.MAX_PHASE or 5 end
 local function NumSlots() return ns.NUM_SLOTS or 17 end
 
 local IsInt, DemoOn = Util.IsInt, Util.DemoOn
@@ -412,6 +415,13 @@ function Store:Put(key, entry, via)
     local ok, err = Store:ValidateData(d)
     if not ok then
         ns:Debug("Rejected list for %s: %s", key, tostring(err))
+        -- 0.2.2: say it once per player and session. A list this client can't read is mostly one from a newer
+        -- version (0.2.0 refused Forever's new item ids, 280000+), and a silent drop looked like "sync is broken".
+        if not rejectNoted[key] then
+            rejectNoted[key] = true
+            ns:Print("Couldn't take %s's BiS list (%s). If they run a newer DisasterZone than you (/dz version), "
+                .. "please update.", Util.ShortName(key), tostring(err))
+        end
         return false
     end
     local okHash, hash = pcall(Util.Hash, d)

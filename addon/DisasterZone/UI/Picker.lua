@@ -48,6 +48,12 @@ local DEFAULT_SOURCES = { raids = true, dungeons = true, crafted = false, rep = 
 -- Candidate row kind -> source key / section header prefix.
 local KIND_SOURCE = { raid = "raids", dungeon = "dungeons", craft = "crafted", rep = "rep", badge = "badges", pvp = "pvp" }
 local KIND_HEADER = { craft = "Crafted", rep = "Reputation", badge = "Badge of Justice", pvp = "PvP" }
+-- WoW Forever: no badges, no arena, no Jewelcrafting.
+if ns.Compat and ns.Compat.isForever then
+    SOURCE_KEYS = { "raids", "dungeons", "crafted", "rep", "pvp" }
+    SOURCE_INFO.crafted.tooltip = "Blacksmithing, Leatherworking, Tailoring, Engineering and Alchemy."
+    SOURCE_INFO.pvp.tooltip = "Honor and PvP rank gear. Faction items are only listed for your faction."
+end
 
 -- Phase filter (applies to every source that has a phase; items without one count as phase 1). For the Pre-raid list
 -- (phase 0) it works as for P1.

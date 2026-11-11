@@ -46,6 +46,13 @@ end
 load_module("objects.lua")
 load_module("ui.lua")
 load_module("game.lua")
+-- the WoW Forever profile (cfg.forever): forever_facts.lua is generated from a DZProbe run (dev/probe/mock_facts.py)
+if cfg.forever then
+  local f, err = loadstring(sources["forever_facts.lua"], "@wowmock/forever_facts.lua")
+  if not f then error(err) end
+  M.forever_facts = f()
+  load_module("forever.lua")
+end
 
 local safecall = M.safecall
 

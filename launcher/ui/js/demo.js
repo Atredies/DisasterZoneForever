@@ -31,7 +31,7 @@ function demoApi() {
   const handlers = {};
   const emit = (ev, payload) => { for (const fn of handlers[ev] || []) fn({ payload }); };
   if (lmode === "tray") setTimeout(() => { launcherOut = true; emit("launcher-update", { version: NEW_LAUNCHER }); }, 5000);
-  const settings = { wowRoot: "C:\\World of Warcraft", flavor: "_anniversary_", channel: "stable", seenSeq: {}, hold: false,
+  const settings = { wowRoot: "C:\\World of Warcraft", flavor: "_forever_", channel: "stable", seenSeq: {}, hold: false,
     keepBackups: 3, checkOnStart: true, source: null, launchCode: "", playCommand: "", tray: true, autoInstall: true, autostart: false,
     syncServer: "", syncUser: "", packs: {}, packsPicked: updated };
   // the release (sizes as measured on the dev PC); upd: MB that NEW changes in a copy already there
@@ -117,7 +117,7 @@ function demoApi() {
     async invoke(cmd, args) {
       await wait(200);
       switch (cmd) {
-        case "status": return { settings: { ...settings, packs: { ...settings.packs } }, installs: [{ root: settings.wowRoot, flavors: ["_anniversary_", "_classic_era_", "_retail_"] }],
+        case "status": return { settings: { ...settings, packs: { ...settings.packs } }, installs: [{ root: settings.wowRoot, flavors: ["_forever_", "_anniversary_", "_retail_"] }],
           installed: installedNow(), flavorDir: settings.wowRoot + "\\" + settings.flavor, wowRunning: false, launcherVersion: LAUNCHER,
           launcherCheck: launcherLog, source: "https://raw.githubusercontent.com/tsumilo/DisasterZone-releases/main/" };
         case "player": return { character: { name: "Tsumil", realm: "Thunderstrike", key: "Tsumil-Thunderstrike", class: "PALADIN", spec: "Retribution", at: now - 3 * 3600 },

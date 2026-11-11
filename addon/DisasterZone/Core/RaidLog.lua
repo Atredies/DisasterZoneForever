@@ -447,6 +447,19 @@ local function OnCombatLog()
     if RecordKill(enc, boss.name) then BroadcastKill(enc) end
 end
 
+-- The same without a combat log (WoW Forever): UNIT_DIED (unitGUID), UnitDocumentation.lua. Inside an instance the
+-- GUID may be secret (SecretWhenUnitIdentityRestricted): then nothing happens and ENCOUNTER_END alone records the
+-- kill. UNVERIFIED in game.
+local function OnUnitDied(_, guid)
+    if ns.Compat then guid = ns.Compat.Plain(guid) end
+    if type(guid) ~= "string" or not IsInRaid() then return end
+    local ref = ns.ItemDB and ns.ItemDB.GetBossBySourceGUID and ns.ItemDB:GetBossBySourceGUID(guid)
+    local boss = ref and ref.boss
+    local enc = boss and tonumber(boss.encounterID)
+    if not enc or type(boss.npcIDs) ~= "table" or #boss.npcIDs ~= 1 then return end
+    if RecordKill(enc, boss.name) then BroadcastKill(enc) end
+end
+
 -- RLK {e, s}: a raid member saw the kill of encounter e during session s.
 local function OnRaidKill(sender, msg, dist)
     if dist ~= "RAID" or type(msg) ~= "table" then return end
@@ -1597,7 +1610,11 @@ function RaidLog:OnInit()
     end)
     ns:RegisterEvent("ENCOUNTER_START", OnEncounterStart)
     ns:RegisterEvent("ENCOUNTER_END", OnEncounterEnd)
-    ns:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED", OnCombatLog)
+    if ns.Compat and not ns.Compat:CanUseCombatLog() then
+        ns:RegisterEvent("UNIT_DIED", OnUnitDied)
+    else
+        ns:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED", OnCombatLog)
+    end
     ns:RegisterEvent("PLAYER_ENTERING_WORLD", OnEnteringWorld)
     if ns.Comm and ns.Comm.Register then
         ns.Comm:Register("RLW", OnRaidWant)

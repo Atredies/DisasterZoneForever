@@ -60,6 +60,15 @@ local function InInstanceGroup()
 end
 CP.InInstanceGroup = InInstanceGroup
 
+-- send() now, or (WoW Forever: addon and chat messages are refused for a whole boss pull) once the pull ends, in order
+-- with DisasterZone's other messages (Core/Comm.lua).
+local function SendOrHold(send)
+    local Comm = ns.Comm
+    if Comm and Comm.SendOrHold then return Comm:SendOrHold(send) end
+    send()
+    return true
+end
+
 -- A player's name as the other addons send it: Name on my realm, Name-Realm otherwise.
 local function Wire(nameOrKey)
     local key = Util.NormalizeName(nameOrKey)
@@ -157,6 +166,10 @@ end
 
 -- Group members (pets too when asked): { unit, name, class, subgroup, level, pet, tank, online, dead, raidIndex }, in
 -- roster order. accept(classFile) -> false drops a member (a class the planner has no column for).
+-- The level cap (60 on WoW Forever, 70 on TBC): a roster member's level while the client has none yet, the demos'.
+local function MaxLevel() return (GetMaxPlayerLevel and tonumber(GetMaxPlayerLevel())) or 70 end
+CP.MaxLevel = MaxLevel
+
 function M:ScanRoster(pets, accept)
     local out = {}
     local function add(unit, subgroup, rrole, isPet, raidIndex)
@@ -166,7 +179,7 @@ function M:ScanRoster(pets, accept)
         local name = GetUnitName(unit, true)
         if not name then return end
         out[#out + 1] = { unit = unit, name = Wire(name) or name, class = cls, subgroup = subgroup or 1,
-            level = UnitLevel(unit) or 70, pet = isPet or nil, tank = rrole == "MAINTANK" or nil,
+            level = UnitLevel(unit) or MaxLevel(), pet = isPet or nil, tank = rrole == "MAINTANK" or nil,
             online = UnitIsConnected(unit) and true or false, dead = UnitIsDeadOrGhost(unit) and true or false,
             raidIndex = raidIndex }
     end
@@ -214,7 +227,8 @@ function M:Report()
     local chan = IsInRaid() and "RAID" or "PARTY"
     if InInstanceGroup() then chan = "INSTANCE_CHAT" end
     local send = (C_ChatInfo and C_ChatInfo.SendChatMessage) or SendChatMessage
-    for _, line in ipairs(self:ReportLines()) do send(line, chan) end
+    local lines = self:ReportLines()
+    SendOrHold(function() for _, line in ipairs(lines) do send(line, chan) end end)
     return true
 end
 
@@ -235,13 +249,15 @@ function M:SendRaw(msg, target)
     if #msg > 255 then msg = strsub(msg, 1, 255) end
     local prefix = self.planner.prefix
     local CTL = _G.ChatThrottleLib     -- (comes with AceComm-3.0)
+    local send
     if CTL and CTL.SendAddonMessage then
-        CTL:SendAddonMessage("NORMAL", prefix, msg, chan, target)
+        send = function() CTL:SendAddonMessage("NORMAL", prefix, msg, chan, target) end
     elseif C_ChatInfo and C_ChatInfo.SendAddonMessage then
-        C_ChatInfo.SendAddonMessage(prefix, msg, chan, target)
+        send = function() C_ChatInfo.SendAddonMessage(prefix, msg, chan, target) end
     else
         return false
     end
+    SendOrHold(send)
     return true
 end
 

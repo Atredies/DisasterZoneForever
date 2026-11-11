@@ -21,7 +21,12 @@ local function EndDemoRoll()
     if a and a.demo and R.End then pcall(R.End, R, a.id) end
 end
 
+-- WoW Forever: no combat log for addons, so no meters, threat or boss mods (Settings' Combat category keeps only the
+-- class tools): their demos aren't offered; the others show Forever's raids and dungeons
+local FOREVER = ns.Compat and ns.Compat.isForever
+
 -- combat
+if not FOREVER then
 Demo:RegisterPart({ key = "meters", group = "combat", order = 10, label = "Damage meter", icon = 58,
     desc = "Your damage panels show a made-up Tempest Keep night.",
     ready = function()
@@ -34,12 +39,14 @@ Demo:RegisterPart({ key = "threat", group = "combat", order = 11, label = "Threa
         local T = ns.Threat
         return not (T and T.IsEnabled) or T:IsEnabled(), "Switch the threat meter on first: Settings > Combat > Meters."
     end })
-Demo:RegisterPart({ key = "sct", group = "combat", order = 12, label = "Combat text", icon = 8, word = "text", pull = true,
-    desc = "A 12-second pull in your combat text look." })
 Demo:RegisterPart({ key = "bossmods", group = "combat", order = 13, label = "Boss mods", icon = 37, pull = true,
     desc = "A Gruul pull: countdown, timer bars, warnings with sound, range frame." })
+end
+Demo:RegisterPart({ key = "sct", group = "combat", order = 12, label = "Combat text", icon = 8, word = "text", pull = true,
+    desc = "A 12-second pull in your combat text look." })
 Demo:RegisterPart({ key = "plates", group = "combat", order = 14, label = "Nameplates", icon = 61, pull = true,
-    desc = "The Maulgar council in your plate look, two of them casting." })
+    desc = FOREVER and "The Seven of Blackrock Depths in your plate look, two of them casting."
+        or "The Maulgar council in your plate look, two of them casting." })
 -- frames and bars
 Demo:RegisterPart({ key = "party", group = "frames", order = 20, label = "Party frames", icon = 46,
     desc = "A made-up party next to you while you aren't grouped, their threat drifting.",
@@ -62,10 +69,14 @@ local function ClassPart(key, kit, class, order, label, desc, pull, word)
 end
 ClassPart("power", "power", nil, 29, "Resource bar", "Your class's power in a made-up fight: rage from swings, "
     .. "energy ticks and combo points, or mana with the five-second rule.", true, "resource")
-ClassPart("swing", "swing", "PALADIN", 30, "Seal twist timer", "A swing every 3.5 s with Seal of Command and the twist window.", true)
-ClassPart("bless", "bless", "PALADIN", 31, "Blessings", "A made-up Black Temple raid in the planner and on your blessings bar.", false, "blessings")
+ClassPart("swing", "swing", "PALADIN", 30, FOREVER and "Swing timer" or "Seal twist timer",   -- (Forever: no twist)
+    FOREVER and "A swing every 3.5 s." or "A swing every 3.5 s with Seal of Command and the twist window.", true)
+ClassPart("bless", "bless", "PALADIN", 31, "Blessings", FOREVER and "A made-up Hyjal Summit raid in the planner and on your blessings bar."
+    or "A made-up Black Temple raid in the planner and on your blessings bar.", false, "blessings")
 ClassPart("totems", "totems", "SHAMAN", 32, "Totems", "A made-up raid in the planner; the bar's totems tick and Windfury counts down.")
-ClassPart("shot", "shot", "HUNTER", 33, "Shot timer", "Auto Shot every 2.6 s, Steady Shot in between.", true)
+ClassPart("shot", "shot", "HUNTER", 33, "Shot timer", FOREVER   -- (Forever: no Steady Shot, Core/ShotTimer.lua)
+    and "Auto Shot every 2.6 s, Aimed Shot or Multi-Shot in between." or "Auto Shot every 2.6 s, Steady Shot in between.",
+    true)
 ClassPart("war", "war", "WARRIOR", 34, "Swing timer", "A Fury bot: both hands, rage and a queued Heroic Strike.", true, "warrior")
 
 -- Situations (Core/Situation.lua): a pack or a player played on your class's timer (a Warrior's for everyone else;
@@ -120,7 +131,8 @@ for i, def in ipairs(Demo.SCENARIOS or {}) do
         stop = function() EndDemoRoll(); if Demo.ClearScenario then Demo:ClearScenario() end end })
 end
 Demo:RegisterPart({ key = "reserves", kind = "moment", group = "raid", order = 80, label = "Loot reserves: a pug night",
-    icon = 7, desc = "Step through Serpentshrine as the raid leader, a raider or a pug with chat only.",
+    icon = 7, desc = FOREVER and "Step through Upper Blackrock Spire as the raid leader, a raider or a pug with chat only."
+        or "Step through Serpentshrine as the raid leader, a raider or a pug with chat only.",
     play = function() if ns.ReserveDemo then ns.ReserveDemo:Start() end return true end,
     stop = function() if ns.ReserveDemo and ns.ReserveDemo:IsRunning() then ns.ReserveDemo:Stop() end end,
     running = function() return ns.ReserveDemo and ns.ReserveDemo:IsRunning() or false end })

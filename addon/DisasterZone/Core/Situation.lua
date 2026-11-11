@@ -165,7 +165,7 @@ function Sit:Count(prefix, now)
             if c then
                 held = held or { key = c.key, name = cn, icon = ci }
             elseif mode ~= "hits" and UnitAffectingCombat and UnitAffectingCombat(u) then
-                local g = UnitGUID(u)
+                local g = ns.Compat.GUID(u)               -- (nil on Forever: secret in instances)
                 if g and not seen[g] then seen[g] = true; n = n + 1 end
             end
         end
@@ -182,7 +182,7 @@ end
 function Sit:TargetPlayer()
     if not (UnitIsPlayer and UnitIsPlayer("target")) or not Hostile("target") then return nil end
     local name, cls = UnitClass("target")
-    return cls or "WARRIOR", name
+    return ns.Compat.Plain(cls) or "WARRIOR", ns.Compat.Plain(name)
 end
 
 function Sit:InBossFight()

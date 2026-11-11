@@ -22,6 +22,8 @@ if DisasterZoneBoot and DisasterZoneBoot.Run("Core/EventBlocks.lua", ...) then r
 local addonName, ns = ...
 
 local B = ns:NewModule("EventBlocks")
+-- WoW Forever (vanilla content): the examples play in Tanaris, the banners are the old world's loading screens
+local FOREVER = ns.Compat and ns.Compat.isForever
 
 local type, pairs, ipairs, tostring, tonumber, next, select = type, pairs, ipairs, tostring, tonumber, next, select
 local tinsert, tremove, tconcat, tsort = table.insert, table.remove, table.concat, table.sort
@@ -205,7 +207,7 @@ B.SMART = {
             { key = "spots", label = "Spots", kind = "num", d = 16, min = 2, max = 40 },
             { key = "closes", label = "Closes", kind = "choice", d = "start",
               choices = { { "start", "When the event starts" }, { "early", "15 min before" }, { "host", "When the host closes it" } } },
-            { key = "lvl70", label = "Level 70", kind = "bool", d = true },
+            { key = "lvl70", label = "Max level", kind = "bool", d = true },   -- key kept (saved, sent)
         },
         gives = { "someone joins", "someone leaves", "sign-up closes" },
     },
@@ -445,7 +447,7 @@ def("wo.inv", { cat = "wo", shape = "stack", text = "invite {1} to a group", arg
 def("wo.mark", { cat = "wo", shape = "stack", text = "mark {1} with {2}", args = { { t = "player" }, { t = "marker", d = 8 } } })
 def("wo.plates", { cat = "wo", shape = "stack", text = "hide friendly nameplates for {1}", args = { { t = "players" } } })
 -- (part 1's zone check from the guild roster: kept for the events that have it; "{player}'s zone" replaces it)
-def("wo.zone", { cat = "wo", shape = "bool", text = "{1} is in zone {2}", args = { { t = "player" }, { t = "text", d = "Nagrand" } },
+def("wo.zone", { cat = "wo", shape = "bool", text = "{1} is in zone {2}", args = { { t = "player" }, { t = "text", d = FOREVER and "Tanaris" or "Nagrand" } },
     hide = true })
 
 -- Smart blocks: their values and actions
@@ -854,8 +856,27 @@ B.ART = {   -- the event's banner: a loading screen of the client
     { "kalimdor", "Kalimdor", "Interface\\Glues\\LoadingScreens\\LoadScreenKalimdor" },
     { "ek", "Eastern Kingdoms", "Interface\\Glues\\LoadingScreens\\LoadScreenEasternKingdom" },
 }
+if FOREVER then   -- (no arenas, no Outland; by FileDataID, as the Atlas and the Groups board show them on Forever)
+    B.ART = {
+        { "wsg", "Warsong Gulch", 131883 },
+        { "ab", "Arathi Basin", 131820 },
+        { "pvp", "Alterac Valley", 131861 },
+        { "kalimdor", "Kalimdor", 131848 },
+        { "ek", "Eastern Kingdoms", 131839 },
+        { "brs", "Blackrock Spire", 131825 },
+        { "diremaul", "Dire Maul", 131835 },
+    }
+end
 B.ART_BY = {}
 for _, a in ipairs(B.ART) do B.ART_BY[a[1]] = a end
+-- The art a new event and an unknown key take (the picker's first). WoW Forever: the picker offers the old world's
+-- screens only (Warsong Gulch first); the TBC keys still resolve (saved and received events), their files UNVERIFIED
+-- on the Forever client.
+B.DEFAULT_ART = "nagrand"
+if ns.Compat and ns.Compat.isForever then
+    B.ART = { B.ART_BY.wsg, B.ART_BY.ab, B.ART_BY.pvp, B.ART_BY.kalimdor, B.ART_BY.ek }
+    B.DEFAULT_ART = "wsg"
+end
 
 function B:ArtPath(key)
     local a = self.ART_BY[key] or self.ART[1]
@@ -873,6 +894,8 @@ B.FRAME_COLOR = { gold = { 1, 0.84, 0.36 }, silver = { 0.86, 0.89, 0.95 }, bronz
 
 local ICON = "Interface\\Icons\\"
 local NAGRAND, TEROKKAR = 1951, 1952   -- the zones' map ids (uiMapID)
+local ZONE_MAP, ZONE = NAGRAND, "Nagrand"   -- where the examples play
+if FOREVER then ZONE_MAP, ZONE = 1446, "Tanaris" end   -- (classic uiMapID, as Core/GuildMap.lua's)
 local SEASON, ENTR = B.SEASON, B.ENTRANTS
 local function All() return T(ENTR) end
 
@@ -922,10 +945,10 @@ local EX = {}
 -- The Friday duel cup (part 1's starter, rebuilt): a 16-player single elimination, won by duels. No whispers or raid
 -- warnings: the match card tells players when they're up; matches end as moments, an upset is shown on screen, the
 -- champion gets the one post in guild chat.
-EX[1] = { key = "duel", name = "Friday duel cup", icon = ICON .. "Ability_DualWield", art = "nagrand",
+EX[1] = { key = "duel", name = "Friday duel cup", icon = ICON .. "Ability_DualWield", art = FOREVER and "wsg" or "nagrand",
     desc = "Sign-up, Matches won by a duel, moments and one guild post", make = function()
     local d = {
-        name = "Friday duel cup", icon = ICON .. "Ability_DualWield", art = "nagrand",
+        name = "Friday duel cup", icon = ICON .. "Ability_DualWield", art = FOREVER and "wsg" or "nagrand",
         stages = { { id = "s1", name = "Sign-up" }, { id = "s2", name = "Bracket" }, { id = "s3", name = "Finals" },
                    { id = "s4", name = "Prizes" } },
         vars = { { n = "Biggest upset", t = "player" } },
@@ -996,16 +1019,20 @@ end }
 
 -- Hide and seek: tags move a found Hider to Found, a touch finds, a play area keeps Hiders in, a Hint button.
 local PLAY_AREA = { n = "Play area", map = NAGRAND, x = 0.415, y = 0.47, r = 600, z = "Nagrand", sz = "Halaa" }
+if FOREVER then   -- (Gadgetzan: neutral, so either faction's guild can play)
+    PLAY_AREA = { n = "Play area", map = ZONE_MAP, x = 0.515, y = 0.285, r = 600, z = ZONE, sz = "Gadgetzan" }
+end
 local function GoBack(tag)   -- a player of `tag` who leaves the play area is told and pointed back
     return B:Stack(N("pc.leave", "pc1"),
         If(N("pl.has", C("player"), tag),
             N("ch.tell", C("player"), J("Go back to the play area")),
             N("pc.point", C("player"), "pc1")))
 end
-EX[2] = { key = "hide", name = "Hide and seek in Nagrand", icon = ICON .. "Ability_Stealth", art = "eots",
+EX[2] = { key = "hide", name = "Hide and seek in " .. ZONE, icon = ICON .. "Ability_Stealth",
+    art = FOREVER and "kalimdor" or "eots",
     desc = "Tags, a touch, a play area and a Hint button", make = function()
     local d = {
-        name = "Hide and seek in Nagrand", icon = ICON .. "Ability_Stealth", art = "eots",
+        name = "Hide and seek in " .. ZONE, icon = ICON .. "Ability_Stealth", art = FOREVER and "kalimdor" or "eots",
         stages = { { id = "s1", name = "Sign-up" }, { id = "s2", name = "Hide" }, { id = "s3", name = "Seek" },
                    { id = "s4", name = "Prizes" } },
         tags = { tg1 = { n = "Hiders", c = "green", shown = "all" }, tg2 = { n = "Seekers", c = "red", shown = "all" },
@@ -1085,10 +1112,10 @@ EX[2] = { key = "hide", name = "Hide and seek in Nagrand", icon = ICON .. "Abili
 end }
 
 -- Infection: hide and seek's blocks, but a touched Hider turns Seeker; it ends when no one has Hiders.
-EX[3] = { key = "infect", name = "Infection", icon = ICON .. "INV_Misc_Bone_ElfSkull_01", art = "ruins",
+EX[3] = { key = "infect", name = "Infection", icon = ICON .. "INV_Misc_Bone_ElfSkull_01", art = FOREVER and "ab" or "ruins",
     desc = "Tags: whoever is touched turns seeker", make = function()
     local d = {
-        name = "Infection", icon = ICON .. "INV_Misc_Bone_ElfSkull_01", art = "ruins",
+        name = "Infection", icon = ICON .. "INV_Misc_Bone_ElfSkull_01", art = FOREVER and "ab" or "ruins",
         stages = { { id = "s1", name = "Sign-up" }, { id = "s2", name = "Run" }, { id = "s3", name = "Infect" },
                    { id = "s4", name = "Prizes" } },
         tags = { tg1 = { n = "Hiders", c = "green", shown = "all" }, tg2 = { n = "Infected", c = "red", shown = "all" } },
@@ -1153,16 +1180,23 @@ local ROUTE = {
     { "Halaa", 0.42, 0.452 }, { "Sunspring Post", 0.322, 0.43 }, { "Oshu'gun", 0.35, 0.722 }, { "Clan Watch", 0.62, 0.62 },
     { "Burning Blade Ruins", 0.735, 0.39 },
 }
+if FOREVER then   -- round Tanaris from Gadgetzan (places approximate)
+    ROUTE = {
+        { "Gadgetzan", 0.515, 0.285 }, { "Steamwheedle Port", 0.67, 0.23 }, { "Waterspring Field", 0.40, 0.38 },
+        { "Noonshade Ruins", 0.40, 0.29 }, { "Thistleshrub Valley", 0.29, 0.65 }, { "Valley of the Watchers", 0.36, 0.77 },
+        { "Southbreak Shore", 0.58, 0.65 }, { "Lost Rigger Cove", 0.72, 0.47 },
+    }
+end
 EX[4] = { key = "race", name = "Mount race", icon = ICON .. "Ability_Mount_RidingHorse", art = "kalimdor",
     desc = "A Route of places, a Time score and the arrow", make = function()
     local d = {
         name = "Mount race", icon = ICON .. "Ability_Mount_RidingHorse", art = "kalimdor",
-        stages = { { id = "s1", name = "Sign-up", desc = "Meet at Garadar on a ground mount." },
+        stages = { { id = "s1", name = "Sign-up", desc = "Meet at " .. ROUTE[1][1] .. " on a ground mount." },
                    { id = "s2", name = "Race" }, { id = "s3", name = "Prizes" } },
         tags = { tg1 = { n = "Racing", c = "blue", shown = "all" }, tg2 = { n = "Out", c = "grey", shown = "all" } },
         scores = { sc1 = { n = "Time", high = false, fmt = "time", board = true } },
         places = {},
-        meet = "pc1",   -- (where to meet: Garadar, the start and the finish)
+        meet = "pc1",   -- (where to meet: Garadar / Gadgetzan, the start and the finish)
         lists = { ls1 = { n = "Route", kind = "place", items = {} } },
         badges = {
             gold = { n = "Fastest rider", i = ICON .. "Ability_Mount_RidingHorse", f = "gold", ti = "the Swift" },
@@ -1173,13 +1207,14 @@ EX[4] = { key = "race", name = "Mount race", icon = ICON .. "Ability_Mount_Ridin
         notes = {},
     }
     for i, r in ipairs(ROUTE) do
-        d.places["pc" .. i] = { n = r[1], map = NAGRAND, x = r[2], y = r[3], r = 40, z = "Nagrand" }
+        d.places["pc" .. i] = { n = r[1], map = ZONE_MAP, x = r[2], y = r[3], r = 40, z = ZONE }
     end
     -- Garadar is the start and the finish: the route goes round and back
     for i = 2, #ROUTE do d.lists.ls1.items[#d.lists.ls1.items + 1] = "pc" .. i end
     d.lists.ls1.items[#d.lists.ls1.items + 1] = "pc1"
     local mine = function() return N("lo.lmine", C("player"), "ls1") end
-    local meet, late = Gather("r1", "pc1", "Meet at Garadar on a ground mount. The race starts when the host closes the sign-up.")
+    local meet, late = Gather("r1", "pc1", "Meet at " .. ROUTE[1][1] .. " on a ground mount. The race starts when the host"
+        .. " closes the sign-up.")
     d.scripts = {
         meet, late,
         CloseOrCancel("r2", 2, "Not enough racers"),
@@ -1189,7 +1224,7 @@ EX[4] = { key = "race", name = "Mount race", icon = ICON .. "Ability_Mount_Ridin
             N("tm.count", 10, N("pl.all")),
             N("tm.wait", 10),
             Each(N("pl.all"), N("pc.point", C("each"), N("lo.lmine", C("each"), "ls1"))),
-            N("ch.show", All(), J("Go! Follow the arrow round Nagrand.")),
+            N("ch.show", All(), J("Go! Follow the arrow round " .. ZONE .. ".")),
             N("tm.start", 1800, "Race"),
             N("tm.show", "Race")) },
         -- the next place on my route: on to the one after
@@ -1265,10 +1300,10 @@ EX[5] = { key = "fish", name = "Fishing derby", icon = ICON .. "Trade_Fishing", 
 end }
 
 -- Transmog contest: the host picks judges; every entrant on show while the judges score 1 to 10; a vote for the best.
-EX[6] = { key = "tmog", name = "Transmog contest", icon = ICON .. "INV_Misc_Bandana_03", art = "outland",
+EX[6] = { key = "tmog", name = "Transmog contest", icon = ICON .. "INV_Misc_Bandana_03", art = FOREVER and "ek" or "outland",
     desc = "Each entrant on show, judges score 1 to 10", make = function()
     local d = {
-        name = "Transmog contest", icon = ICON .. "INV_Misc_Bandana_03", art = "outland",
+        name = "Transmog contest", icon = ICON .. "INV_Misc_Bandana_03", art = FOREVER and "ek" or "outland",
         stages = { { id = "s1", name = "Sign-up" }, { id = "s2", name = "Judges" }, { id = "s3", name = "Catwalk" },
                    { id = "s4", name = "Vote" }, { id = "s5", name = "Prizes" } },
         tags = { tg1 = { n = "Judges", c = "orange", shown = "all" } },
@@ -1340,6 +1375,20 @@ local QUESTIONS = {
     { "Which faction gives the Cenarion War Hippogryph?", { "Cenarion Expedition", "Cenarion" } },
     { "Which zone has the Ring of Blood?", { "Nagrand" } },
 }
+if FOREVER then   -- (the old world's)
+    QUESTIONS = {
+        { "Which goblin town is the heart of Tanaris?", { "Gadgetzan" } },
+        { "What's the highest level in WoW Forever?", { "60", "sixty" } },
+        { "Who rules Blackrock Depths?", { "Emperor Dagran Thaurissan", "Dagran Thaurissan", "Thaurissan" } },
+        { "Which dragon has her lair in Dustwallow Marsh?", { "Onyxia" } },
+        { "Who is the headmaster of Scholomance?", { "Darkmaster Gandling", "Gandling" } },
+        { "Which goblin town lies in Winterspring?", { "Everlook" } },
+        { "Who is the last boss of Upper Blackrock Spire?", { "General Drakkisath", "Drakkisath" } },
+        { "Which furbolgs guard the tunnel from Felwood to Winterspring?", { "Timbermaw", "Timbermaw Hold" } },
+        { "Which battleground has two flags in Ashenvale?", { "Warsong Gulch", "WSG" } },
+        { "Who is the baron of Stratholme?", { "Baron Rivendare", "Rivendare" } },
+    }
+end
 EX[7] = { key = "quiz", name = "Trivia night", icon = ICON .. "INV_Misc_Book_11", art = "kalimdor",
     desc = "A Questions list and a typed answer for each", make = function()
     local d = {
@@ -1394,8 +1443,10 @@ EX[8] = { key = "redlight", name = "Red light, green light", icon = ICON .. "Spe
                  tg3 = { n = "Made it", c = "green", shown = "all" } },
         scores = { sc1 = { n = "Finish", high = false, fmt = "time", board = true } },
         places = {
-            pc1 = { n = "Start line", map = NAGRAND, x = 0.405, y = 0.44, r = 30, z = "Nagrand", sz = "Halaa" },
-            pc2 = { n = "Finish line", map = NAGRAND, x = 0.43, y = 0.47, r = 25, z = "Nagrand", sz = "Halaa" },
+            pc1 = FOREVER and { n = "Start line", map = ZONE_MAP, x = 0.505, y = 0.31, r = 30, z = ZONE }
+                or { n = "Start line", map = NAGRAND, x = 0.405, y = 0.44, r = 30, z = "Nagrand", sz = "Halaa" },
+            pc2 = FOREVER and { n = "Finish line", map = ZONE_MAP, x = 0.53, y = 0.34, r = 25, z = ZONE }
+                or { n = "Finish line", map = NAGRAND, x = 0.43, y = 0.47, r = 25, z = "Nagrand", sz = "Halaa" },
         },
         meet = "pc1",   -- (where to meet: the start line)
         vars = { { n = "Light", t = "text" } },
@@ -1527,7 +1578,7 @@ function B:Starter() return Make(EX[1]) end
 -- An empty event: the default stages and nothing in them.
 function B:Blank(name)
     return {
-        name = name or "New event", icon = "Interface\\Icons\\INV_Misc_QuestionMark", art = "nagrand",
+        name = name or "New event", icon = "Interface\\Icons\\INV_Misc_QuestionMark", art = B.DEFAULT_ART,
         stages = { { id = "s1", name = "Sign-up" }, { id = "s2", name = "Main" } },
         scripts = {}, blocks = {}, vars = {}, badges = {}, notes = {},
     }
@@ -2005,7 +2056,8 @@ function B:DescribeStage(d, stage, opts)
                 elseif closes == "host" then
                     rule("clock", "the host closes it")
                 end
-                words[#words + 1] = spots .. " spots" .. (self:SmartSetting(b, "lvl70") and ". Level 70 characters of the guild." or ".")
+                words[#words + 1] = spots .. " spots" .. (self:SmartSetting(b, "lvl70")
+                    and (". Level " .. ((ns.Events and ns.Events:MaxLevel()) or 70) .. " characters of the guild.") or ".")
             elseif b.kind == "bracket" then
                 local fmt = settingLabel("bracket", "fmt", self:SmartSetting(b, "fmt"))
                 local bo, fbo = self:SmartSetting(b, "bo"), self:SmartSetting(b, "fbo")

@@ -1704,7 +1704,7 @@ function Up.FillHero(v, w)
     H.BeginBanner(b)
     local me = Me()
     if kind == "empty" then
-        H.BannerHead(b, w, "nagrand", "Interface\\Icons\\Ability_DualWield", "Nothing on the calendar", nil,
+        H.BannerHead(b, w, (ns.EventBlocks and ns.EventBlocks.DEFAULT_ART) or "nagrand", "Interface\\Icons\\Ability_DualWield", "Nothing on the calendar", nil,
             "Pick an event in the Library and host it, or build one of your own.")
         b:SetKicker(nil)
         b.prog:Hide()
@@ -5096,7 +5096,8 @@ function Sh.Schedule()
     end, { tip = tip })
     f.time:SetPoint("LEFT", f.day, "RIGHT", 6, 0)
     f.whereLabel = FormLabel(f, "Where", LX, -162)
-    f.where = Field(f, 372, 26, 48, "Ring of Trials, Nagrand")
+    f.where = Field(f, 372, 26, 48, (ns.Compat and ns.Compat.isForever) and "Gurubashi Arena, Stranglethorn"
+        or "Ring of Trials, Nagrand")
     f.where:SetPoint("TOPLEFT", FX, -155)
     -- (an event with places: where everyone meets is one of them, picked here; the free text is for the others)
     f.meet = UI():CreateSleekDropdown(f, 372, function() return Sh.MeetOptions(f.s) end,

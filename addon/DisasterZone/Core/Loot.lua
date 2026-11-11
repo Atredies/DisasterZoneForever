@@ -50,7 +50,7 @@ local fakeLootButton       -- DisasterZoneFakeLootButton (lazily created)
 ---------------------------------------------------------------------------
 
 local function IsValidItemID(id)
-    return type(id) == "number" and id == floor(id) and id >= 1 and id <= 200000
+    return type(id) == "number" and id == floor(id) and id >= 1 and id <= 1000000
 end
 
 local function ItemIDFromLink(link)
@@ -423,7 +423,7 @@ local function SourceForSlot(slot)
         if ok and type(g) == "string" and g ~= "" then guid = g end
     end
     if not guid and UnitExists("target") and UnitIsDead("target") then
-        guid = UnitGUID("target")
+        guid = ns.Compat.GUID("target")                    -- (nil on Forever when secret: the fallback key)
     end
     if type(guid) ~= "string" or guid == "" then
         -- Every looter of the corpse must build the same key: server time, not the per-machine GetTime().

@@ -20,6 +20,8 @@ if DisasterZoneBoot and DisasterZoneBoot.Run("Core/SessionInfo.lua", ...) then r
 --   lineup { here, total, missing = { keys } } (before the start: the planned raid the session would link to)
 --   cls { [key] = classFile } (demo names' classes), demo
 local addonName, ns = ...
+local FOREVER = ns.Compat and ns.Compat.isForever
+local function FV(tbc, forever) if FOREVER then return forever end return tbc end   -- (WoW Forever demo text)
 
 local SI = ns:NewModule("SessionInfo")
 local Util = ns.Util
@@ -45,32 +47,68 @@ function P.Now() return GetServerTime and GetServerTime() or time() end
 function P.Mod(name) return ns[name] end
 
 -- The raid instance I am in: itemKey, raid (ns.Data.Raids entry), instance id; nil outside one.
+-- A boss or raid name as a match key (lower case, letters and digits only), or nil.
+function P.NameKey(name)
+    if type(name) ~= "string" or (ns.Compat and ns.Compat.IsSecret and ns.Compat.IsSecret(name)) then return nil end
+    local k = name:lower():gsub("[^%w]", "")
+    return k ~= "" and k or nil
+end
+
+-- The raid data whose name (or Data/Raids.lua mapNames) is the instance's name: WoW Forever's new raids have no
+-- instance id in the data until someone has zoned in (`/dz raiddata`).
+function P.RaidByName(name)
+    local DB = ns.ItemDB
+    local want = P.NameKey(name)
+    if not (want and DB and DB.GetRaids) then return nil end
+    local meta = ns.Data and ns.Data.RaidMeta or {}
+    for _, raid in ipairs(DB:GetRaids() or {}) do
+        if type(raid) == "table" and raid.key then
+            if P.NameKey(raid.name) == want then return raid.key, raid end
+            local m = meta[raid.key]
+            for _, n in ipairs(m and m.mapNames or {}) do
+                local nk = P.NameKey(n)
+                if nk and want:find(nk, 1, true) then return raid.key, raid end
+            end
+        end
+    end
+    return nil
+end
+
+-- The raid instance I am in: itemKey, raid (ns.Data.Raids entry), instance id; nil outside one.
 function P.Raid()
     if not (GetInstanceInfo and ns.ItemDB and ns.ItemDB.GetRaidByInstance) then return nil end
-    local _, kind, _, _, _, _, _, instID = GetInstanceInfo()
+    local name, kind, _, _, _, _, _, instID = GetInstanceInfo()
     instID = tonumber(instID)
     local key, raid = ns.ItemDB:GetRaidByInstance(instID)
+    if not key and kind == "raid" then key, raid = P.RaidByName(name) end
     if not key and kind ~= "raid" then return nil end
     return key, raid, instID
 end
 
 -- The raid's bosses in order, one per encounter (Karazhan's Opera shares one; the rares have none), with the kills
--- of record `rec`.
+-- of record `rec`. WoW Forever's raid data has no encounter ids yet: those bosses are listed too and matched to the
+-- kills by name.
 function P.Bosses(raidKey, raid, rec)
     local out, seen = {}, {}
-    local killed = {}
+    local killed, killedByName = {}, {}
     for _, b in ipairs(rec and rec.bosses or {}) do
         local enc = tonumber(b.enc)
         if enc and not killed[enc] then killed[enc] = b end
+        local nk = P.NameKey(b.name)
+        if nk and not killedByName[nk] then killedByName[nk] = b end
     end
     local J = ns.Data and ns.Data.BossJournal or {}
     for _, b in ipairs(raid and raid.bosses or {}) do
         local enc = tonumber(b.encounterID)
-        if enc and not b.isTrash and not seen[enc] then
-            seen[enc] = true
+        local nk = not enc and P.NameKey(b.name) or nil
+        local id = enc or (nk and ("n:" .. nk))
+        if id and not b.isTrash and not seen[id] then
+            seen[id] = true
             local ref = raidKey .. ":" .. b.key
-            local k = killed[enc]
-            out[#out + 1] = { ref = ref, name = (k and k.name) or b.name, enc = enc, portrait = J[ref],
+            local k
+            if enc then k = killed[enc] else k = killedByName[nk] end
+            out[#out + 1] = { ref = ref, name = (k and k.name) or b.name, enc = enc or (k and tonumber(k.enc)) or nil,
+                              nameKey = nk, portrait = J[ref],
                               killed = k ~= nil, dur = k and tonumber(k.dur) or nil, ts = k and k.ts or nil }
         end
     end
@@ -262,9 +300,11 @@ function SI:Get()
     if #info.bosses > 0 then info.kills = max(info.kills, P.CountKills(info.bosses)) end
     if fight then
         info.fight = { name = fight.name, since = fight.since }
+        local nk = P.NameKey(fight.name)
         for i, b in ipairs(info.bosses) do
-            if b.enc == fight.enc then info.fight.i = i end
+            if (fight.enc and b.enc == fight.enc) or (nk and b.nameKey == nk) then info.fight.i = i end
         end
+        if not info.fight.name and info.fight.i then info.fight.name = info.bosses[info.fight.i].name end
     end
     local group = Util.GetGroupKeys()
     local roster = {}
@@ -307,7 +347,7 @@ function SI:Clock(sec, short)
 end
 
 ---------------------------------------------------------------------------
--- Demo: a made-up night in Serpentshrine Cavern (nothing sent or saved). moment: "idle" | "between" | "pull" |
+-- Demo: a made-up night in Serpentshrine Cavern (WoW Forever: Hyjal Summit) (nothing sent or saved). moment: "idle" | "between" | "pull" |
 -- "loot" | "done".
 ---------------------------------------------------------------------------
 local DEMO_MOMENTS = { idle = true, between = true, pull = true, loot = true, done = true }
@@ -328,15 +368,16 @@ function SI:Demo(moment)
     local cls = { [K("Gina")] = "PRIEST", [K("Shadowmelder")] = "ROGUE", [K("Moonwhisper")] = "DRUID",
                   [K("Victhar")] = "WARRIOR", [K("Darkstalkerr")] = "HUNTER", [K("Saltykim")] = "MAGE",
                   [K("Pugsyhealer")] = "PRIEST", [K("Fizzlecrank")] = "WARLOCK" }
-    local raidKey = "SerpentshrineCavern"
+    local raidKey = FV("SerpentshrineCavern", "HyjalForever")
     local raid
-    if ns.ItemDB and ns.ItemDB.GetRaidByInstance then raid = select(2, ns.ItemDB:GetRaidByInstance(548)) end
+    if FOREVER then raid = ns.ItemDB and ns.ItemDB.GetRaid and ns.ItemDB:GetRaid(raidKey)
+    elseif ns.ItemDB and ns.ItemDB.GetRaidByInstance then raid = select(2, ns.ItemDB:GetRaidByInstance(548)) end
     local kills = ({ idle = 0, between = 4, pull = 4, loot = 5, done = 6 })[moment] or 4
     local durs = { 252, 185, 331, 228, 280, 542 }
     local rec = { bosses = {} }
     local B = P.Bosses(raidKey, raid, nil)
     for i = 1, min(kills, #B) do rec.bosses[i] = { enc = B[i].enc, name = B[i].name, dur = durs[i], ts = 0 } end
-    local info = { demo = moment, raidKey = raidKey, zone = (raid and raid.name) or "Serpentshrine Cavern",
+    local info = { demo = moment, raidKey = raidKey, zone = (raid and raid.name) or FV("Serpentshrine Cavern", "Hyjal Summit"),
                    started = moment ~= "idle", lead = true, leader = me, cls = cls }
     info.bosses = P.Bosses(raidKey, raid, rec)
     info.kills, info.total = kills, #info.bosses
@@ -344,29 +385,29 @@ function SI:Demo(moment)
     if moment == "pull" then info.fight = { i = 5, name = info.bosses[5] and info.bosses[5].name, since = t0 - 134 } end
     info.council = { here = { me, K("Gina"), K("Shadowmelder"), K("Moonwhisper") }, away = { K("Victhar") },
                      planned = true }
-    info.addon = { have = 22, total = 25, without = { K("Darkstalkerr"), K("Fizzlecrank"), K("Pugsyhealer") } }
+    info.addon = { have = FV(22, 17), total = FV(25, 20), without = { K("Darkstalkerr"), K("Fizzlecrank"), K("Pugsyhealer") } }
     info.drops, info.needVote, info.trades, info.myTrades, info.left, info.missing = {}, 0, {}, 0, {}, {}
     if moment == "idle" then
-        info.lineup = { occ = "demo", title = "Thursday SSC", team = "Main team", t = P.Now() + 240,
-                        here = 23, total = 25, missing = { K("Darkstalkerr"), K("Saltykim") } }
+        info.lineup = { occ = "demo", title = FV("Thursday SSC", "Thursday Hyjal"), team = "Main team", t = P.Now() + 240,
+                        here = FV(23, 18), total = FV(25, 20), missing = { K("Darkstalkerr"), K("Saltykim") } }
         return info
     end
     local el = ({ between = 6120, pull = 6660, loot = 6900, done = 9660 })[moment] or 6120
     info.at, info.by, info.el = P.Now() - el, me, el + floor((GetTime and GetTime() or 0) - t0)
     info.feats = { loot = true, rolls = true, lock = true }
-    info.link = { occ = "demo", title = "Thursday SSC", team = "Main team", t = P.Now() - el - 300 }
+    info.link = { occ = "demo", title = FV("Thursday SSC", "Thursday Hyjal"), team = "Main team", t = P.Now() - el - 300 }
     info.left = { { key = K("Darkstalkerr"), at = P.Now() - 1500 } }
     if moment == "loot" then
         info.drops = {
-            { itemID = 30083, copy = 1, state = "open", votes = 3, needMe = true, demo = true },
-            { itemID = 30008, copy = 1, state = "open", votes = 4, mine = K("Moonwhisper"), demo = true },
-            { itemID = 30098, copy = 1, state = "open", plain = true, left = 12, demo = true },
+            { itemID = FV(30083, 16730), copy = 1, state = "open", votes = 3, needMe = true, demo = true },
+            { itemID = FV(30008, 16688), copy = 1, state = "open", votes = 4, mine = K("Moonwhisper"), demo = true },
+            { itemID = FV(30098, 13969), copy = 1, state = "open", plain = true, left = 12, demo = true },
         }
         info.needVote = 1
     elseif moment == "done" then
         info.trades = {
-            { itemID = 30242, to = K("Gina"), holder = me, mine = true, expires = P.Now() + 6480 },
-            { itemID = 30103, to = K("Shadowmelder"), holder = me, mine = true, expires = P.Now() + 6480 },
+            { itemID = FV(30242, 16800), to = K("Gina"), holder = me, mine = true, expires = P.Now() + 6480 },
+            { itemID = FV(30103, 16811), to = K("Shadowmelder"), holder = me, mine = true, expires = P.Now() + 6480 },
         }
         info.myTrades = 2
     end
@@ -378,7 +419,10 @@ end
 ---------------------------------------------------------------------------
 function SI:OnInit()
     ns:RegisterEvent("ENCOUNTER_START", function(_, enc, name)
-        fight = { enc = tonumber(enc), name = name, since = GetTime() }
+        -- (the probe found Forever's encounter payload plain; a secret id or name is dropped, the clock still runs)
+        local C = ns.Compat
+        if C and C.Plain then enc, name = C.Plain(enc), C.Plain(name) end
+        fight = { enc = tonumber(enc), name = type(name) == "string" and name or nil, since = GetTime() }
         ns:Fire("SESSION_INFO_CHANGED")
     end)
     ns:RegisterEvent("ENCOUNTER_END", function()

@@ -339,6 +339,16 @@ local DEMO_PUGS = {
     { "Seraphine", "MAGE", 70, { dps = true }, nil, 14 },
     { "Kezzik", "ROGUE", 69, { dps = true }, "need 1 more level, any dungeon", 21 },
 }
+local DEMO_AREA = "Shattrath City"
+if ns.Compat and ns.Compat.isForever then   -- (WoW Forever: level 60, no heroics)
+    DEMO_PUGS = {
+        { "Thalindra", "PRIEST", 60, { healer = true }, "holy priest, can heal it, inv pls", 2, true },
+        { "Brokkar", "WARRIOR", 60, { tank = true, dps = true }, "LF UBRS, have the key", 9 },
+        { "Seraphine", "MAGE", 60, { dps = true }, nil, 14 },
+        { "Kezzik", "ROGUE", 59, { dps = true }, "need 1 more level, any dungeon", 21 },
+    }
+    DEMO_AREA = "Stormwind City"
+end
 
 local function DemoCandidates(run)
     if not demo.listed then return {}, {}, {} end
@@ -349,7 +359,7 @@ local function DemoCandidates(run)
             w[key] = { key = key, class = x[2], text = x[5], at = Now() - x[6] * 60 }
         end
         f[key] = { key = key, class = x[2], level = x[3], roles = x[4], text = (not x[7]) and x[5] or nil,
-                   area = "Shattrath City", at = Now() - x[6] * 60 }
+                   area = DEMO_AREA, at = Now() - x[6] * 60 }
     end
     return w, f
 end

@@ -82,7 +82,7 @@ local function ParseList(text)
     for slot, id, bis in text:gmatch("(%d+):(%d+)(%*?)") do
         local canon = DATA_SLOTS[tonumber(slot)]
         local itemID = tonumber(id)
-        if canon and itemID and itemID >= 1 and itemID <= 200000 then
+        if canon and itemID and itemID >= 1 and itemID <= 1000000 then
             order = order + 1
             out[#out + 1] = { slot = canon, id = itemID, rank = bis == "*" and "BIS" or "Alt", order = order }
         end

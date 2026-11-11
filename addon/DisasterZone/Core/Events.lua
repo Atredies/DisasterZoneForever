@@ -650,6 +650,18 @@ local function Merge(root, kind, rec, live)
 end
 
 SYNC.clean, SYNC.merge, SYNC.state = CleanRecord, Merge, State
+
+-- 2026-11-09 (authority holes, rounds 2 and 3): a relayed record (EVG) names its writer (rec.by) in a field the sender
+-- controls. It is taken only from its writer (any of their characters) or from a reviewer (the GM, an officer, the
+-- guild council): every client takes relays only that way, so a reviewer's store holds only copies its writer or
+-- another reviewer passed on, and the reviewers answer a newcomer's sync first. Round 2 limited this to the records
+-- whose write needs a role; round 3 covers every kind: a member could otherwise put a calendar event or a library
+-- event "by" the GM on a client that never had it (it then spread by the normal sync), or a sign-up, result or title
+-- "by" anyone. Anyone else's copy is held back and asked for from its writer or a reviewer online (DigestSync Hold).
+SYNC.vouch = function(root, kind, rec, via)
+    return SamePlayer(via, rec.by) or Events:CanReview(via)
+end
+SYNC.relayer = function(key) return Events:CanReview(key) end   -- (who vouches for any record: DigestSync WantFrom)
 -- a review asked for "this revision": the one this commit makes
 SYNC.prepare = function(kind, rec)
     if kind == "D" and type(rec.review) == "table" and rec.review.rev == true then rec.review.rev = rec.rev end
@@ -931,7 +943,13 @@ function Events:EditOcc(id, at, where, note, meet)
     return Commit("O", rec)
 end
 
--- A Sign-up block of the event takes level 70 characters only.
+-- The level cap a "Max level" sign-up asks for: 70 on TBC, 60 on WoW Forever (Core/RaidPlan.lua GetMaxLevel).
+function Events:MaxLevel()
+    local RP = ns.RaidPlan
+    return (RP and RP.GetMaxLevel and RP:GetMaxLevel()) or 70
+end
+
+-- A Sign-up block of the event takes max level characters only (its setting keeps the TBC key "lvl70").
 function Events:Needs70(def)
     for _, bid in ipairs(B():BlocksOf(def, "signup")) do
         if B():SmartSetting(def.blocks[bid], "lvl70") then return true end
@@ -947,8 +965,9 @@ function Events:SignUp(occId, on)
         local state = self:OccState(o)
         if state == "cancelled" then return false, "That event was cancelled." end
         if state == "done" then return false, "That event is over." end
-        if self:Needs70(o.def) and UnitLevel and (UnitLevel("player") or 0) < 70 then
-            return false, "This one is for level 70 characters."
+        local cap = self:MaxLevel()
+        if self:Needs70(o.def) and UnitLevel and (UnitLevel("player") or 0) < cap then
+            return false, "This one is for level " .. cap .. " characters."
         end
         -- a sign-up that closes before the start (15 minutes early) stays closed from then on, and a full one is full
         -- (while the event runs, its host's run decides)
@@ -1333,6 +1352,17 @@ SYNC.items = function(root)
     return items
 end
 
+-- The order a catch-up gives records in: a calendar event before its sign-ups (and its result after it). Sorted by
+-- name, "J:" came before "O:": at about one record a second a member's sign-ups arrived without their calendar event,
+-- and the first Prune after a login (20-40 s in) dropped them as orphans until the next login (go-live test,
+-- dev/tests/golive/test_golive_guild_day.py).
+local GIVE_RANK = { C = 1, D = 2, K = 3, O = 4, J = 5, R = 6, T = 7 }
+SYNC.giveSort = function(a, b)
+    local ra, rb = GIVE_RANK[a:sub(1, 1)] or 9, GIVE_RANK[b:sub(1, 1)] or 9
+    if ra ~= rb then return ra < rb end
+    return a < b
+end
+
 -- EVU { k, r }: a change; its writer is the sender.
 local function OnUpdate(sender, msg, dist)
     if dist ~= "GUILD" or type(msg.r) ~= "table" or WireKey(msg.r.by) ~= sender then return end
@@ -1384,7 +1414,12 @@ function Events:Prune(now)
     end
     for id, j in pairs(root.J) do
         local o = Kept(root, "O", j.o, now)
-        if not o or (not o.del and (o.at or 0) < now - SIGNUP_KEEP) then root.J[id] = nil; changed = true end
+        -- a sign-up of a calendar event that is not here (yet): kept, unless that event is a grave or the sign-up is
+        -- older than any event is kept. (It may be on its way: a catch-up or another member's round can hand over a
+        -- sign-up before its event, and this prune runs 20-40 s after a login; dropped then, the sign-up was missing
+        -- until the next login, its digest item already counted as had. Go-live test, dev/tests/golive.)
+        local orphan = not o and (root.O[j.o] ~= nil or (tonumber(j.at) or tonumber(j.rev) or 0) < now - OCC_KEEP)
+        if orphan or (o and not o.del and (o.at or 0) < now - SIGNUP_KEEP) then root.J[id] = nil; changed = true end
     end
     -- reviews of events gone from the library or deleted long ago (and the ranked copies a reviewer kept of them)
     for id in pairs(root.K) do
@@ -1423,30 +1458,41 @@ function Events:BuildDemo()
         demo.D[id] = d
         return d
     end
+    -- WoW Forever: no arenas or Outland; Warsong Gulch, Stormwind, Booty Bay
+    local F = ns.Compat and ns.Compat.isForever
+    if F then
+        lib("edemo2", "Warsong Gulch premade cup", "Interface\\Icons\\INV_Misc_Rune_07", "wsg", pick(1),
+            { "signup", "bracket" }, now - 6 * DAY)
+    else
     lib("edemo2", "2v2 arena cup", "Interface\\Icons\\Achievement_Arena_2v2_7", "blades", pick(1), { "signup", "bracket" },
         now - 6 * DAY)
+    end
     demo.K.edemo2 = { id = "edemo2", by = pick(2), rev = now - 5 * DAY, dr = now - 6 * DAY, ok = true }
     -- mine, in review: the hide and seek example (tags, a touch, a play area, a Hint button), played in Shattrath
+    -- (Forever: Stormwind's Trade District, classic uiMapID)
+    local CITY = F and "Stormwind" or "Shattrath"
     local mine = B():Example("hide")
     if mine then
-        mine.name = "Hide and seek in Shattrath"
+        mine.name = "Hide and seek in " .. CITY
         if type(mine.places) == "table" and mine.places.pc1 then
-            mine.places.pc1 = { n = "Play area", map = 1955, x = 0.52, y = 0.46, r = 250, z = "Shattrath City",
+            mine.places.pc1 = F and { n = "Play area", map = 1453, x = 0.62, y = 0.70, r = 250, z = "Stormwind City",
+                sz = "Trade District" }
+                or { n = "Play area", map = 1955, x = 0.52, y = 0.46, r = 250, z = "Shattrath City",
                 sz = "Terrace of Light" }
         end
         mine.id, mine.by, mine.rev, mine.at = "edemo3", me, now - 1 * DAY, now - 1 * DAY
         demo.D.edemo3 = mine
     else
-        mine = lib("edemo3", "Hide and seek in Shattrath", "Interface\\Icons\\Ability_Stealth", "eots", me, { "signup" },
-            now - 1 * DAY)
+        mine = lib("edemo3", "Hide and seek in " .. CITY, "Interface\\Icons\\Ability_Stealth", F and "ek" or "eots", me,
+            { "signup" }, now - 1 * DAY)
     end
     mine.review = { rev = mine.rev, at = now - 1 * DAY, note = "Seekers get 5 minutes per round." }
-    lib("edemo4", "Ring of Blood night", "Interface\\Icons\\Ability_Warrior_Challange", "ruins", pick(3),
-        { "signup", "bracket" }, now - 9 * DAY)
+    lib("edemo4", F and "Booty Bay brawl night" or "Ring of Blood night", "Interface\\Icons\\Ability_Warrior_Challange",
+        F and "ek" or "ruins", pick(3), { "signup", "bracket" }, now - 9 * DAY)
     -- the live cup and the week
     local function occ(id, def, at, by, ranked)
         demo.O[id] = { id = id, by = by, h = by, rev = now - DAY, def = Copy(def), dk = def.id, dr = def.rev, at = at,
-            where = "Ring of Trials, Nagrand", ranked = ranked }
+            where = F and "Booty Bay, Stranglethorn" or "Ring of Trials, Nagrand", ranked = ranked }
     end
     occ("odemo1", starter, now - 40 * 60, pick(1), true)
     occ("odemo2", demo.D.edemo2, now + 3 * DAY, pick(1), true)
@@ -1457,7 +1503,7 @@ function Events:BuildDemo()
     end
     -- last week's cup: a result
     local function res(id, at, champ, second, third, pts)
-        demo.R[id] = { id = id, by = pick(1), rev = at + 7200, name = "Friday duel cup", icon = starter.icon, art = "nagrand",
+        demo.R[id] = { id = id, by = pick(1), rev = at + 7200, name = "Friday duel cup", icon = starter.icon, art = starter.art,
             at = at, t1 = at + 7900, ranked = true, n = 14, champ = champ, second = second, third = third, points = pts,
             badges = { { p = champ, n = "Duel champion", i = "Interface\\Icons\\Ability_Warrior_Challange", f = "gold",
                 ti = "the Duelist" }, { p = second, n = "Runner-up", i = "Interface\\Icons\\Ability_Parry", f = "silver" },
@@ -1497,7 +1543,8 @@ function Events:BuildDemo()
             badges = { { p = pick(2), n = "Angler of the night", i = "Interface\\Icons\\Trade_Fishing", f = "gold", ti = "the Angler" },
                 { p = pick(3), n = "Runner-up", i = "Interface\\Icons\\INV_Fishingpole_02", f = "silver" },
                 { p = pick(4), n = "Third place", i = "Interface\\Icons\\INV_Misc_Fish_37", f = "bronze" } },
-            moments = { { at = at + 900, text = Util.ShortName(pick(6)) .. " fished up Mr. Pinchy" },
+            moments = { { at = at + 900,
+                text = Util.ShortName(pick(6)) .. (F and " fished up Old Ironjaw" or " fished up Mr. Pinchy") },
                 { at = at + 1500, text = Util.ShortName(pick(2)) .. " leads with 21 fish" } },
             last4 = {}, hosts = { pick(4) }, nums = {}, mw = {},
             scores = { { id = "sc1", n = "Fish", high = true, fmt = "num", v = rows } } }
@@ -1506,7 +1553,7 @@ function Events:BuildDemo()
     if quiz then
         quiz.id, quiz.by, quiz.rev = "edemo6", pick(5), now - 2 * DAY
         occ("odemo5", quiz, now + 4 * DAY + 7200, pick(5), nil)
-        demo.O.odemo5.dk, demo.O.odemo5.where = nil, "Scryer's Tier, Shattrath"
+        demo.O.odemo5.dk, demo.O.odemo5.where = nil, F and "The Pig and Whistle, Stormwind" or "Scryer's Tier, Shattrath"
     end
     -- (the examples are part 2's already; a def made another way is brought up to them)
     local Bk = B()
@@ -1523,6 +1570,8 @@ end
 
 function Events:OnInit()
     sync:Register(OnUpdate, OnGive)
+    -- (relayed records nobody vouches for: held back and asked for, SYNC.vouch)
+    sync:EnableHold({ changed = function() Events.rankCache = nil; Changed() end })
     ns:On("DEMO_TOGGLED", function(on)
         if not on then demo = nil end
         Changed()

@@ -22,9 +22,9 @@ import patchlib  # noqa: E402
 import release  # noqa: E402
 
 POSTERS = "ns.GamesUI.__posters"
-IDS = ["bingo", "trainer", "azeromon", "chess", "illidan", "holdtheline"]
-FOLDERS = {"bingo": "DisasterZone_Bingo", "trainer": "DisasterZone_Trainer", "azeromon": "DisasterZone_Azeromon",
-           "chess": "DisasterZone_Chess", "illidan": "DisasterZone_Illidan", "holdtheline": "DisasterZone_HoldTheLine"}
+IDS = ["bingo", "azeromon", "chess", "holdtheline"]
+FOLDERS = {"bingo": "DisasterZone_Bingo", "azeromon": "DisasterZone_Azeromon",
+           "chess": "DisasterZone_Chess", "holdtheline": "DisasterZone_HoldTheLine"}
 TMP = tempfile.mkdtemp(prefix="dzpacks_")
 atexit.register(lambda: shutil.rmtree(TMP, ignore_errors=True))
 
@@ -135,7 +135,7 @@ def in_the_clients_order_the_packs_start_after_the_addon():
     # their login stage ran too (Bingo watches the zone from OnLogin, Azeromon's presence from OnInit)
     assert c.eval("return ns.loggedIn") is True
     hub(c)
-    assert c.eval("return #%s" % POSTERS) == 6 and not any(stub(c, g) for g in IDS)
+    assert c.eval("return #%s" % POSTERS) == 4 and not any(stub(c, g) for g in IDS)
     no_errors(w)
 
 
@@ -147,7 +147,7 @@ def a_game_that_isnt_installed_gets_a_stand_in_poster():
     assert c.eval("return ns.Games:PackState('chess')") == "missing"
     assert c.eval("return ns.Notify:GetKind('chessTurn') == nil") is True      # (not listed without Chess)
     hub(c)
-    assert c.eval("return #%s" % POSTERS) == 6
+    assert c.eval("return #%s" % POSTERS) == 4
     assert stub(c, "chess") and poster(c, "chess", "kicker") == "NOT INSTALLED"
     assert poster(c, "chess", "cta") == "HOW TO GET IT"
     assert not stub(c, "bingo")
@@ -174,7 +174,7 @@ def no_games_at_all_still_shows_every_poster():
     w, c = solo(packs={})
     c.world = w
     hub(c)
-    assert c.eval("return #%s" % POSTERS) == 6 and all(stub(c, g) for g in IDS)
+    assert c.eval("return #%s" % POSTERS) == 4 and all(stub(c, g) for g in IDS)
     no_errors(w)
 
 

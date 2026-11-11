@@ -282,14 +282,26 @@ end
 Cast.CastIcon = CastIcon
 
 -- What a unit is casting: name, icon, start, end (seconds), channel, can't be interrupted.
+-- WoW Forever: an enemy's cast (target / focus / nameplate in a dungeon or in combat) comes back secret
+-- (SecretWhenUnitSpellCastRestricted): no arithmetic on it, so no bar for such a cast (nil). UNVERIFIED in game which
+-- units it hits; UnitCastingDuration + StatusBar:SetTimerDuration could draw one, but the look's bar is our own.
+local function Plain(name, icon, s, e, chan, ni)
+    local P = ns.Compat.Plain
+    name, s, e = P(name), tonumber(P(s)), tonumber(P(e))
+    if type(name) ~= "string" or not (s and e) then return nil end
+    return name, P(icon), s / 1000, e / 1000, chan, P(ni)
+end
 local function Info(unit)
+    local secret = ns.Compat.IsSecret
     if UnitCastingInfo then
         local name, _, icon, s, e, _, _, ni = UnitCastingInfo(unit)
-        if name then return name, icon, s / 1000, e / 1000, false, ni end
+        if secret(name) then return nil end
+        if name then return Plain(name, icon, s, e, false, ni) end
     end
     if UnitChannelInfo then
         local name, _, icon, s, e, _, ni = UnitChannelInfo(unit)
-        if name then return name, icon, s / 1000, e / 1000, true, ni end
+        if secret(name) then return nil end
+        if name then return Plain(name, icon, s, e, true, ni) end
     end
     return nil
 end

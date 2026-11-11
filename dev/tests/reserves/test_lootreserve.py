@@ -92,6 +92,17 @@ LootReserve.Comm:StartListening()
 """
 
 
+def lr_host(r, name="Hanna", cls="PRIEST"):
+    """A pug with LootReserve who may host its session: the raid's master looter (LootReserve serves only from the
+    leader or the master looter, Server.lua CanBeServer; 2026-11-09 DisasterZone reads nobody else's, ReserveLR
+    MayHost)."""
+    c = lr_client(r, name, cls)
+    r.ml = name
+    r.form_raid(list(r.c.values()))
+    r.w.tick(2)
+    return c
+
+
 def lr_client(r, name="Lars", cls="MAGE"):
     """A pug in the raid with LootReserve (and no DisasterZone)."""
     c = Client(r.w, name, class_file=cls, guild=None)
@@ -204,7 +215,7 @@ def reservers_with_lootreserve_are_asked_to_roll_and_hear_the_winner():
 @R.case
 def a_lootreserve_host_in_the_raid_is_read_not_answered():
     r = reserve_raid()
-    host = lr_client(r, "Hanna", "PRIEST")
+    host = lr_host(r)
     # Hanna hosts a LootReserve session: her SessionInfo names who reserved what (built with LootReserve's own code)
     host.eval(r"""
       LootReserve.Server.CurrentSession = { Settings = { Blind = false, MaxReservesPerPlayer = 1, LootCategories = { 2010 },
@@ -236,7 +247,7 @@ def a_second_host_makes_mine_go_quiet():
     open_reserves(r, n=1)
     r.w.tick(3)
     assert r["Alice"].eval("return ns.ReserveLR.Hosting()")
-    host = lr_client(r, "Hanna", "PRIEST")
+    host = lr_host(r)
     host.eval(r"""
       LootReserve.Server.CurrentSession = { Settings = { Blind = false, MaxReservesPerPlayer = 1, LootCategories = { 2010 },
         Duration = 0, Lock = false, Equip = false, Multireserve = 1 }, Duration = 0, StartTime = 100, AcceptingReserves = true,

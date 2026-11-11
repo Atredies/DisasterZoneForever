@@ -165,15 +165,27 @@ local function Build()
     byKey, index, locations = {}, nil, nil
     eraCats = { tbc = {}, classic = {} }
     local out = {}
-    AddCategory(out, BuildRaids())
-    AddCategory(out, BuildDungeons())
-    for _, dataCat in ipairs(Data().Atlas or {}) do
-        if type(dataCat) == "table" and type(dataCat.key) == "string" and not byKey[dataCat.key] then
-            AddCategory(out, BuildExtra(dataCat, side))
+    -- WoW Forever: one tree. Its raids and dungeons (Data/Items.lua, Data/Dungeons.lua: Forever's), then the Classic
+    -- tree's other categories (crafting, reputation, PvP, events, sets; its old raids and dungeons are not Forever's).
+    -- The TBC extras (Data/Atlas.lua: badge vendors, arena, Outland) stay out; no era switch (Atlas:HasEraSwitch).
+    local forever = ns.Compat and ns.Compat.isForever
+    if forever then
+        AddCategory(out, BuildRaids(), "classic")
+        AddCategory(out, BuildDungeons(), "classic")
+    else
+        AddCategory(out, BuildRaids())
+        AddCategory(out, BuildDungeons())
+        for _, dataCat in ipairs(Data().Atlas or {}) do
+            if type(dataCat) == "table" and type(dataCat.key) == "string" and not byKey[dataCat.key] then
+                AddCategory(out, BuildExtra(dataCat, side))
+            end
         end
     end
     for _, dataCat in ipairs(Data().AtlasClassic or {}) do
-        if type(dataCat) == "table" and type(dataCat.key) == "string" and not byKey[dataCat.key] then
+        local kind = type(dataCat) == "table" and (dataCat.kind or dataCat.key)
+        if forever and (kind == "raid" or kind == "dungeon") then
+            -- (Forever's own raids and dungeons are above)
+        elseif type(dataCat) == "table" and type(dataCat.key) == "string" and not byKey[dataCat.key] then
             AddCategory(out, BuildExtra(dataCat, side), "classic")
         end
     end
@@ -199,6 +211,7 @@ end
 function Atlas:GetEra()
     Build()
     if era and #eraCats[era] > 0 then return era end
+    if #eraCats.tbc == 0 then return "classic" end   -- (WoW Forever: the Classic tree only, at any level)
     if #eraCats.classic == 0 then return "tbc" end
     local lv = MyLevel()
     return (lv and lv < OUTLAND_LEVEL) and "classic" or "tbc"
@@ -208,6 +221,11 @@ end
 function Atlas:SetEra(e)
     if e ~= "classic" and e ~= "tbc" then e = nil end
     era = e
+end
+
+-- Both eras have data, so the Atlas offers the Classic | TBC switch (never on WoW Forever).
+function Atlas:HasEraSwitch()
+    return self:HasEra("classic") and self:HasEra("tbc")
 end
 
 function Atlas:HasEra(e)
@@ -978,7 +996,7 @@ function Atlas:PhasesText(set)
     while i <= #list do
         local j = i
         while j < #list and list[j + 1] == list[j] + 1 do j = j + 1 end
-        runs[#runs + 1] = (i == j) and ("P" .. list[i]) or ("P" .. list[i] .. "-" .. list[j])
+        runs[#runs + 1] = (i == j) and (ns.PHASE_LETTER .. list[i]) or (ns.PHASE_LETTER .. list[i] .. "-" .. list[j])
         i = j + 1
     end
     return tconcat(runs, ", ")

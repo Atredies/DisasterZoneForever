@@ -37,7 +37,7 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-LIVE_ADDON_DIR = r"C:\World of Warcraft\_anniversary_\Interface\AddOns\DisasterZone"
+LIVE_ADDON_DIR = r"C:\World of Warcraft\_forever_\Interface\AddOns\DisasterZone"
 CONFIG_PATH = os.path.join(HERE, "layers.json")
 ALLOW_PATH = os.path.join(HERE, "layers_allow.json")
 KINDS = ("up", "kit", "order")

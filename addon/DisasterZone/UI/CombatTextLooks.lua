@@ -64,7 +64,7 @@ local CLASSC = { PRIEST = C("#ffffff"), PALADIN = PAL, WARRIOR = C("#c79c6e"), H
                  DRUID = C("#ff7d0a") }
 L.CLASSC = CLASSC
 local function MyClassColor()
-    local cls
+    local _, cls
     if UnitClass then _, cls = UnitClass("player") end
     return CLASSC[cls or "PALADIN"] or PAL
 end

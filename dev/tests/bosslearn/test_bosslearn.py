@@ -30,7 +30,7 @@ DEV = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, os.path.join(HERE, "..", "boot-ui"))
 sys.path.insert(0, os.path.join(DEV, "tools"))
 
-from _common import case, run_all, solo  # noqa: E402
+from _common import case, run_all, solo, DEV_NAME, DEV_REALM  # noqa: E402
 
 import harness  # noqa: E402
 
@@ -406,7 +406,8 @@ def the_learning_rules():
 def every_bar_a_fight_script_starts_is_not_learned():
     w, c = solo("Alice", class_file="PALADIN", guild_rank=0)
     found = []
-    folder = os.path.join(ADDON, "Data", "BossMods")
+    # (the TBC raids' boss mods: dev/fixtures/tbc; the addon ships Forever's, none yet)
+    folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "fixtures", "tbc", "Data", "BossMods")
     for fn in sorted(os.listdir(folder)):
         src = open(os.path.join(folder, fn), encoding="utf-8").read()
         for block in re.split(r'\nB\["', src)[1:]:
@@ -558,7 +559,7 @@ def odd_or_old_summaries_are_dropped_whole():
                  l = 'Kaelor-Thunderstrike', d = 1200, k = 1, o = { growth = { 300, 300 } } }
     """)
     bad = {
-        "old version": {"av": "1.3.5"},
+        "old version": {"av": "0.0.9"},
         "format": {"v": 2},
         "boss": {"b": "GruulsLair:Nobody"},
         "signature": {"ds": "deadbeef"},
@@ -712,11 +713,11 @@ def an_alert_learns_from_its_boss_line_when_its_spell_never_shows():
         return { st = st, cd = cd, chat = s.chat, mixed = s.mixed or false }
     """, LEO)
     assert r == {"st": [61.0], "cd": [105.5, 105.0], "chat": True, "mixed": False}, r
-    # a 1.5.5 sender still times the demon bar's starts: its summary counts, those starts are not kept
+    # a sender that still times the demon bar's starts (as 1.5.5 did): its summary counts, those starts are not kept
     msg = c.eval_py("""
         local key = ...
         local ds = ns.BossLearn.Plan(ns.BossMod:Mod(key)).ds
-        return { t = 'BL', v = 1, av = '1.5.5', b = key, ds = ds, at = GetServerTime() - 3000, l = 'Victhar-Thunderstrike',
+        return { t = 'BL', v = 1, av = ns.version, b = key, ds = ds, at = GetServerTime() - 3000, l = 'Victhar-Thunderstrike',
                  d = 3633, k = 1, o = { innerbar = { 1184, 1002 } }, g = { demon = { 910, 1051 }, innerbar = { 910, 1051 } },
                  ph = { 2, 296 } }
     """, LEO)
@@ -854,11 +855,11 @@ def page_texts(c):
 
 @case
 def the_review_is_the_developers_only():
-    for name in ("Alice", "Tsumil"):
-        w, c = solo(name, class_file="PALADIN", guild_rank=0)
+    for name in ("Alice", DEV_NAME):
+        w, c = solo(name, class_file="PALADIN", guild_rank=0, realm=DEV_REALM if name == DEV_NAME else None)
         c.eval("ns.DB:SetSetting('bossmods.on', true)")
         seed_review(c)
-        dev = name == "Tsumil"
+        dev = name == DEV_NAME
         assert c.eval("return ns.BossLearn:IsDev()") is dev
         sug = c.eval_py("return ns.BossLearn:Suggestions('GruulsLair:Gruul')")
         kinds = sorted(s["kind"] for s in (sug or []))
@@ -977,7 +978,7 @@ def try_it_shows_the_recording_line_and_a_made_up_note():
     assert summaries(w) == []
     assert c.eval("return ns.BossLearnUI:RecLine(ns.BossModUI.tryLearn) == nil") is True
     # (the developer also sees the made-up unknown cast once the pull is 10.5 s in)
-    w2, d = solo("Tsumil", class_file="PALADIN", guild_rank=0)
+    w2, d = solo(DEV_NAME, class_file="PALADIN", guild_rank=0, realm=DEV_REALM)
     d.eval("ns.DB:SetSetting('bossmods.on', true); ns.BossModUI:TryIt()")
     w2.tick(5 + 11)
     rl = d.eval_py("return ns.BossLearnUI:RecLine(ns.BossModUI.tryLearn)")

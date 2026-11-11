@@ -27,7 +27,7 @@ local tsort = table.sort
 local NUM_SLOTS = 17
 local MAX_PHASE = 5
 local PRE_RAID = 0
-local MAX_ITEM_ID = 200000
+local MAX_ITEM_ID = 1000000   -- (Forever's new items are 280000+)
 local MAX_OB = 200
 local MAX_REV = ns.MAX_REV or 2147483647
 local MAX_STR = 24
@@ -940,31 +940,16 @@ function BiS:SetSpec(label, list)
     return true
 end
 
--- Talent points spent in a tab. 2.5.6: C_SpecializationInfo.GetSpecializationInfo (pointsSpent is
--- the 7th return); GetTalentTabInfo is only a deprecation fallback there, kept for older clients.
-local function TabPoints(tab)
-    local C = C_SpecializationInfo
-    if C and C.GetSpecializationInfo then
-        local ok, _, _, _, _, _, _, points = pcall(C.GetSpecializationInfo, tab, false, false, nil, nil, nil)
-        if ok then return tonumber(points) end
-    end
-    if GetTalentTabInfo then
-        local r1, _, r3, _, r5 = GetTalentTabInfo(tab)
-        -- alias order: id, name, desc, icon, pointsSpent; the old 2.4 order had points 3rd
-        return (type(r1) == "string") and tonumber(r3) or tonumber(r5)
-    end
-    return nil
-end
-
+-- The spec the talents point to (the tree with the most points; ns.Compat reads 2.5.6's tabs or Forever's trait
+-- groups), "" when none is spent or the client can't tell.
 function BiS:DetectSpec()
     local classFile = PlayerClass()
     local specs = ns.SPECS and classFile and ns.SPECS[classFile]
-    local C = C_SpecializationInfo
-    if type(specs) ~= "table" or not ((C and C.GetSpecializationInfo) or GetTalentTabInfo) then return "" end
-    local numTabs = (GetNumTalentTabs and GetNumTalentTabs()) or 3
+    if type(specs) ~= "table" then return "" end
+    local numTabs = ns.Compat.NumTalentTabs()
     local bestTab, bestPoints = nil, 0
     for tab = 1, numTabs do
-        local points = TabPoints(tab)
+        local points = ns.Compat.TalentTabPoints(tab)
         if points and points > bestPoints then
             bestTab, bestPoints = tab, points
         end

@@ -52,7 +52,7 @@ sys.path.insert(0, HERE)
 import luabc  # noqa: E402
 import uniformity  # noqa: E402
 
-LIVE_ADDON_DIR = r"C:\World of Warcraft\_anniversary_\Interface\AddOns\DisasterZone"
+LIVE_ADDON_DIR = r"C:\World of Warcraft\_forever_\Interface\AddOns\DisasterZone"
 ADDON_DIR = os.environ.get("DISASTERZONE_ADDON_DIR") or LIVE_ADDON_DIR  # (a worktree copy of the addon)
 ADDONS_ROOT = os.path.dirname(LIVE_ADDON_DIR)  # the reference addons live next to the real one
 KNOWN_PATH = os.path.join(HERE, "known_globals.json")
@@ -138,6 +138,8 @@ EXTRA_KNOWN = {
     "StaticPopup_FindVisible",                                           # Blizzard_StaticPopup/StaticPopup.lua:126
     "WillAcceptInviteRemoveQueues",                                      # Blizzard_UIParent/TBC/UIParent.lua:451
     "LFGParentFrame", "ShowLFGParentFrame", "ToggleLFGParentFrame",      # Blizzard_LFGVanilla_ParentFrame.lua:4,49,61
+    # WoW Forever 1.60.1 (Gethe wow-ui-source, branch forever, checked 2026-11-08):
+    "RegionalUniqueNamesEnabled",                                        # Blizzard_FrameXMLUtil/Camelot/NameUtil.lua:38
 }
 EXTRA_KNOWN_FIELDS = {
     "C_ChatInfo": {"SendAddonMessageLogged", "SendAddonMessage", "RegisterAddonMessagePrefix",
@@ -160,6 +162,10 @@ EXTRA_KNOWN_EVENTS = {
     "LFG_LIST_SEARCH_RESULTS_RECEIVED", "LFG_LIST_SEARCH_FAILED", "LFG_LIST_SEARCH_RESULT_UPDATED",
     "LFG_LIST_ACTIVE_ENTRY_UPDATE", "LFG_LIST_ENTRY_EXPIRED_TIMEOUT", "LFG_LIST_ENTRY_CREATION_FAILED",
     "LFG_LIST_AVAILABILITY_UPDATE",
+    # WoW Forever 1.60.1: TradeSkillUIDocumentation.lua (Gethe wow-ui-source, branch forever, checked 2026-11-08)
+    "TRADE_SKILL_LIST_UPDATE", "TRADE_SKILL_DATA_SOURCE_CHANGED",
+    # WoW Forever 1.60.1: SwingTimerDocumentation.lua, SharedTraitsDocumentation.lua (checked 2026-11-09)
+    "PLAYER_SWING", "TRAIT_CONFIG_UPDATED",
 }
 # Globals owned by addons in the TOC's OptionalDeps: reported as INFO (must be nil-guarded), not as unknown.
 OPTIONAL_DEP_PREFIXES = {"LoonBestInSlot": ("LBIS", "LoonBestInSlot")}

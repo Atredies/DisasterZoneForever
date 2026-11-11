@@ -13,6 +13,8 @@ local ST                         -- ns.ShotTimer
 
 local floor, max, min = math.floor, math.max, math.min
 local strformat = string.format
+-- WoW Forever: Aimed Shot is the cast between the shots, no Steady Shot, no Kill Command (Core/ShotTimer.lua)
+local FOREVER = ns.Compat and ns.Compat.isForever
 
 -- Lane labels have about 60 px.
 local SHORT = { steady = "Steady", multi = "Multi", arcane = "Arcane", kc = "Kill Cmd", hawk = "Hawk", viper = "Viper",
@@ -108,9 +110,26 @@ function HUD:OnLogin()
 end
 
 -- The kit's Settings card (Settings > Class tools; every Hunter spec).
-if ns.ClassKit then ns.ClassKit:Extend("shot", { iconPath = "Interface\\Icons\\Ability_Hunter_SteadyShot",
+-- (WoW Forever: Aimed Shot's place, no Kill Command, no aspect hints: mana is a secret value there)
+local function ForeverRotationSettings(S, sec)
+    ns.SwingRingSettings(S, sec, "shot", "Auto averages your world latency with what it measures from your own "
+        .. "casts (the time from pressing Aimed Shot to it starting). /dz shot shows both.")
+    local reacts = { { value = 0, text = "None" } }
+    for _, n in ipairs({ 150, 200, 250, 300, 400 }) do reacts[#reacts + 1] = { value = n, text = n .. " ms" } end
+    S:DropdownSetting(sec, "Reaction time", "A shot is only suggested when you have this long to press it.",
+        "shot.reactMs", 250, reacts)
+    S:SwitchSetting(sec, "Aimed Shot", "When its cast fits before the next Auto Shot. Shares its cooldown with "
+        .. "Multi-Shot.", "shot.use.aimed", true)
+    S:SwitchSetting(sec, "Multi-Shot", "Instant, when Aimed Shot is off or doesn't fit.", "shot.use.multi", true)
+    S:SwitchSetting(sec, "Arcane Shot", "When neither is ready.", "shot.use.arcane", true)
+    S:SwitchSetting(sec, "Sound in the cast window", "A click when it is time for Aimed Shot.", "shot.sound", false)
+end
+
+if ns.ClassKit then ns.ClassKit:Extend("shot", {
+    iconPath = FOREVER and "Interface\\Icons\\INV_Spear_07" or "Interface\\Icons\\Ability_Hunter_SteadyShot",
     settings = function(S, sec)
     -- (on/off is the switch on the card's header: shot.enabled)
+    if FOREVER then ForeverRotationSettings(S, sec) else
     ns.SwingRingSettings(S, sec, "shot", "Auto averages your world latency with what it measures from your own "
         .. "casts (the time from pressing Steady Shot to it starting). /dz shot shows both.")
     local reacts = { { value = 0, text = "None (sim)" } }
@@ -129,6 +148,7 @@ if ns.ClassKit then ns.ClassKit:Extend("shot", { iconPath = "Interface\\Icons\\A
     S:DropdownSetting(sec, "Viper below", "WoWSims: 5% mana.", "shot.viperStart", 5, lows)
     S:DropdownSetting(sec, "Hawk again at", "WoWSims: 25% mana.", "shot.viperStop", 25, highs)
     S:SwitchSetting(sec, "Sound in the cast window", "A click when it is time for Steady Shot.", "shot.sound", false)
+    end
     local row = S:Row(sec, "Last fight", "")
     row.hasDesc = true
     S.PlaceText(row, 0)
@@ -151,10 +171,14 @@ if ns.ClassKit then ns.ClassKit:Extend("shot", { iconPath = "Interface\\Icons\\A
                 "shot.etrap", false)))
         end,
         playerRows = function(S, sec, R)
+            if FOREVER then
+                R(select(2, S:SwitchSetting(sec, "Concussive Shot", "Dazes them: slower for 4 s.", "shot.conc", true)))
+            else
             R(select(2, S:SwitchSetting(sec, "Concussive before Steady", "Steady Shot does 175 more to a Dazed "
                 .. "target.", "shot.conc", true)))
             R(select(2, S:SwitchSetting(sec, "Aimed Shot", "If you have it: healing on the target -50% for 10 s. A "
                 .. "2.5 s cast that may push your next Auto Shot.", "shot.aimed", true)))
+            end
             R(select(2, S:DropdownSetting(sec, "Sting", "One sting per hunter on a target.", "shot.sting", "viper",
                 Ch({ { "viper", "Viper on mana users" }, { "both", "Viper on mana users, else Scorpid" },
                      { "off", "None" } }))))

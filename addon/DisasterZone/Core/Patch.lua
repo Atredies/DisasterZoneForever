@@ -91,14 +91,29 @@ local function DB()
     return Boot.DB()
 end
 
+-- Public keys this addon never trusts: the TBC original's (tsumilo/DisasterZone-dev). Its private halves are on
+-- somebody else's machine, so a patch or a bridge record signed with one could run code in our guild. DisasterZone
+-- for WoW Forever makes its own keys (dev/tools/release.py keygen, which also refuses these); until then
+-- Core/PatchKey.lua holds no key and in-game updates are off. Core/Bridge.lua asks the same (Patch.IsUntrustedKey).
+local UNTRUSTED_ROOTS = {
+    ["9b703655eeb0f04ab4c8da1bdbc16cb8dbaa5fe4e0afd1dac7fa179dce7d605d"] = true,   -- upstream's in-game update key
+    ["93ed344536965f6d3a9fb3e10f8972406bf14af6284a1313f2a0da94ec6ff106"] = true,   -- upstream's Discord bot key
+}
+
+function Patch.IsUntrustedKey(k)
+    return type(k) == "table" and type(k.root) == "string" and UNTRUSTED_ROOTS[lower(k.root)] == true
+end
+
 local function Key()
     local k = ns.PatchKey
     if type(k) ~= "table" or type(k.seed) ~= "string" or #k.seed ~= 32 or type(k.root) ~= "string" or #k.root ~= 64
         or type(k.h) ~= "number" or k.h < 1 or k.h > 16 or k.h ~= floor(k.h) then
         return nil
     end
+    if Patch.IsUntrustedKey(k) then return nil end   -- updates stay off: nothing is downloaded, stored or applied
     return k
 end
+Patch._Key = Key   -- (tests)
 
 local function Available()
     return Boot ~= nil and Sha ~= nil and AceComm ~= nil and LibDeflate ~= nil and Key() ~= nil
@@ -432,7 +447,10 @@ end
 
 local function SendControl(text)
     if not CanTalk() then return false end
-    Patch:SendCommMessage(CONTROL, text, "GUILD", nil, "NORMAL")
+    -- (WoW Forever refuses addon messages for a whole boss pull: held by Comm until it ends)
+    local function send() Patch:SendCommMessage(CONTROL, text, "GUILD", nil, "NORMAL") end
+    local Comm = ns.Comm
+    if Comm and Comm.SendOrHold then Comm:SendOrHold(send) else send() end
     return true
 end
 
@@ -550,6 +568,18 @@ Pump = function()
     if not serving then return end
     if not CanSeed() then
         StopServing()
+        return
+    end
+    -- (WoW Forever: during a boss pull every chunk would be refused; the queue waits and the pump tries again)
+    local Comm = ns.Comm
+    if Comm and Comm.InLockdown and Comm:InLockdown() then
+        if not pumpRetryPending then
+            pumpRetryPending = true
+            Util.After(1, function()
+                pumpRetryPending = false
+                Pump()
+            end)
+        end
         return
     end
     while inFlight < MAX_INFLIGHT and not QueueEmpty() do

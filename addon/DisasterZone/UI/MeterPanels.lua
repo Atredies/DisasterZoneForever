@@ -2083,7 +2083,7 @@ local function ListFrame()
         self:RegisterEvent("GLOBAL_MOUSE_DOWN")
         if not InCombatLockdown() then
             self:EnableKeyboard(true)
-            self:SetPropagateKeyboardInput(true)
+            ns.Util.SetPropagateKeys(self, true)
         end
     end)
     f:SetScript("OnHide", function(self)
@@ -2093,7 +2093,7 @@ local function ListFrame()
     end)
     f:SetScript("OnKeyDown", function(self, key)
         if key ~= "ESCAPE" then return end
-        if not InCombatLockdown() then self:SetPropagateKeyboardInput(false) end
+        if not InCombatLockdown() then ns.Util.SetPropagateKeys(self, false) end
         self:Hide()
     end)
     -- a press anywhere else closes it (a press on the name that opened it: its click closes it, MP:FightMenu)

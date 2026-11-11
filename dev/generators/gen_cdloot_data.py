@@ -21,7 +21,9 @@ import re
 import sys
 from collections import OrderedDict, defaultdict
 
-ADDONS = r"C:\World of Warcraft\_anniversary_\Interface\AddOns"
+# DZ_ADDONS: the AddOns folder the AtlasLoot / Questie inputs are read from (WoW Forever: an unpacked AtlasLoot Classic
+# Forever, see the vault note "Forever Content Facts").
+ADDONS = os.environ.get("DZ_ADDONS") or r"C:\World of Warcraft\_anniversary_\Interface\AddOns"
 OUT_DIR = os.path.dirname(os.path.abspath(__file__))
 OUT_LUA = os.path.join(OUT_DIR, "DisasterZone_Data_generated.lua")
 OUT_REPORT = os.path.join(OUT_DIR, "gen_report.json")

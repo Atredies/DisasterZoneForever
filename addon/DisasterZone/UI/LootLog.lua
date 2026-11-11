@@ -14,7 +14,7 @@ local S = ns.Style
 
 local ROW_HEIGHT = 26
 local MAX_NOTE = 60
-local MAX_ITEM_ID = 200000
+local MAX_ITEM_ID = 1000000   -- (Forever's new items are 280000+)
 local MENU_CHUNK = 25
 -- The Council page's grid (UI/Council.lua): its view tabs on the top row, the page's toolbar row under them (the
 -- layout's), then the column titles and the list; the list's scroll bar in the right margin.

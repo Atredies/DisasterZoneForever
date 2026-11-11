@@ -230,7 +230,7 @@ local function AddMiss(s, missType, amountMissed)
 end
 
 local function PushRing(now, kind, key, amount, who, extra)
-    CL.Push(ring, now - t0, kind, key, amount, who, UnitHealth and UnitHealth("player") or 0, extra)
+    CL.Push(ring, now - t0, kind, key, amount, who, UnitHealth and ns.Compat.Plain(UnitHealth("player")) or 0, extra)
 end
 
 ---------------------------------------------------------------------------
@@ -264,8 +264,8 @@ local function GcdFor(spellId)
     if cls == "ROGUE" or (cls == "DRUID" and GetShapeshiftFormID and GetShapeshiftFormID() == 1) then
         base = ENERGY_GCD
     end
-    if GetSpellCooldown and spellId then
-        local start, duration = GetSpellCooldown(spellId)
+    if spellId then
+        local start, duration = ns.Compat.SpellCooldown(spellId)    -- (nil while secret on Forever: the base GCD)
         duration = tonumber(duration)
         if start and start > 0 and duration and duration > 0 and duration <= DEFAULT_GCD then return duration end
     end
@@ -273,7 +273,7 @@ local function GcdFor(spellId)
 end
 
 local function CastEnd(endMS)
-    endMS = tonumber(endMS)
+    endMS = tonumber(ns.Compat.Plain(endMS))
     if not endMS then return nil end
     return endMS / 1000
 end
@@ -282,6 +282,7 @@ local function OnCastStart(_, unit)
     if unit ~= "player" or not cur then return end
     local now = Now()
     local _, _, _, _, endMS, _, _, _, spellId = UnitCastingInfo("player")
+    spellId = ns.Compat.Plain(spellId)
     local stop = CastEnd(endMS) or (now + DEFAULT_GCD)
     castGcd = GcdFor(spellId)
     stop = max(stop, now + castGcd)
@@ -345,10 +346,9 @@ end
 
 local function SwingSpeed(ranged)
     if ranged then
-        local speed = UnitRangedDamage and UnitRangedDamage("player")
-        return tonumber(speed) or 2
+        return tonumber(ns.Compat.RangedSpeed("player")) or 2
     end
-    local main = UnitAttackSpeed and UnitAttackSpeed("player")
+    local main = ns.Compat.AttackSpeed("player")        -- (nil while secret on Forever: 2 s)
     return tonumber(main) or 2
 end
 
@@ -722,7 +722,7 @@ function MyLog:NoteDeath(now)
     end
     if #cur.deaths < DEATHS_MAX then
         cur.deaths[#cur.deaths + 1] = { t = floor(t * 10 + 0.5) / 10, by = by, ring = recap,
-            hpMax = UnitHealthMax and UnitHealthMax("player") or nil }
+            hpMax = UnitHealthMax and ns.Compat.Plain(UnitHealthMax("player")) or nil }
     end
     if not cur.dead then
         -- alive time ends: the rest of the fight is not idle time
@@ -745,20 +745,15 @@ end
 -- Pull context: spec, role, talents, item level, boss health
 ---------------------------------------------------------------------------
 
--- Points spent in a talent tab, read as the class tools read them (Core/ClassKit.lua: 2.5.6's
--- C_SpecializationInfo first, the old GetTalentTabInfo alias as the fallback); 0 when unknown.
+-- Points spent in a talent tab, read as the class tools read them (ns.Compat.TalentTabPoints: 2.5.6's tabs or
+-- WoW Forever's trait groups); 0 when unknown.
 local function TabPoints(tab)
-    local CK = ns.ClassKit
-    if CK and CK.TabPoints then return CK.TabPoints(tab) or 0 end
-    if not GetTalentTabInfo then return 0 end
-    local r1, _, r3, _, r5 = GetTalentTabInfo(tab)
-    local p = (type(r1) == "string") and tonumber(r3) or tonumber(r5)
-    return p or 0
+    return ns.Compat.TalentTabPoints(tab) or 0
 end
 
 local function TalentString()
     local parts = {}
-    local n = (GetNumTalentTabs and GetNumTalentTabs()) or 3
+    local n = ns.Compat.NumTalentTabs()
     for tab = 1, n do parts[#parts + 1] = tostring(TabPoints(tab)) end
     return table.concat(parts, "/")
 end
@@ -802,11 +797,8 @@ local function SampleBoss()
     local low
     for _, u in ipairs(BOSS_UNITS) do
         if UnitExists(u) then
-            local hp, mx = UnitHealth(u), UnitHealthMax(u)
-            if mx and mx > 0 and hp then
-                local pct = hp / mx * 100
-                if not low or pct < low then low = pct end
-            end
+            local pct = ns.Compat.HealthPct(u)          -- (nil on Forever: health is secret)
+            if pct and (not low or pct < low) then low = pct end
         end
     end
     if low then cur.pct = floor(low * 10 + 0.5) / 10 end
@@ -814,8 +806,8 @@ end
 
 local function SamplePower(now)
     if not cur or not UnitPower then return end
-    local p, m = UnitPower("player"), UnitPowerMax("player")
-    if m and m > 0 then cur.tl.p[Bucket(now)] = floor(p / m * 100 + 0.5) end
+    local pct = ns.Compat.PowerPct("player")            -- (nil on Forever: power is secret)
+    if pct then cur.tl.p[Bucket(now)] = floor(pct + 0.5) end
 end
 
 local function OnTick()
@@ -1268,7 +1260,8 @@ function MyLog:Describe(p)
         s.act and strformat("%.1f", s.act * 100) or "?", s.dc or 0)
 end
 
-ns:RegisterSlash("mylog", function(rest)
+-- (WoW Forever: My Log is hidden, Core/Constants.lua FOREVER_HIDDEN, so no /dz mylog and no help line for it)
+if not (ns.FOREVER_HIDDEN and ns.FOREVER_HIDDEN.mylog) then ns:RegisterSlash("mylog", function(rest)
     rest = (rest or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
     if rest == "on" or rest == "off" then
         ns.DB:SetSetting("mylog.enabled", rest == "on")
@@ -1284,4 +1277,4 @@ ns:RegisterSlash("mylog", function(rest)
     end
     ns:Print("My Log is %s. %d pull(s) stored for this character. /dz mylog on | off | last",
         MyLog:IsEnabled() and "on" or "off", #pulls)
-end, "My Log: your own boss-pull records (on | off | last)")
+end, "My Log: your own boss-pull records (on | off | last)") end

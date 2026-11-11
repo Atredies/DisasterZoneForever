@@ -62,14 +62,10 @@ end
 local CATALOG = {
     { id = "bingo", folder = "DisasterZone_Bingo", name = "Council Bingo", order = 10, art = "kara",
       tagline = "Squares fill in as the raid happens.", icon = "Interface\\Icons\\INV_Misc_Note_02" },
-    { id = "trainer", folder = "DisasterZone_Trainer", name = "Raid Trainer", order = 15, art = "ssc",
-      tagline = "Practise each boss in 3D before the pull.", icon = "Interface\\Icons\\Spell_Shadow_DeathPact" },
     { id = "azeromon", folder = "DisasterZone_Azeromon", name = "Azeromon", order = 20, art = "kara",
       tagline = "Tame and battle the beasts of Elwynn.", icon = "Interface\\Icons\\Ability_Hunter_BeastTaming" },
     { id = "chess", folder = "DisasterZone_Chess", name = "Karazhan Chess", order = 25, art = "kara",
       tagline = "Play Medivh's echo, or a guildmate.", icon = "Interface\\Icons\\INV_Misc_Ogrepinata" },
-    { id = "illidan", folder = "DisasterZone_Illidan", name = "The Binding of Illidan", order = 30, art = "bt",
-      tagline = "Five floors of the Black Temple, new every run.", icon = "Interface\\Icons\\Spell_Shadow_Metamorphosis" },
     { id = "holdtheline", folder = "DisasterZone_HoldTheLine", name = "Hold the Line", order = 40, art = "kara",
       tagline = "Fifteen minutes. One class. The whole Scourge.", icon = "Interface\\Icons\\Spell_Holy_InnerFire" },
 }

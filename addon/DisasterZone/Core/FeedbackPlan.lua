@@ -489,13 +489,25 @@ local function PublishSoon()
 end
 Plan.PublishSoon = PublishSoon
 
+-- 2026-11-09 (authority holes 4): the plan and Coming next are the developer's. Their copy is taken (and replaces
+-- one another staff member passed on, whatever its rev); a copy another staff member passes on only while I hold
+-- none, or none but another passed-on one (marked: planVia / comingVia), so an officer can't rewrite the plan on
+-- the clients that have it from the developer.
+local function Takes(s, mine, rev, viaField, sender)
+    if F():IsDev(sender) then
+        return not mine or s[viaField] ~= nil or (tonumber(mine.rev) or 0) < rev
+    end
+    return not mine or (s[viaField] ~= nil and (tonumber(mine.rev) or 0) < rev)
+end
+
 local function OnPlan(sender, msg, dist)
     if dist ~= "WHISPER" or not F():IsStaff(sender) or F():AmIDev() then return end
     if not ValidPlan(msg.p) then return end
     local s = Store(true, true)
     local mine = s and GetPlan(false, true)
-    if not s or (mine and mine.rev >= msg.p.rev) then return end
+    if not s or not Takes(s, mine, msg.p.rev, "planVia", sender) then return end
     s.plan = msg.p
+    s.planVia = (not F():IsDev(sender)) and sender or nil
     Changed()
 end
 
@@ -504,8 +516,9 @@ local function OnComing(sender, msg, dist)
     if not ValidComing(msg.c) then return end
     local s = Store(true, true)
     local mine = GetComing(true)
-    if not s or (mine and (tonumber(mine.rev) or 0) >= msg.c.rev) then return end
+    if not s or not Takes(s, mine, msg.c.rev, "comingVia", sender) then return end
     s.coming = msg.c
+    s.comingVia = (not F():IsDev(sender)) and sender or nil
     Changed()
 end
 
@@ -774,7 +787,7 @@ function Plan:DemoStore()
     put(K("Isolde", 3), { rl = minor, sz = "L" })
     put("D-1", { tt = "Roll popup waits out a loading screen too", kd = "bug", sz = "S", rl = patch, g = "Roll popup",
         at = now - 3600 })
-    put("D-2", { tt = "Boss mods: Karazhan first", kd = "idea", sz = "XL", rl = minor, at = now - 86400 })
+    put("D-2", { tt = (ns.Compat and ns.Compat.isForever) and "Boss mods: Onyxia first" or "Boss mods: Karazhan first", kd = "idea", sz = "XL", rl = minor, at = now - 86400 })
     put("D-3", { tt = "Whole-addon patch size cap", kd = "chore", sz = "M", rl = minor, at = now - 2 * 86400 })
     put("D-4", { tt = "My Raid Log", kd = "idea", sz = "L", rl = LATER, at = now - 5 * 86400 })
     demoStore = { plan = p }

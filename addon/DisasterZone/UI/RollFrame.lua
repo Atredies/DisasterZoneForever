@@ -157,7 +157,7 @@ end
 -- What the item is to me: the pill's text and kind (nil: not on my lists) and the line after it ("Head · P1").
 local function OwnStatus(m)
     if not m then return nil, nil, "Not on your BiS list" end
-    local parts = { ns.SlotLabel(m.sid), "P" .. tostring(tonumber(m.phase) or 0) }
+    local parts = { ns.SlotLabel(m.sid), ns.PhaseLabel(tonumber(m.phase) or 0) }
     local text, kind
     if m.os then
         -- Addendum H: only on my off-spec list.

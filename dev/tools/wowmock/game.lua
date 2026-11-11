@@ -2096,6 +2096,12 @@ local TALENT_TABS = {
   DRUID = { { 283, "Balance" }, { 281, "Feral Combat" }, { 282, "Restoration" } },
 }
 M.talents = cfg.talents or { 0, 0, 0 }
+-- (tab name and id by class, for the Forever profile's trait groups)
+function M.tbc_tab_info(cls, tab)
+  local t = (TALENT_TABS[cls] or TALENT_TABS.WARRIOR)[tonumber(tab) or 0]
+  if not t then return nil end
+  return t[2], t[1]
+end
 function GetNumTalentTabs() return 3 end
 function GetTalentTabInfo(tab, isInspect, isPet, group)
   local tabs = TALENT_TABS[me().class] or TALENT_TABS.WARRIOR
@@ -2299,12 +2305,17 @@ local function send_addon(fname, logged, prefix, text, chatType, target)
     text = ssub(text, 1, z - 1)
   end
   if M.addon_throttle then
-    local b = M.throttle[prefix]
-    if not b then b = { tokens = 10, t = M.now }; M.throttle[prefix] = b end
-    b.tokens = math.min(10, b.tokens + (M.now - b.t))
+    -- (tests may tighten it: M.throttle_burst / M.throttle_regen per second, M.throttle_global = one bucket for every
+    -- prefix instead of one per prefix; tests/golive/test_golive_load.py)
+    local burst, regen = M.throttle_burst or 10, M.throttle_regen or 1
+    local bk = M.throttle_global and "*" or prefix
+    local b = M.throttle[bk]
+    if not b then b = { tokens = burst, t = M.now }; M.throttle[bk] = b end
+    b.tokens = math.min(burst, b.tokens + (M.now - b.t) * regen)
     b.t = M.now
     if b.tokens < 1 then
-      M.warn("addon message throttled by the server rate limit (prefix '" .. prefix .. "', >10 msgs burst, 1/s regen)")
+      M.warn("addon message throttled by the server rate limit (prefix '" .. prefix .. "', >" .. burst
+        .. " msgs burst, " .. regen .. "/s regen)")
       M.throttled = (M.throttled or 0) + 1
       M.throttledBy = M.throttledBy or {}
       M.throttledBy[prefix] = (M.throttledBy[prefix] or 0) + 1
@@ -2680,6 +2691,14 @@ C_LFGList = {
     end
     tsort(out)
     return out
+  end,
+  -- (the vanilla-style group finder's categories: 2 dungeons, 114 raids)
+  GetLfgCategoryInfo = function(categoryID)
+    local names = { [2] = "Dungeons", [114] = "Raids" }
+    local n = names[tonumber(categoryID) or 0]
+    if not n then return nil end
+    return { name = n, separateRecommended = false, autoChooseActivity = false, preferCurrentArea = false,
+      showPlaystyleDropdown = false, allowCrossFaction = false }
   end,
   GetActivityInfoTable = function(activityID)
     local a = M.lfg_activities[activityID]

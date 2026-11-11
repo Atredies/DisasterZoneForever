@@ -31,6 +31,15 @@ local WOWHEAD_RACES = { BloodElf = "blood-elf", NightElf = "night-elf", Scourge 
                         Draenei = "draenei", Dwarf = "dwarf", Gnome = "gnome", Human = "human", Orc = "orc",
                         Tauren = "tauren", Troll = "troll" }
 
+-- WoW Forever (vanilla content): no Jewelcrafting / Inscription, no Draenei / Blood Elves. WoWSims has no Forever sim
+-- and the link format of Wowhead's Forever gear planner (wowhead.com/forever/gear-planner, the page exists) is not
+-- known (UNVERIFIED, 2026-11-09), so the export window offers only our own JSON there (UI/ImportExport.lua) and
+-- Exp:WowheadLink makes no link.
+if ns.Compat and ns.Compat.isForever then
+    SIM_PROFESSIONS[755], SIM_PROFESSIONS[773] = nil, nil
+    WOWHEAD_RACES.BloodElf, WOWHEAD_RACES.Draenei = nil, nil
+end
+
 -- Rings, trinkets and weapons: the other slot of the pair (a pick I wear in the other ring slot still has its gems).
 local PAIR = ns.SLOT_PAIR
 
@@ -144,17 +153,22 @@ end
 
 -- Talent ranks per tree, talents in tier then column order (as the WowSimsExporter addon writes them):
 -- "05032001-0000-500" ("" when the client has no talents to read).
+-- (ns.Compat.Talents; WoW Forever's trait tree has no tier / column, so there it is "": WoWSims has no Forever sim)
 function Exp:TalentString()
-    if not (GetNumTalentTabs and GetNumTalents and GetTalentInfo) then return "" end
-    local tabs, any = {}, false
-    for tab = 1, tonumber(GetNumTalentTabs()) or 0 do
-        local list = {}
-        for i = 1, tonumber(GetNumTalents(tab)) or 0 do
-            local name, _, tier, column, rank, _, _, available = GetTalentInfo(tab, i)
-            if name and available and tonumber(tier) and tonumber(column) then
-                list[#list + 1] = { pos = (tier - 1) * 4 + column, rank = tonumber(rank) or 0 }
-            end
+    local all = ns.Compat.Talents()
+    if not all then return "" end
+    local byTab, numTabs = {}, (ns.Compat.isForever and 0 or ns.Compat.NumTalentTabs())
+    for _, t in ipairs(all) do
+        if t.available and t.tier and t.column and t.tab then
+            byTab[t.tab] = byTab[t.tab] or {}
+            local l = byTab[t.tab]
+            l[#l + 1] = { pos = (t.tier - 1) * 4 + t.column, rank = t.rank or 0 }
+            if t.tab > numTabs then numTabs = t.tab end
         end
+    end
+    local tabs, any = {}, false
+    for tab = 1, numTabs do
+        local list = byTab[tab] or {}
         tsort(list, function(a, b) return a.pos < b.pos end)
         local ranks = {}
         for k, t in ipairs(list) do ranks[k] = tostring(t.rank) end
@@ -179,8 +193,8 @@ end
 
 local function Me()
     local name, realm
-    if UnitFullName then name, realm = UnitFullName("player") end
-    name = name or UnitName("player") or ""
+    name, realm = ns.Util.UnitNameRealm("player")   -- (WoW Forever: with the surname, Core/Util.lua)
+    name = name or ""
     if (realm == nil or realm == "") and GetRealmName then realm = GetRealmName() end
     local _, raceFile = UnitRace("player")
     local _, classFile = UnitClass("player")
@@ -190,7 +204,7 @@ local function Me()
         raceFile = raceFile or "Human",
         race = (raceFile == "Scourge") and "Undead" or (raceFile or "Human"),
         class = classFile or "WARRIOR",
-        level = tonumber(UnitLevel("player")) or 70,
+        level = tonumber(UnitLevel("player")) or ((ns.Compat and ns.Compat.isForever) and 60 or 70),
     }
 end
 
@@ -267,6 +281,7 @@ local function TalentBytes(talents, bytes)
 end
 
 function Exp:WowheadLink(specs)
+    if ns.Compat and ns.Compat.isForever then return "" end   -- (Forever: the planner's link format is unknown)
     local me = Me()
     local bytes = { 3, me.level }
     TalentBytes(self:TalentString(), bytes)

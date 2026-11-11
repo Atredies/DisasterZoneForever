@@ -7,7 +7,13 @@ Run from C:\\Users\\emilo\\CDLoot-dev\\dev with luaenv\\Scripts\\python.exe:
   tools\\release.py guards add|remove|check
                                       the line-1 guard every patchable file needs (see Core\\Boot.lua)
   tools\\release.py full               package the addon folder as dist\\DisasterZone-<version>.zip and make that
-                                      release the base for in-game updates
+                                      release the base for in-game updates. WoW Forever (0.1.0 on): the zip is
+                                      attached to a GitHub release of Atredies/DisasterZoneForever (notes in
+                                      dev\\releases\\<version>.md); members unzip it into _forever_\\Interface\\AddOns.
+                                      It carries the addon, DisasterZone_Rooms and the game packs, never
+                                      DisasterZone_Bridge (NEVER_SHIPPED), and is checked after it is written
+                                      (verify_zip). Core\\PatchKey.lua without a key: the release ships with
+                                      in-game updates OFF; with the TBC original's key (UNTRUSTED_ROOTS): refused.
   tools\\release.py full --publish [--channel beta]
                                       the same, then publish it for the desktop launcher in one go
   tools\\release.py patch              build + sign an in-game update with everything that changed since the
@@ -82,6 +88,16 @@ DOC_EXT = (".md", ".txt")
 # Never part of a release or an update, so the tree walk below does not see them at all.
 DEV_ONLY = ("Media/Probe/",)
 GUARD_RE = re.compile(rb'^if DisasterZoneBoot and DisasterZoneBoot\.Run\("([^"]+)", \.\.\.\) then return end ?')
+# Public keys a release never carries: the TBC original's (tsumilo/DisasterZone-dev), whose private halves are on
+# somebody else's machine. Core/Patch.lua refuses them in game as well (UNTRUSTED_ROOTS, the same two).
+UNTRUSTED_ROOTS = {
+    "9b703655eeb0f04ab4c8da1bdbc16cb8dbaa5fe4e0afd1dac7fa179dce7d605d": "the TBC original's in-game update key",
+    "93ed344536965f6d3a9fb3e10f8972406bf14af6284a1313f2a0da94ec6ff106": "the TBC original's Discord bot key",
+}
+KEY_ROOT_RE = re.compile(r'root\s*=\s*"([0-9a-fA-F]{64})"')
+# Folders next to the addon that never go into a release zip: the Discord bridge's inbox (the launcher writes it on
+# a linked PC; it needs the launcher and the bot).
+NEVER_SHIPPED = ("DisasterZone_Bridge",)
 
 
 class ReleaseError(Exception):
@@ -156,10 +172,19 @@ def rooms_dir(addon_dir=None):
     return d if os.path.isfile(os.path.join(d, ROOMS_NAME + ".toc")) else None
 
 
+def rooms_files(rooms_folder):
+    """The files of DisasterZone_Rooms a release ships: its TOC and the files the TOC lists. On WoW Forever only the
+    chess hall draws a room (Karazhan:Chess), so the TOC lists that room and the shared stand-in tables; the TBC raid
+    rooms stay in the repository (the TBC-profile strategy suites and the room generators read them) but not in a
+    release."""
+    files = [ROOMS_NAME + ".toc"] + parse_toc(rooms_folder, ROOMS_NAME)[1]
+    return [f for f in files if os.path.isfile(os.path.join(rooms_folder, f))]
+
+
 def rooms_hashes(addon_dir=None):
-    """{path in DisasterZone_Rooms: sha256} of the room data next to an addon folder ({} without one)."""
+    """{path in DisasterZone_Rooms: sha256} of the room data a release of the addon folder ships ({} without one)."""
     d = rooms_dir(addon_dir)
-    return file_hashes(d) if d else {}
+    return {rel: sha256_file(os.path.join(d, rel)) for rel in rooms_files(d)} if d else {}
 
 
 def pack_of(path):
@@ -171,7 +196,7 @@ def pack_of(path):
 
 def pack_dirs(addon_dir):
     """{folder name: path} of the game packs next to an addon folder (tools/packs.py find_packs)."""
-    return packlib.find_packs(addon_dir)
+    return {n: p for n, p in packlib.find_packs(addon_dir).items() if n not in NEVER_SHIPPED}
 
 
 def src_path(addon_dir, rel):
@@ -268,6 +293,22 @@ def stamp_pack_toc(raw, stamp):
     return "## X-DZ-Build: " + stamp + nl + raw
 
 
+def stamp_toc_version(raw, version):
+    """The TOC text with its '## Version:' line saying version (added after the Author line, else first, when
+    missing): a release gives every game pack the addon's version."""
+    nl = "\r\n" if "\r\n" in raw else "\n"
+    lines = raw.split(nl)
+    for i, line in enumerate(lines):
+        if line.strip().lower().startswith("## version:"):
+            lines[i] = "## Version: " + version
+            return nl.join(lines)
+    for i, line in enumerate(lines):
+        if line.strip().lower().startswith("## author:"):
+            lines.insert(i + 1, "## Version: " + version)
+            return nl.join(lines)
+    return "## Version: " + version + nl + raw
+
+
 def asset_pack(addon_dir):
     src = read(os.path.join(addon_dir, "Core", "BuildInfo.lua")).decode("utf-8")
     m = re.search(r"assetPack\s*=\s*(\d+)", src)
@@ -293,6 +334,23 @@ def patch_key_lua(key):
             "local addonName, ns = ...\n\n"
             "ns.PatchKey = {\n    seed = \"%s\",\n    root = \"%s\",\n    h = %d,\n}\n"
             % (key["seed"], key["root"], key["height"]))
+
+
+def patch_key_root(addon_dir):
+    """The public key root in an addon folder's Core/PatchKey.lua, or None when it holds no key (in-game updates
+    off). Raises ReleaseError when the file is missing."""
+    path = os.path.join(addon_dir, "Core", "PatchKey.lua")
+    if not os.path.isfile(path):
+        raise ReleaseError("Core/PatchKey.lua is missing: run 'release.py keygen' first")
+    m = KEY_ROOT_RE.search(read(path).decode("utf-8", "replace"))
+    return m.group(1).lower() if m else None
+
+
+def refuse_untrusted(root, what):
+    if root and root.lower() in UNTRUSTED_ROOTS:
+        raise ReleaseError("%s holds %s (root %s...). Its private half is not ours: run 'release.py keygen' on ONE "
+                           "machine for our own key, or empty Core/PatchKey.lua for a release without in-game "
+                           "updates." % (what, UNTRUSTED_ROOTS[root.lower()], root[:8]))
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -363,8 +421,8 @@ def stage_tree(src, dst, lua_only=False, build=None, key=None, link=False, rooms
     """Copy the addon folder `src` to `dst` as a release: BuildInfo gets the build id, the outbox is emptied.
     lua_only=True copies only what the game executes (.toc, .lua): enough for the offline harness.
     link=True hard-links the files instead of copying them (tests: a new copy costs a virus scan on first read).
-    rooms=True also copies the DisasterZone_Rooms folder next to `src` (when there is one) next to `dst`; its files
-    go into the build id and the record ("rooms").
+    rooms=True also copies the DisasterZone_Rooms folder next to `src` (when there is one) next to `dst`: its TOC and
+    the files that TOC lists (rooms_files), which go into the build id and the record ("rooms").
     packs=True (default) copies the game packs next to `src` next to `dst` the same way, each stamped (its TOC's
     X-DZ-Build, BuildInfo's packs); record "packs" ({folder: hashes}) and "packTocs" ({folder: TOC text}).
     Returns the release record (without the zip)."""
@@ -387,7 +445,7 @@ def stage_tree(src, dst, lua_only=False, build=None, key=None, link=False, rooms
         rdst = os.path.join(os.path.dirname(os.path.normpath(dst)), ROOMS_NAME)
         if os.path.exists(rdst):
             raise ReleaseError("%s already exists" % rdst)
-        for rel in all_files(rsrc):
+        for rel in rooms_files(rsrc):
             if lua_only and not rel.endswith((".lua", ".toc")):
                 continue
             target = os.path.join(rdst, rel)
@@ -395,6 +453,7 @@ def stage_tree(src, dst, lua_only=False, build=None, key=None, link=False, rooms
             (os.link if link else shutil.copyfile)(os.path.join(rsrc, rel), target)
         room_hashes = file_hashes(rdst)
     pack_records, pack_tocs, stamps = {}, {}, {}
+    core_version = parse_toc(src)[0].get("version")
     for name, psrc in (pack_dirs(src).items() if packs else ()):
         pdst = os.path.join(os.path.dirname(os.path.normpath(dst)), name)
         if os.path.exists(pdst):
@@ -411,7 +470,10 @@ def stage_tree(src, dst, lua_only=False, build=None, key=None, link=False, rooms
         stamps[name] = pack_stamp(file_hashes(pdst), name)
         toc_path = os.path.join(pdst, name + ".toc")
         raw = read(toc_path).decode("utf-8-sig")
-        _put(toc_path, stamp_pack_toc(raw, stamps[name]).encode("utf-8"))
+        raw = stamp_pack_toc(raw, stamps[name])
+        if core_version:
+            raw = stamp_toc_version(raw, core_version)
+        _put(toc_path, raw.encode("utf-8"))
         pack_records[name] = file_hashes(pdst)
         pack_tocs[name] = parse_toc(pdst, name)[2]
     hashes = file_hashes(dst)
@@ -496,26 +558,63 @@ def readme_text(version, record):
         p = packlib.BY_FOLDER.get(name)
         games.append("  %-26s %s" % (name, p["name"] if p else ""))
     return "\n".join([
-        "DisasterZone %s" % version,
+        "DisasterZone %s for WoW Forever" % version,
         "",
-        "The easy way: the DisasterZone launcher installs and updates all of this for you, and lets you pick",
-        "which games you want (github.com/tsumilo/DisasterZone-releases).",
-        "",
-        "By hand: copy the folders you want into World of Warcraft\\_anniversary_\\Interface\\AddOns.",
+        "Install: close the game, then copy the folders you want into",
+        "World of Warcraft\\_forever_\\Interface\\AddOns and start the game again.",
+        "New versions are on github.com/Atredies/DisasterZoneForever/releases.",
         "",
         "  DisasterZone               required",
-        "  DisasterZone_Rooms         the 3D views (strategy boards, the chess hall, Raid Trainer's arenas)",
+        "  DisasterZone_Rooms         the chess hall's 3D board (needed by DisasterZone_Chess)",
         "",
         "Each game is a folder of its own. Copy only the ones you play:",
         "",
     ] + games + [
         "",
-        "Updating by hand: delete the old DisasterZone folders first, then copy the new ones. Pasting over",
-        "the old folders keeps files that are no longer used (from 1.5.5 on that is all the game art that",
-        "used to live inside DisasterZone). Your settings and game progress are kept either way: they are",
-        "in your saved variables, not in these folders.",
+        "Updating: delete the old DisasterZone folders first, then copy the new ones. Pasting over the old",
+        "folders keeps files that are no longer used. Your settings and game progress are kept either way:",
+        "they are in your saved variables, not in these folders.",
+        "",
+        "Something wrong? Type /dz bug in game (or /dz feedback): the report travels through the guild.",
         "",
     ])
+
+
+def verify_zip(zip_path, version):
+    """Problems with a release zip: anything that is not an addon folder (or the read-me), a folder that never
+    ships (NEVER_SHIPPED), development or key files, or a TOC whose Interface or Version is not the addon's."""
+    problems = []
+    with zipfile.ZipFile(zip_path) as zf:
+        names = zf.namelist()
+        tocs = {}
+        for n in names:
+            top = n.split("/", 1)[0]
+            low = n.lower()
+            if n == README_NAME:
+                continue
+            if "/" not in n or not (top == ADDON_NAME or top.startswith(ADDON_NAME + "_")):
+                problems.append("not in an addon folder: %s" % n)
+            if top in NEVER_SHIPPED:
+                problems.append("%s never ships: %s" % (top, n))
+            if (low.startswith("dev/") or "/dev/" in low or "/keys/" in low or "patch_key" in low
+                    or "launcher_key" in low or low.endswith((".pem", ".py", ".json"))):
+                problems.append("development or key file: %s" % n)
+            if n.endswith(".toc") and n.count("/") == 1 and n.split("/")[1] == top + ".toc":
+                tocs[top] = zf.read(n).decode("utf-8-sig")
+        if ADDON_NAME not in tocs:
+            problems.append("%s/%s.toc is missing" % (ADDON_NAME, ADDON_NAME))
+        interface = toc_from_text(tocs.get(ADDON_NAME, ""))[0].get("interface")
+        for top, raw in sorted(tocs.items()):
+            h = toc_from_text(raw)[0]
+            if h.get("interface") != interface:
+                problems.append("%s.toc: Interface %s, %s.toc %s" % (top, h.get("interface"), ADDON_NAME, interface))
+            if h.get("version") != version:
+                problems.append("%s.toc: Version %s, not %s" % (top, h.get("version"), version))
+        key = [n for n in names if n == ADDON_NAME + "/Core/PatchKey.lua"]
+        if key:
+            refuse_untrusted((KEY_ROOT_RE.search(zf.read(key[0]).decode("utf-8", "replace")) or [None, None])[1],
+                             "the zip's Core/PatchKey.lua")
+    return problems
 
 
 def cmd_full(args):
@@ -525,6 +624,9 @@ def cmd_full(args):
         raise ReleaseError("not ready for a release:\n  " + "\n  ".join(problems))
     if guard_state(ADDON_DIR, "Core/PatchKey.lua") != "ok":
         raise ReleaseError("Core/PatchKey.lua is missing: run 'release.py keygen' first")
+    # A release never carries a key whose private half is not ours; without a key it ships with updates off.
+    key_root = patch_key_root(ADDON_DIR)
+    refuse_untrusted(key_root, "Core/PatchKey.lua")
     version = parse_toc(ADDON_DIR)[0].get("version", "0")
     os.makedirs(DIST, exist_ok=True)
     os.makedirs(RELEASES, exist_ok=True)
@@ -539,6 +641,7 @@ def cmd_full(args):
     record = stage_tree(ADDON_DIR, stage, rooms=True)
     record["commit"] = git_commit()
     record["time"] = time.strftime("%Y-%m-%d %H:%M:%S")
+    record["patchKey"] = key_root            # None: in-game updates are off in this release ('patch' refuses it)
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
         # (every folder goes into Interface\AddOns: the addon, the 3D rooms, the game packs; the read-me at the root)
         for name in [ADDON_NAME, ROOMS_NAME] + sorted(record.get("packs", {})):
@@ -548,6 +651,10 @@ def cmd_full(args):
                     zf.write(os.path.join(folder, rel), name + "/" + rel)
         zf.writestr(README_NAME, readme_text(version, record).replace("\n", "\r\n"))
     shutil.rmtree(tmp)
+    problems = verify_zip(zip_path, version)
+    if problems:
+        os.remove(zip_path)
+        raise ReleaseError("the zip failed its checks (removed):\n  " + "\n  ".join(problems))
     with open(record_path, "w", encoding="utf-8") as fh:
         json.dump(record, fh, indent=1)
     with open(os.path.join(RELEASES, "base.json"), "w", encoding="utf-8") as fh:
@@ -558,7 +665,10 @@ def cmd_full(args):
         version, record["build"], record["assetPack"], len(record["files"]), len(record.get("rooms", {})), ROOMS_NAME,
         len(record.get("packs", {})), ", ".join("%s %d" % (n, len(h)) for n, h in sorted(record.get("packs", {}).items()))))
     print("  %s (%.1f MB)" % (zip_path, os.path.getsize(zip_path) / 1048576.0))
-    print("  this is now the base for in-game updates. Members install the zip once; after that 'release.py patch'.")
+    if key_root:
+        print("  this is now the base for in-game updates. Members install the zip once; after that 'release.py patch'.")
+    else:
+        print("  in-game updates are OFF in this release (Core/PatchKey.lua holds no key): every new version is a zip.")
     if getattr(args, "publish", False):
         publish_after_full(version, args.channel)
 
@@ -607,7 +717,7 @@ def diff_against_base(base, addon_dir):
         else:
             bh, nh = toc_from_text(base_pack_tocs.get(name, ""))[0], parse_toc(now_packs[name], name)[0]
             for k in sorted(set(bh) | set(nh)):
-                if k != "x-dz-build" and bh.get(k) != nh.get(k):
+                if k not in ("x-dz-build", "version") and bh.get(k) != nh.get(k):
                     errors.append("%s.toc header '%s' changed (%r -> %r)" % (name, k, bh.get(k), nh.get(k)))
     for name in sorted(base_pack_tocs):
         base_files = base_files + [name + "/" + f for f in toc_from_text(base_pack_tocs[name])[1]]
@@ -862,7 +972,12 @@ def cmd_patch(args):
     if not os.path.exists(KEY_PATH):
         raise ReleaseError("no signing key: run 'release.py keygen' first")
     key = patchlib.load_key(KEY_PATH)
+    refuse_untrusted(key.get("root"), KEY_PATH)
     base = load_base()
+    if "patchKey" in base and base["patchKey"] != key.get("root"):
+        raise ReleaseError("release %s was built %s: its players cannot check this key's updates. Make a full "
+                           "release with this key first." % (base["version"], "without a key (in-game updates off)"
+                                                             if not base["patchKey"] else "with another key"))
     log = patch_log()
     seq = max([key.get("next", 1)] + [p["seq"] + 1 for p in log])
     if seq >= (1 << key["height"]):
@@ -1083,6 +1198,34 @@ LAUNCHER_PUBKEY = os.path.join(LAUNCHER_DIR, "release_key.json")     # built int
 PUBLISH_CONF = os.path.join(RELEASES, "publish.json")                # {"repo": "owner/name", "clone": path}
 PUBLISHED_LOG = os.path.join(RELEASES, "published.json")
 DEFAULT_CLONE = os.path.join(os.path.dirname(REPO), "DisasterZone-releases")
+# The TBC original's releases repository (tsumilo/DisasterZone-releases): its launchers must never be handed a Forever
+# build. DisasterZoneForever has no releases repository of its own yet; publish.json leaves "repo" and "clone" empty
+# until one exists, and publishing refuses until then.
+UPSTREAM_RELEASE_OWNERS = ("tsumilo/",)
+PUBLISH_HOWTO = ("DisasterZoneForever has no releases repository configured yet. To publish: create one (e.g. "
+                 "Atredies/DisasterZoneForever-releases), point launcher/source.txt at it, then pass --repo owner/name "
+                 "once (or set \"repo\" in dev/releases/publish.json; \"clone\" is the local clone's folder, default "
+                 "../DisasterZone-releases next to this repository)")
+
+
+def publish_repo(args, conf):
+    """The releases repository to publish to (--repo, else publish.json's "repo"), refusing with PUBLISH_HOWTO while
+    none is set and refusing the TBC original's repository."""
+    repo = (args.repo or conf.get("repo") or "").strip()
+    if not repo:
+        raise ReleaseError("which GitHub repository? " + PUBLISH_HOWTO)
+    if repo.lower().startswith(UPSTREAM_RELEASE_OWNERS):
+        raise ReleaseError("%s is the TBC original's releases repository, not ours. %s" % (repo, PUBLISH_HOWTO))
+    return repo
+
+
+def publish_clone(args, conf):
+    """The local clone of the releases repository: --clone, else publish.json's "clone" when it is a path of this
+    system (a Windows path from another machine is ignored), else DEFAULT_CLONE."""
+    clone = args.clone or conf.get("clone") or ""
+    if clone and os.name != "nt" and re.match(r"^[A-Za-z]:[\\/]", clone):
+        clone = ""
+    return clone or DEFAULT_CLONE
 CHANGELOG_ENTRIES = 5
 
 
@@ -1209,10 +1352,8 @@ def cmd_publish(args):
         raise ReleaseError("%s does not carry build %s: it is not the zip of that release" % (zip_path, record["build"]))
 
     conf = _load_json(PUBLISH_CONF, {})
-    repo = args.repo or conf.get("repo")
     local = args.out is not None
-    if not local and not repo:
-        raise ReleaseError("which GitHub repository? pass --repo owner/name once (it is remembered)")
+    repo = (args.repo or conf.get("repo") or None) if local else publish_repo(args, conf)
     log = _load_json(PUBLISHED_LOG, [])
     seq = max([0] + [p["seq"] for p in log]) + 1
     on_channel = [p for p in log if p["channel"] == args.channel and not p.get("local")]
@@ -1232,7 +1373,7 @@ def cmd_publish(args):
     manifest, objects = launchlib.build_manifest(tree, args.channel, seq, record, zip_info=zip_info, notes=notes,
                                                  published=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
 
-    out = args.out if local else (args.clone or conf.get("clone") or DEFAULT_CLONE)
+    out = args.out if local else publish_clone(args, conf)
     if not local and not os.path.isdir(os.path.join(out, ".git")):
         if os.path.exists(out):
             raise ReleaseError("%s exists but is not a clone of %s" % (out, repo))
@@ -1297,9 +1438,7 @@ def cmd_launcher_push(args):
     """Copy the launcher source + its CI workflow into the releases repository and push the tag launcher-v<version>:
     GitHub Actions builds the installers for Windows, macOS and Linux and publishes them (launcher/ci/launcher.yml)."""
     conf = _load_json(PUBLISH_CONF, {})
-    repo, clone = args.repo or conf.get("repo"), args.clone or conf.get("clone") or DEFAULT_CLONE
-    if not repo:
-        raise ReleaseError("which GitHub repository? pass --repo owner/name once (it is remembered)")
+    repo, clone = publish_repo(args, conf), publish_clone(args, conf)
     source = read(os.path.join(LAUNCHER_DIR, "source.txt")).decode("utf-8").strip()
     if "/%s/" % repo not in source:
         raise ReleaseError("launcher/source.txt (%s) does not point at %s" % (source, repo))

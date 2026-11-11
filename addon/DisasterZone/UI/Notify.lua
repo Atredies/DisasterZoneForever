@@ -416,7 +416,7 @@ local function CreateTray()
     t:EnableKeyboard(true)
     t:SetScript("OnKeyDown", function(self, key)
         local esc = key == "ESCAPE"
-        if self.SetPropagateKeyboardInput then pcall(self.SetPropagateKeyboardInput, self, not esc) end
+        if self.SetPropagateKeyboardInput then ns.Util.SetPropagateKeys(self, not esc) end
         if esc then NotifyUI:CloseTray() end
     end)
     if main then main:HookScript("OnHide", function() NotifyUI:CloseTray() end) end

@@ -604,7 +604,12 @@ local function tt_set_item(self, st, id, link)
     tt_add(self, st, _G[loc] or loc, M.item_subtype_name(rec.cls, rec.sub))
   end
   if rec.ilvl and rec.ilvl > 0 then tt_add(self, st, sformat(ITEM_LEVEL or "Item Level %d", rec.ilvl)) end
+  -- a class-restricted item (tests set rec.classes = { "Warrior", ... }): "Classes: Warrior"
+  if type(rec.classes) == "table" and #rec.classes > 0 then
+    tt_add(self, st, sformat(ITEM_CLASSES_ALLOWED or "Classes: %s", table.concat(rec.classes, ", ")))
+  end
   call_script(self, "OnTooltipSetItem")
+  if M.tooltip_item_post_calls then M.tooltip_item_post_calls(self, id) end   -- (the Forever profile, forever.lua)
 end
 M.define("GameTooltip", "Frame", {
   SetOwner = function(self, owner, anchor, x, y)

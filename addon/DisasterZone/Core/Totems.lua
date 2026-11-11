@@ -94,8 +94,13 @@ function Totems:TotemShort(el, idx)
     return t and t.short or nil
 end
 
--- Heroism for the Alliance, Bloodlust for the Horde (the one I know; else by faction).
+-- The client has Heroism / Bloodlust (WoW Forever has neither: Data/Classes/Shaman.lua). Without it the planner has
+-- no Heroism column, the bar no Heroism cell, and no DZHERO goes out.
+function Totems:HasHero() return D.HEROISM ~= nil or D.BLOODLUST ~= nil end
+
+-- Heroism for the Alliance, Bloodlust for the Horde (the one I know; else by faction). nil without either.
 function Totems:HeroSpell()
+    if not self:HasHero() then return nil, nil end
     if IsSpellKnown then
         if IsSpellKnown(D.BLOODLUST) then return D.BLOODLUST, D.BLOODLUST_ICON end
         if IsSpellKnown(D.HEROISM) then return D.HEROISM, D.HEROISM_ICON end
@@ -281,6 +286,10 @@ local GROUP_KIND = {
     caster = { label = "Casters", needs = { { 4, 3 }, { 2, 1 }, { 3, 1 } } },
     healer = { label = "Healers", needs = { { 3, 1 }, { 4, 3 } } },
 }
+-- WoW Forever (no Totem of Wrath, no Wrath of Air: Data/Classes/Shaman.lua): air 3 is Tranquil Air, fire 4 Flametongue.
+if ns.Compat and ns.Compat.isForever then
+    GROUP_KIND.caster.needs = { { 3, 1 }, { 4, 3 } }
+end
 Totems.GROUP_KIND = GROUP_KIND
 -- how much a party loses without a shaman (who moves when one has none)
 local KIND_WEIGHT = { melee = 5, caster = 4, tank = 3, ranged = 2, healer = 1 }
@@ -544,7 +553,7 @@ function Totems:Apply(plan)
                 DB().es[name] = t
                 Queue("E" .. name, strformat("ESASSIGN %s %s", name, t or "NONE"))
             end
-            if plan.hero and plan.hero[name] then
+            if plan.hero and plan.hero[name] and self:HasHero() then
                 DB().hero[name] = (plan.hero[name] ~= "none") and plan.hero[name] or nil
                 Queue("H" .. name, strformat("DZHERO %s %s", name, plan.hero[name]))
             end
@@ -578,6 +587,15 @@ local PREF = {
     caster = { { 2, 1, 3 }, { 1, 5, 2 }, { 1, 2 }, { 3, 4, 2 } },
     healer = { { 2, 1, 3 }, { 1, 2, 5 }, { 1, 2 }, { 3, 4, 2 } },
 }
+if ns.Compat and ns.Compat.isForever then   -- (the Forever lists' indexes, see GROUP_KIND)
+    PREF = {
+        tank = { { 1, 2, 3 }, { 1, 4, 2 }, { 1, 2 }, { 1, 2, 3 } },
+        melee = { { 1, 2, 3 }, { 1, 4, 2 }, { 1, 2 }, { 1, 2, 3 } },
+        ranged = { { 1, 2, 3 }, { 1, 4, 2 }, { 1, 2 }, { 2, 1, 3 } },
+        caster = { { 2, 1, 3 }, { 1, 4, 2 }, { 1, 2 }, { 3, 2, 1 } },
+        healer = { { 2, 1, 3 }, { 1, 4, 2 }, { 1, 2 }, { 3, 2, 1 } },
+    }
+end
 Totems.PREF = PREF
 
 -- A plan for the shamans I may change (the others keep theirs and count as given in their party).
@@ -612,7 +630,7 @@ function Totems:AutoPlan(roster)
         for el = 1, NEL do
             local prefs = PREF[kind][el]
             -- (an Elemental drops Totem of Wrath wherever they stand: their own spells want it)
-            if el == D.TOTEM_OF_WRATH[1] and s.known[el][D.TOTEM_OF_WRATH[2]] then
+            if D.TOTEM_OF_WRATH and el == D.TOTEM_OF_WRATH[1] and s.known[el][D.TOTEM_OF_WRATH[2]] then
                 prefs = { D.TOTEM_OF_WRATH[2], unpack(prefs) }
             end
             for _, idx in ipairs(prefs) do
@@ -630,7 +648,8 @@ function Totems:AutoPlan(roster)
     -- Heroism: one caster for the whole raid and one backup. A caster already set (mine to change or not) stays;
     -- else Enhancement, then Elemental, then Restoration (healers have their hands full), by name.
     local caster, backup
-    for _, s in ipairs(self:Shamans(roster)) do
+    if not self:HasHero() then caster, backup = true, true end     -- (WoW Forever: no Heroism to plan)
+    for _, s in ipairs(self:HasHero() and self:Shamans(roster) or {}) do
         local h = self:GetHero(s.name)
         if self:HeroCasts(h) and not caster then caster = s.name end
         if h == "backup" and not backup then backup = s.name end
@@ -652,6 +671,7 @@ function Totems:AutoPlan(roster)
             plan.hero[s.name] = "backup"
         end
     end
+    if not self:HasHero() then caster, backup = nil, nil end
     if caster and plan.hero[caster] then plan.hero[caster] = self:GetHero(caster) ~= "none" and self:HeroCasts(self:GetHero(caster))
         and self:GetHero(caster) or "pull" end
     if backup and plan.hero[backup] then plan.hero[backup] = "backup" end
@@ -756,15 +776,26 @@ local function RaidByInstance(id)
     return nil
 end
 
--- The raid the planner shows: the one I am in, else the one picked (setting), else Serpentshrine Cavern.
+-- The raid the planner falls back to: Serpentshrine Cavern where the data has it (TBC), else the first raid with
+-- bosses (WoW Forever: the first of Data/Items.lua's raids).
+local function DefaultRaid()
+    if RaidData("SerpentshrineCavern") then return "SerpentshrineCavern" end
+    for _, r in ipairs((ns.Data and ns.Data.Raids) or {}) do
+        if r.bosses and #r.bosses > 0 then return r.key end
+    end
+    return "SerpentshrineCavern"
+end
+Totems.DefaultRaid = DefaultRaid
+
+-- The raid the planner shows: the one I am in, else the one picked (setting), else the default one.
 function Totems:RaidKey()
-    if self:IsDemo() then return "SerpentshrineCavern" end
+    if self:IsDemo() then return DefaultRaid() end
     local id = select(8, GetInstanceInfo())
     local r = RaidByInstance(tonumber(id) or 0)
     if r and r.bosses then return r.key end
     local pick = Setting("raid", nil)
     if pick and RaidData(pick) then return pick end
-    return "SerpentshrineCavern"
+    return DefaultRaid()
 end
 
 function Totems:RaidName(key)
@@ -796,7 +827,7 @@ function Totems:Bosses(raidKey)
 end
 
 local function NpcID(unit)
-    local guid = UnitGUID and UnitGUID(unit)
+    local guid = ns.Compat.GUID(unit)                     -- (nil on Forever when secret)
     if not guid then return nil end
     return tonumber(select(6, strsplit("-", guid)) or "")
 end
@@ -895,6 +926,10 @@ function Totems:MyTotem(el)
     if self:IsDemo() and demo then return demo.myTotem(el) end
     if not GetTotemInfo then return nil end
     local have, name, start, duration = GetTotemInfo(D.ELEMENTS[el].slot)
+    -- (WoW Forever: the slot can be secret, SecretWhenTotemSlotSecret: then no totem is shown)
+    local P_ = ns.Compat.Plain
+    have, name, start, duration = P_(have), P_(name), P_(start), P_(duration)
+    if not (start and duration) then return nil end
     if have and name and name ~= "" and (duration or 0) > 0 then return name, start, duration end
     return nil
 end
@@ -981,7 +1016,7 @@ end
 -- The DisasterZone extras for one shaman: DZHERO, then their boss changes in chunks.
 function Totems:SendExtras(name, target)
     local h = self:GetHero(name)
-    if h and h ~= "none" then self:SendRaw(strformat("DZHERO %s %s", name, h), target) end
+    if h and h ~= "none" and self:HasHero() then self:SendRaw(strformat("DZHERO %s %s", name, h), target) end
     local entries = {}
     for bossKey, b in pairs(DB().boss) do
         for el, o in pairs(b[name] or {}) do
@@ -1162,7 +1197,7 @@ local function BuildDemo()
     for g, list in ipairs(DEMO_GROUPS) do
         for _, e in ipairs(list) do
             i = i + 1
-            local m = { unit = "dzdemo" .. i, name = nm(e[1]), class = e[2], subgroup = g, level = 70, online = true,
+            local m = { unit = "dzdemo" .. i, name = nm(e[1]), class = e[2], subgroup = g, level = ns.ClassPlanner.MaxLevel(), online = true,
                 dead = false, demo = true, tank = e[4] or nil }
             d.specs[m.name] = e[3]
             d.roster[#d.roster + 1] = m
@@ -1178,7 +1213,7 @@ local function BuildDemo()
     local function shaman(name, spec, opts)
         local s = { name = name, known = { all(D.TOTEMS[1]), all(D.TOTEMS[2]), all(D.TOTEMS[3]), all(D.TOTEMS[4]) },
             es = opts.es or false, free = false, seen = GetTime(), me = name == me or nil }
-        if not opts.tow then s.known[2][1] = nil end
+        if not opts.tow and D.TOTEM_OF_WRATH then s.known[2][D.TOTEM_OF_WRATH[2]] = nil end
         if not opts.tide then s.known[3][3] = nil end
         d.shamans[name] = s
         d.specs[name] = spec
@@ -1193,11 +1228,19 @@ local function BuildDemo()
     s.assign.Iridi = { 2, 1, 1, 3 }
     s.assign.Velaara = { 2, 2, 1, 3 }
     s.twist[me] = true
-    s.hero[me], s.hero.Velaara = "pull", "backup"
+    if Totems:HasHero() then s.hero[me], s.hero.Velaara = "pull", "backup" end
     s.es.Ornaar, s.es.Velaara = "Victhar", "Caelith"
-    s.boss["SerpentshrineCavern:Hydross"] = {}
-    for _, n in ipairs({ "Ornaar", me, "Iridi", "Velaara" }) do
-        s.boss["SerpentshrineCavern:Hydross"][n] = { [2] = { i = 6 }, [4] = { i = 6, alt = true } }
+    -- a boss change on the default raid's first boss (Hydross on TBC): Frost Resistance and Nature Resistance, at
+    -- whatever index the client's lists have them
+    local boss = Totems:Bosses(DefaultRaid())[1]
+    if boss then
+        local fire, air = #D.TOTEMS[2], #D.TOTEMS[4]
+        for i, t in ipairs(D.TOTEMS[2]) do if t.key == "frostres" then fire = i end end
+        for i, t in ipairs(D.TOTEMS[4]) do if t.key == "natres" then air = i end end
+        s.boss[boss.key] = {}
+        for _, n in ipairs({ "Ornaar", me, "Iridi", "Velaara" }) do
+            s.boss[boss.key][n] = { [2] = { i = fire }, [4] = { i = air, alt = true } }
+        end
     end
     -- who has what: Sunniva stands out of Mana Spring; the rest of each party has their shaman's buffs
     d.hasBuff = function(unit, el, idx)

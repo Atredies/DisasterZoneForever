@@ -1,6 +1,7 @@
 if DisasterZoneBoot and DisasterZoneBoot.Run("UI/Tooltip.lua", ...) then return end -- DisasterZone UI/Tooltip.lua
 -- Adds DisasterZone lines to item tooltips: your own BiS status for everyone and, for the Loot Council,
--- who wants the item (SPEC §12.9). Uses HookScript("OnTooltipSetItem"); TooltipDataProcessor is retail-only.
+-- who wants the item (SPEC §12.9). Uses HookScript("OnTooltipSetItem") where the tooltip has it (TBC); WoW Forever
+-- (the retail engine) has no such script, so there TooltipDataProcessor's Item / Unit post-calls run the same code.
 -- 1.3.5: compact by default (one line each for my BiS, a prized item's rules and the wanters); Shift shows it all.
 -- Player tooltips get the player's title and season from the guild's events (Core/Events.lua).
 local addonName, ns = ...
@@ -36,6 +37,9 @@ local TOOLTIPS = { "GameTooltip", "ItemRefTooltip", "ShoppingTooltip1", "Shoppin
 local COMPARE = { ShoppingTooltip1 = true, ShoppingTooltip2 = true, ItemRefShoppingTooltip1 = true,
                   ItemRefShoppingTooltip2 = true }
 local VIA_TEXT = ns.VIA_TEXT or { token = "via token", upgrade = "via Sunmote upgrade", arena = "via token exchange" }
+if ns.Compat and ns.Compat.isForever then   -- (WoW Forever: no Sunmotes, no arenas)
+    VIA_TEXT = { token = "via token", upgrade = "via upgrade", arena = "via token exchange" }
+end
 
 local FALLBACK_COLORS = {
     main     = { 0.98, 0.78, 0.22 },
@@ -45,7 +49,7 @@ local FALLBACK_COLORS = {
 }
 
 local cache, cacheSize = {}, 0
-local hooked = {}                               -- [tooltip] = true
+local hooked = {}                               -- [tooltip] = "script" (OnTooltipSetItem) or "data" (TooltipDataProcessor)
 local blocks = setmetatable({}, { __mode = "k" })     -- [tooltip] = { first, n, id }: a compact block Shift expands
 local matsOn = setmetatable({}, { __mode = "k" })     -- [tooltip] = the line of its "Materials" header
 local mats = { n = 1, level = 0 }                     -- the id shown, its amount and breakdown steps
@@ -340,12 +344,20 @@ end
 ---------------------------------------------------------------------------
 -- Tooltip hooks
 ---------------------------------------------------------------------------
+-- A tooltip line's text, or nil when there is none or the client keeps it secret (Forever).
+local function LineText(fs)
+    local text = fs and fs:GetText()
+    if type(text) ~= "string" then return nil end
+    local C = ns.Compat
+    if C and C.IsSecret and C.IsSecret(text) then return nil end
+    return text
+end
+
 local function HasMarker(tt)
     local name = tt.GetName and tt:GetName()
     if not name then return false end
     for i = 1, tt:NumLines() do
-        local fs = _G[name .. "TextLeft" .. i]
-        local text = fs and fs:GetText()
+        local text = LineText(_G[name .. "TextLeft" .. i])
         if text and text:find(SEAL_MARK, 1, true) then return true end
     end
     return false
@@ -357,7 +369,7 @@ local function HasMaterials(tt)
     if not line then return false end
     local name = tt.GetName and tt:GetName()
     local fs = name and line <= tt:NumLines() and _G[name .. "TextLeft" .. line]
-    local text = fs and fs:GetText()
+    local text = fs and LineText(fs)
     if text and text:find("^Materials") then return true end
     matsOn[tt] = nil
     return false
@@ -365,11 +377,26 @@ end
 
 local Ribbon   -- (the prized ribbon, below)
 
-local function OnSetItem(tt)
-    if not tt.GetItem then return end
-    local _, link = tt:GetItem()
-    if type(link) ~= "string" then return end
-    local itemID = tonumber(link:match("item:(%d+)"))
+-- The item a tooltip shows: from its link, else (TooltipDataProcessor) the tooltip data's id. Secret values are
+-- skipped: they may not be matched or compared.
+local function ShownItemID(tt, data)
+    local C = ns.Compat
+    local plain = C and C.Plain or function(v) return v end
+    local itemID
+    if tt.GetItem then
+        local _, link = tt:GetItem()
+        link = plain(link)
+        if type(link) == "string" then itemID = tonumber(link:match("item:(%d+)")) end
+    end
+    if not itemID and type(data) == "table" and plain(data) then
+        local id = plain(data.id)
+        if type(id) == "number" then itemID = id end
+    end
+    return itemID
+end
+
+local function OnSetItem(tt, data)
+    local itemID = ShownItemID(tt, data)
     if not itemID or itemID <= 0 then return end
     Ribbon.Show(tt, itemID)
     if HasMarker(tt) or HasMaterials(tt) then return end   -- hooks can fire more than once per tooltip
@@ -754,7 +781,7 @@ local function ExpandBlocks()
         local name = tt.GetName and tt:GetName()
         if name and tt:IsShown() then
             local left1 = _G[name .. "TextLeft" .. b.first]
-            local text = left1 and left1:GetText()
+            local text = left1 and LineText(left1)
             local lines = Tooltip:BlockLines(b.id, true)
             if b.first + b.n - 1 == tt:NumLines() and text and text:find(SEAL_MARK, 1, true) and #lines >= b.n then
                 for i, x in ipairs(lines) do
@@ -782,11 +809,36 @@ local function ExpandBlocks()
     end
 end
 
+-- TooltipDataProcessor (the retail engine, WoW Forever) and its tooltip data type, or nil (TBC).
+local function DataProcessor(kind)
+    local P, E = _G.TooltipDataProcessor, _G.Enum
+    local t = E and E.TooltipDataType and E.TooltipDataType[kind]
+    if type(P) == "table" and type(P.AddTooltipPostCall) == "function" and t ~= nil then return P, t end
+end
+
+-- One Item post-call for every tooltip (Blizzard runs it for all of them: GameTooltip, ItemRefTooltip, the shopping
+-- tooltips, embedded ones); it acts only on the tooltips hooked here without an OnTooltipSetItem script.
+local dataItemCall = false
+local function RegisterItemPostCall()
+    if dataItemCall then return true end
+    local P, t = DataProcessor("Item")
+    if not P then return false end
+    P.AddTooltipPostCall(t, function(tt, data)
+        if hooked[tt] == "data" then OnSetItem(tt, data) end
+    end)
+    dataItemCall = true
+    return true
+end
+
 function Tooltip:HookTooltip(tt)
     if type(tt) ~= "table" or hooked[tt] or not tt.HookScript then return false end
-    if tt.HasScript and not tt:HasScript("OnTooltipSetItem") then return false end
-    hooked[tt] = true
-    tt:HookScript("OnTooltipSetItem", OnSetItem)
+    if tt.HasScript and not tt:HasScript("OnTooltipSetItem") then
+        if not RegisterItemPostCall() then return false end
+        hooked[tt] = "data"
+    else
+        hooked[tt] = "script"
+        tt:HookScript("OnTooltipSetItem", OnSetItem)
+    end
     if not tt.HasScript or tt:HasScript("OnTooltipCleared") then
         tt:HookScript("OnTooltipCleared", OnCleared)
     end
@@ -818,7 +870,10 @@ end
 local function OnSetUnit(tt)
     if not (tt and tt.GetUnit) then return end
     local _, unit = tt:GetUnit()
-    if not unit or not (UnitIsPlayer and UnitIsPlayer(unit)) then return end
+    local C = ns.Compat
+    local plain = C and C.Plain or function(v) return v end
+    unit = plain(unit)
+    if type(unit) ~= "string" or not UnitIsPlayer or plain(UnitIsPlayer(unit)) ~= true then return end
     local key = ns.Util.UnitKey and ns.Util.UnitKey(unit)
     local ok, added = pcall(Tooltip.AddEventLines, Tooltip, tt, key)
     if ok and added then tt:Show() end
@@ -840,7 +895,16 @@ function Tooltip:OnLogin()
     for _, name in ipairs(TOOLTIPS) do
         self:HookTooltip(_G[name])
     end
-    if GameTooltip and GameTooltip.HookScript then GameTooltip:HookScript("OnTooltipSetUnit", OnSetUnit) end
+    if GameTooltip and GameTooltip.HookScript then
+        if not GameTooltip.HasScript or GameTooltip:HasScript("OnTooltipSetUnit") then
+            GameTooltip:HookScript("OnTooltipSetUnit", OnSetUnit)
+        else   -- (the retail engine: the Unit post-call, for GameTooltip only)
+            local P, t = DataProcessor("Unit")
+            if P then
+                P.AddTooltipPostCall(t, function(tt) if tt == GameTooltip then OnSetUnit(tt) end end)
+            end
+        end
+    end
     ns:RegisterEvent("MODIFIER_STATE_CHANGED", function(_, key, down)
         if key == "LSHIFT" or key == "RSHIFT" then
             down = down == 1 or down == true

@@ -213,7 +213,8 @@ function H.RowLine(r, sec)
     if sec == "check" then return Rc:CheckInDue(r) == "w" and "1 week in the guild" or "1 month in the guild" end
     if sec == "mile" then
         local m = Rc:RecentMilestone(r)
-        return (m == 70 and "Hit 70" or m == 58 and "Hit 58" or m == "d" and "First dungeon with us" or "First raid with us")
+        local lvl = ns.Recruit.MILESTONE_LEVEL and ns.Recruit.MILESTONE_LEVEL[m]
+        return (lvl and ("Hit " .. lvl) or m == "d" and "First dungeon with us" or "First raid with us")
             .. (Rc:Wants(r, "raid") and " · wants to raid" or "")
     end
     if sec == "quiet" then return "Offline " .. (Rc:QuietDays(r) or 0) .. " days" end
@@ -483,7 +484,7 @@ end
 -- The story: notes, the introduction, raids with us (the guest book), milestones, joined, how we met; newest first.
 function H.Story(r)
     local out = {}
-    for _, n in ipairs(r.n or {}) do out[#out + 1] = { kind = "note", by = n.by, at = n.at, t = n.t } end
+    for _, n in ipairs(r.n or {}) do out[#out + 1] = { kind = "note", by = n.by, at = n.at, t = n.t, rb = n.rb } end
     if r.ib and r.it then out[#out + 1] = { kind = "intro", by = r.ib, at = r.at or r.rev, t = r.it } end
     local GB = ns.GuestBook
     local e = GB and GB.GetEntry and GB:GetEntry(r.key)
@@ -493,7 +494,8 @@ function H.Story(r)
                 sub = z.noShow and "signed up, didn't come" or ("guest in our raid" .. (z.kills and z.kills > 0 and (" · " .. z.kills .. " kills") or "")) }
         end
     end
-    local MS = { [58] = "Hit level 58 · off to Outland", [70] = "Hit level 70", d = "First dungeon with the guild", r = "First raid with the guild" }
+    local MT = ns.Recruit.MILESTONE_TEXT or {}
+    local MS = { [58] = MT[58], [70] = MT[70], d = "First dungeon with the guild", r = "First raid with the guild" }
     for k, at in pairs(r.ms or {}) do out[#out + 1] = { kind = "mile", at = at, t = MS[k] or "" } end
     if r.iv and r.iv.r ~= "sent" then
         local IV = { declined = "Declined the guild invite", ignored = "Didn't answer the guild invite",
@@ -560,7 +562,9 @@ function H.FillStory(s, r, maxH)
             UI:ClassIcon(it.face, UI:ClassOf(e.by) or "PRIEST")
             if e.kind == "intro" then it.text:SetTextColor(0.96, 0.92, 0.80) else it.text:SetTextColor(S:RGB("TEXT")) end
             it.text:SetText(e.kind == "intro" and ("\"" .. e.t .. "\"") or e.t)
-            it.sub:SetText(Name(e.by) .. S:Wrap("DIM", (e.kind == "intro" and " introduced them" or "") .. " · " .. date("%a %d %b", e.at)))
+            -- (rb: passed on by another recruiter, not by its writer: the name is their word, Core/Recruit.lua)
+            it.sub:SetText(Name(e.by) .. S:Wrap("DIM", (e.kind == "intro" and " introduced them" or "") .. " · " .. date("%a %d %b", e.at)
+                .. (e.rb and (" · relayed by " .. Short(e.rb)) or "")))
         elseif e.kind == "run" then
             it.art:Show()
             H.Art(e.inst)(it.art, 40, 22)
@@ -685,7 +689,8 @@ function H.FillPerson()
         local days = floor((ns.Util.Now() - (r.ja or r.rev)) / DAY)
         v.settle:SetTitle("SETTLING IN · " .. (days >= 14 and (floor(days / 7) .. " WEEKS") or (days .. " DAYS")), "caps")
         local now = live.lv or r.lv or r.jl
-        v.settle.bar:Set(r.jl >= 70 and 1 or (now - r.jl) / max(1, 70 - r.jl))
+        local cap = ns.Recruit.MAX_LEVEL or 70
+        v.settle.bar:Set(r.jl >= cap and 1 or (now - r.jl) / max(1, cap - r.jl))
         v.settle.lvt:SetText(r.jl .. " to " .. now)
         v.settle.facts:SetText(S:Wrap("TEXT", r.la and H.Day(r.la) or "?") .. " last online")
         ly = ly - 70 - GAP
@@ -1037,7 +1042,7 @@ function H.PlaceRow(m, i)
         end)
     row.city:SetPoint("LEFT", 316, 0)
     UI:AttachTooltip(row.city, "Major cities only", { "Posts only while you're in a capital: Stormwind, Orgrimmar, "
-        .. "Shattrath and the others." })
+        .. ((ns.Compat and ns.Compat.isForever) and "Ironforge" or "Shattrath") .. " and the others." })
     row.next = UI:Text(row, "small", "DIM", { justify = "RIGHT" })
     row.next:SetPoint("RIGHT", -24, 0)
     row.del = UI:CreateRemoveButton(row, "Remove this place")

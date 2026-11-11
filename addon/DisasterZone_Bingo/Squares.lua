@@ -26,8 +26,24 @@ Squares.QUALITY = {
     l = { key = "l", name = "Legendary", color = { 1, 0.5, 0 }, points = 10, deal = 1, odds = "once a season, if ever" },
 }
 
--- The raids with a pool of their own (plan keys, ns.Data.RaidMeta).
+-- The raids with a pool of their own (plan keys, ns.Data.RaidMeta). These are the TBC original's raids: every square
+-- in them is a combat log rule (or, tk_gaze, a TBC boss's emote), so on WoW Forever no pool is dealt (Squares:Pool).
+-- Forever's raids (Data/ForeverRaids.lua: Barrow Deeps, Hyjal Summit, Onyxia's Lair) get no pool of their own: their
+-- moments would need the combat log too, and boss emotes are secret during a pull (Probe Findings 2026-11-08).
 Squares.RAIDS = { "kara", "gruul", "mag", "ssc", "tk" }
+
+-- Squares that only fill from the combat log (Detect.lua's CLEU handlers). WoW Forever gives addons no combat log
+-- (ns.Compat:CanUseCombatLog() false): those squares are never dealt there, so no card holds a square that cannot
+-- fill. Deaths still count on Forever: Detect.lua polls the group's dead state instead (Detect:PollDeaths), so the
+-- death squares (Dominoes, So Close, Flawless, Ghost Mode, Pulled Too Hard, Trash Talk, ...) stay.
+Squares.NEEDS_LOG = {
+    bubble_hearth = true, phoenix = true, beat_clock = true, ankh = true, fall_death = true, drown = true,
+    divine_intervention = true, one_shot = true, bres = true, overkill = true, big_crit = true, loh = true,
+    feign_wipe = true, fire = true, interrupts = true, crushing = true, taunt_resist = true, lust = true,
+    drums = true, healthstone = true, fall = true, pet_death = true,
+}
+-- (raid pool squares need the log too, all but these)
+Squares.RAID_NO_LOG = { tk_gaze = true }
 
 local function S(id, q, title, text, icon, raid, hint)
     return { id = id, q = q, title = title, text = text, icon = icon, raid = raid, hint = hint }
@@ -187,11 +203,26 @@ function Squares:Icon(sq)
     return "Interface\\Icons\\" .. sq.icon
 end
 
--- The core set (dealt everywhere) and a raid's pool, in list order.
+-- True when the square can only fill from the combat log.
+function Squares:NeedsLog(sqOrId)
+    local sq = type(sqOrId) == "table" and sqOrId or self.byId[sqOrId]
+    if not sq then return false end
+    if sq.raid then return not self.RAID_NO_LOG[sq.id] end
+    return self.NEEDS_LOG[sq.id] == true
+end
+
+-- True when this client can fill the square (every square where addons have the combat log).
+function Squares:Dealable(sqOrId)
+    local C = ns.Compat
+    if not C or not C.CanUseCombatLog or C:CanUseCombatLog() then return true end
+    return not self:NeedsLog(sqOrId)
+end
+
+-- The core set (dealt everywhere) and a raid's pool, in list order: only the squares this client can fill.
 function Squares:Core()
     local out = {}
     for _, sq in ipairs(self.list) do
-        if not sq.raid then out[#out + 1] = sq end
+        if not sq.raid and self:Dealable(sq) then out[#out + 1] = sq end
     end
     return out
 end
@@ -200,7 +231,7 @@ function Squares:Pool(raid)
     local out = {}
     if not raid then return out end
     for _, sq in ipairs(self.list) do
-        if sq.raid == raid then out[#out + 1] = sq end
+        if sq.raid == raid and self:Dealable(sq) then out[#out + 1] = sq end
     end
     return out
 end

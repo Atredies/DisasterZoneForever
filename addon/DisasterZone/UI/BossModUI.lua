@@ -195,7 +195,7 @@ local function Members()
     return units
 end
 local function Usable(u)
-    return UnitExists(u) and not UnitIsUnit(u, "player") and not UnitIsDeadOrGhost(u) and UnitIsConnected(u)
+    return UnitExists(u) and not ns.Compat.SameUnit(u, "player") and not UnitIsDeadOrGhost(u) and UnitIsConnected(u)
 end
 local R = { dots = {}, near = {} }
 local pool = {}

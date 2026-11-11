@@ -50,16 +50,16 @@ end
 function H.EscapeCloses(f, closeFn)
     f:SetScript("OnKeyDown", function(self, key)
         if key == "ESCAPE" then
-            if not H.InCombat() then self:SetPropagateKeyboardInput(false) end
+            if not H.InCombat() then ns.Util.SetPropagateKeys(self, false) end
             closeFn(self)
         elseif not H.InCombat() then
-            self:SetPropagateKeyboardInput(true)
+            ns.Util.SetPropagateKeys(self, true)
         end
     end)
     f:HookScript("OnShow", function(self)
         if not H.InCombat() then
             self:EnableKeyboard(true)
-            self:SetPropagateKeyboardInput(true)
+            ns.Util.SetPropagateKeys(self, true)
         end
     end)
     f:HookScript("OnHide", function(self)

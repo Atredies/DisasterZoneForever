@@ -115,3 +115,20 @@ ns.ClassData.SHAMAN = {
     SPEC_ICONS = { Elemental = ICON .. "Spell_Nature_Lightning", Enhancement = ICON .. "Spell_Nature_LightningShield",
         Restoration = ICON .. "Spell_Nature_MagicImmunity" },
 }
+
+-- WoW Forever: the TBC totems are not in the game (Totem of Wrath, Wrath of Air, the Earth and Fire Elementals).
+-- Element lists are this client's ShamanPower indexes, so every Forever client drops the same ones.
+if ns.Compat and ns.Compat.isForever then
+    local D, TBC = ns.ClassData.SHAMAN, { tow = true, woa = true, earthele = true, fireele = true }
+    for _, list in ipairs(D.TOTEMS) do
+        for i = #list, 1, -1 do
+            if TBC[list[i].key] then table.remove(list, i) end
+        end
+    end
+    D.TOTEM_OF_WRATH = nil
+    -- No Heroism or Bloodlust (neither is in Wowhead's Forever spell database, checked 2026-11-09; UNVERIFIED in a
+    -- shaman's spellbook): the planner's Heroism column, the bar's header cell and the DZHERO plan go. Earth Shield
+    -- stays: Forever has it for every shaman from level 50 (spell 974, not a talent there).
+    D.HEROISM, D.HEROISM_ICON, D.BLOODLUST, D.BLOODLUST_ICON = nil, nil, nil, nil
+    D.HERO_WHEN = {}
+end

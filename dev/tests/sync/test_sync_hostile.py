@@ -240,7 +240,7 @@ MALFORMED_RAW = [
     ("CDLc", '__enc({ t = "LW", d = (function() local d = {} for i = 1, 1000 do d[i] = %d - i end return d end)() })' % DAY, "WHISPER"),
     ("CDLd", '__enc({ t = "LG", e = "x" })', "WHISPER"),
     ("CDLd", '__enc({ t = "LG", e = { "x", {}, { id = 5 }, { id = "ok", i = "x" } } })', "WHISPER"),
-    ("CDLd", '__enc({ t = "LG", e = (function() local e = {} for i = 1, 100 do e[i] = { id = "junk" .. i, i = 999999, w = "x", by = "y", ts = 1, s = "a" } end return e end)() })', "WHISPER"),
+    ("CDLd", '__enc({ t = "LG", e = (function() local e = {} for i = 1, 100 do e[i] = { id = "junk" .. i, i = 2000000, w = "x", by = "y", ts = 1, s = "a" } end return e end)() })', "WHISPER"),
 ]
 
 

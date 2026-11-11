@@ -295,9 +295,9 @@ local function Strip(seg)
 end
 
 local function BossPct()
-    if UnitExists and UnitExists("boss1") and UnitHealthMax then
-        local m = UnitHealthMax("boss1") or 0
-        if m > 0 then return floor((UnitHealth("boss1") or 0) / m * 1000 + 0.5) / 10 end
+    if UnitExists and UnitExists("boss1") then
+        local pct = ns.Compat.HealthPct("boss1")          -- (nil on Forever: health is secret)
+        if pct then return floor(pct * 10 + 0.5) / 10 end
     end
     return nil
 end
@@ -346,13 +346,13 @@ end
 ---------------------------------------------------------------------------
 
 local function AddUnit(unit)
-    local guid = UnitGUID and UnitGUID(unit)
+    local guid = ns.Compat.GUID(unit)
     if not guid then return end
     local name = UnitName(unit)
     local _, cls = UnitClass(unit)
     roster[guid] = { unit = unit, name = name, cls = cls }
     local petUnit = (unit == "player") and "pet" or (unit:gsub("^(%a+)(%d+)$", "%1pet%2"))
-    local pg = UnitGUID and UnitGUID(petUnit)
+    local pg = ns.Compat.GUID(petUnit)
     if pg then owner[pg] = guid end
 end
 
@@ -561,7 +561,7 @@ local function Push(guid, now, kind, key, amount, srcName, extra)
     if not r then return end
     local ring = rings[guid]
     if not ring then ring = CL.NewRing(RING); rings[guid] = ring end
-    CL.Push(ring, now, kind, key, amount, srcName, UnitHealth and UnitHealth(r.unit) or 0, extra)
+    CL.Push(ring, now, kind, key, amount, srcName, UnitHealth and ns.Compat.Plain(UnitHealth(r.unit)) or 0, extra)
 end
 
 local function NoteDeath(guid, now)
@@ -576,7 +576,7 @@ local function NoteDeath(guid, now)
     else
         ev = {}
     end
-    local hpMax = UnitHealthMax and UnitHealthMax(r.unit) or 0
+    local hpMax = UnitHealthMax and ns.Compat.Plain(UnitHealthMax(r.unit)) or 0
     Each(function(seg)
         if #seg.deaths >= DEATHS_MAX then return end
         local t = seg._t0 and (now - seg._t0) or 0
@@ -818,8 +818,8 @@ end
 
 local function OnRoster() Meter:RebuildRoster() end
 local function OnPet(_, unit)
-    local pg = unit and UnitGUID and UnitGUID(unit == "player" and "pet" or (unit:gsub("^(%a+)(%d+)$", "%1pet%2")))
-    local og = unit and UnitGUID and UnitGUID(unit)
+    local pg = unit and ns.Compat.GUID(unit == "player" and "pet" or (unit:gsub("^(%a+)(%d+)$", "%1pet%2")))
+    local og = unit and ns.Compat.GUID(unit)
     if pg and og then owner[pg] = og end
 end
 local function OnWorld()
@@ -867,7 +867,8 @@ function Meter:OnLogin()
     ns:RegisterEvent("PLAYER_LOGOUT", function()
         if live then Meter:Finish(nil, true) end
     end)
-    ns:RegisterSlash("meter", function(arg)
+    -- (WoW Forever: no combat log, no damage meter, so no /dz meter and no help line for it)
+    if not (ns.Compat and ns.Compat.isForever) then ns:RegisterSlash("meter", function(arg)
         arg = (arg or ""):lower()
         if arg == "reset" or arg == "clear" then
             Meter:ClearAll()
@@ -877,7 +878,7 @@ function Meter:OnLogin()
         elseif ns.MeterWindow then
             ns.MeterWindow:Toggle()
         end
-    end, "show or hide the damage meter (on | off | reset)")
+    end, "show or hide the damage meter (on | off | reset)") end
     self:Refresh()
 end
 

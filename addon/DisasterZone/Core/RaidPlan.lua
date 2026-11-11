@@ -39,8 +39,8 @@ if DisasterZoneBoot and DisasterZoneBoot.Run("Core/RaidPlan.lua", ...) then retu
 -- asks for the items that differ (RPW) and sends its own copy of them; items travel one per message (RPG).
 -- Records merge by rev (then by hash), so both sides converge. A version whose writer may not write it (see Trusted)
 -- never replaces one that shows, and only who names leaders changes a stored raid's leader: a hand-made message
--- can't delete, change or take over a raid on a client that holds it. (A copy passed on by someone else, RPG, can't
--- prove who wrote it: a client that never had the record takes it at its word.)
+-- can't delete, change or take over a raid on a client that holds it. A copy passed on by someone else (RPG) can't
+-- prove who wrote it: it is taken only from its writer or a raid planner (Vouched), else a planner's copy is asked for.
 local addonName, ns = ...
 
 local RaidPlan = ns:NewModule("RaidPlan")
@@ -85,7 +85,8 @@ local MAX_ID_LEN = 24
 local MAX_NAME_LEN = 32             -- team names, raid titles
 local MAX_NOTE_LEN = 120            -- raid notes
 local MAX_SIGNUP_NOTE = 40
-local MAX_LEVEL = 70                -- the level cap: the highest minimum level a raid can ask for
+-- The level cap: the highest minimum level a raid can ask for (70 on TBC; WoW Forever: Data/ForeverRaids.lua, 60).
+local MAX_LEVEL = 70
 local MAX_GUESTS = 25               -- guests per raid
 local MAX_MARKS = 60                -- declined / removed answers per raid
 local MAX_BLACKLIST = 100           -- players on the guild's blacklist
@@ -105,21 +106,45 @@ local MAX_RESTAMPS = 10             -- records written again per pass
 -- the keys from Data/Raids.lua (planKey), name, size and instance id from Data/Items.lua, then "other". The keys are
 -- saved and sent (raids' i / ix): never change them.
 local INSTANCES = {}
+local SIZES = { [10] = true, [25] = true }
+local SIZE_LIST = { 10, 25 }        -- the sizes in order (the size menus)
+local DEFAULT_SIZE = 25             -- a team, lineup or "Other" raid without a size
 do
     local data = ns.Data or {}
-    local meta = data.RaidMeta or {}
-    for _, raid in ipairs(data.Raids or {}) do
-        local m = type(raid) == "table" and meta[raid.key]
-        if m and m.planKey then
-            INSTANCES[#INSTANCES + 1] = { key = m.planKey, name = raid.name, size = raid.size, instID = raid.instanceID }
+    local planner = data.PlannerRaids   -- WoW Forever (Data/ForeverRaids.lua): its own raids, sizes and level
+    if type(planner) == "table" then
+        for _, r in ipairs(planner.raids or {}) do
+            INSTANCES[#INSTANCES + 1] = { key = r.key, name = r.name, size = r.size, instID = r.instanceID,
+                short = r.short, level = r.level }
+        end
+        SIZES, SIZE_LIST = {}, {}
+        for _, n in ipairs(planner.sizes or {}) do SIZES[n] = true; SIZE_LIST[#SIZE_LIST + 1] = n end
+        DEFAULT_SIZE = planner.other or SIZE_LIST[#SIZE_LIST]
+        local cap = GetMaxPlayerLevel and tonumber(GetMaxPlayerLevel())
+        MAX_LEVEL = math.max(tonumber(planner.level) or 0, cap or 0)
+    else
+        local meta = data.RaidMeta or {}
+        for _, raid in ipairs(data.Raids or {}) do
+            local m = type(raid) == "table" and meta[raid.key]
+            if m and m.planKey then
+                INSTANCES[#INSTANCES + 1] = { key = m.planKey, name = raid.name, size = raid.size, instID = raid.instanceID }
+            end
         end
     end
-    INSTANCES[#INSTANCES + 1] = { key = "other", name = "Other", size = 25 }
+    INSTANCES[#INSTANCES + 1] = { key = "other", name = "Other", size = DEFAULT_SIZE }
 end
 local INSTANCE_BY_KEY = {}
 for _, inst in ipairs(INSTANCES) do INSTANCE_BY_KEY[inst.key] = inst end
 
-local SIZES = { [10] = true, [25] = true }
+-- "10 or 25" / "10, 20 or 40": the sizes in an error message.
+local function SizesText()
+    local n = #SIZE_LIST
+    if n == 0 then return "" end
+    if n == 1 then return tostring(SIZE_LIST[1]) end
+    local head = {}
+    for i = 1, n - 1 do head[i] = tostring(SIZE_LIST[i]) end
+    return table.concat(head, ", ") .. " or " .. SIZE_LIST[n]
+end
 local STATUSES = { A = true, T = true, B = true, X = true }   -- Accept, Tentative, Bench, Absent
 
 local pending = {}                  -- ["kind:id"] = { kind, rec, via }: newer versions refused for now (MergeRecord)
@@ -307,6 +332,17 @@ local function Trusted(root, kind, rec)
     if not Entitled(root, kind, rec) then return false end
     if root.OK then root.OK[k] = true end
     return true
+end
+
+-- 2026-11-09 (authority holes): may this copy of a version be believed about who wrote it (rec.by)? A copy from its
+-- writer (another character of theirs; a live RPU, whose by must be its sender) or made here (via nil / me) is; one
+-- passed on by anybody else only when they could have written it themselves: a raid planner (who also names leaders),
+-- for a team also the guild council. Any guild member answers the login sync, and a made-up copy "by" a raid leader
+-- would otherwise show on a client that never had the record, or replace one it had. An unvouched copy waits
+-- (HoldBack) while a planner's copy is asked for (AskPlanner); a planner who logs in later sends theirs in the sync.
+local function Vouched(kind, rec, via)
+    if via == nil or Util.IsMe(via) or SamePlayer(via, rec.by) or CanAssignLeader(via) then return true end
+    return kind == "T" and CanTeams(via)
 end
 
 -- Do two versions of a raid record name the same leader, named by the same player, in their own fields (rl / rlb)?
@@ -536,7 +572,7 @@ function Lineup.CarryOver(L, rec)
     local list = {}
     for i, l in ipairs(L) do
         local c = { id = l.id, n = l.n, sz = l.sz, s = l.s, grp = l.grp, gs = l.gs, cp = l.cp }
-        if i == 1 then c.sz, c.s, c.grp, c.gs, c.cp = rec.sz or 25, rec.s, rec.grp, rec.gs, rec.cp end
+        if i == 1 then c.sz, c.s, c.grp, c.gs, c.cp = rec.sz or DEFAULT_SIZE, rec.s, rec.grp, rec.gs, rec.cp end
         list[i] = c
     end
     return Lineup.CleanList(list, set) or nil
@@ -545,7 +581,7 @@ end
 -- A stored team's lineups: its L, or (a team saved before 1.3.2) one lineup "1" made of sz / s / grp / gs / cp.
 function Lineup.Of(t)
     if type(t.L) == "table" and t.L[1] then return t.L end
-    return { { id = "1", sz = t.sz or 25, s = t.s, grp = t.grp, gs = t.gs, cp = t.cp } }
+    return { { id = "1", sz = t.sz or DEFAULT_SIZE, s = t.s, grp = t.grp, gs = t.gs, cp = t.cp } }
 end
 
 -- A raid's lineup of each team (tl): { [team id] = lineup id }. nil = none given, false = invalid.
@@ -690,7 +726,7 @@ local function CleanTeam(r, now)
     out.gs = CleanSeats(r.gs, out.grp)
     -- 1.3.1: the team's target comp (Core/RaidComp.lua): a bad one refuses the record, as a bad s does
     if r.cp ~= nil then
-        local cp = ns.RaidComp:CleanComp(r.cp, out.sz or 25)
+        local cp = ns.RaidComp:CleanComp(r.cp, out.sz or DEFAULT_SIZE)
         if not cp then return nil end
         out.cp = cp
     end
@@ -906,12 +942,17 @@ local function AskPlanner(item, rev, via)
         tsort(list)
         local G = Guild()
         local me = Util.PlayerKey()
+        -- (2026-11-09, round 4: the first by name sent a whole login wave's asks to the same planner, often the GM.
+        -- Now, when the planners' digests heard on GUILD show who holds these records, one of those picked by my name;
+        -- else the first, as before: an ask is sent once per version, so it goes to the planner most likely to hold it)
+        local planners = {}
         for _, key in ipairs(G and G.GetOnlineMembers and G:GetOnlineMembers() or {}) do
-            if key ~= me and key ~= via and CanAssignLeader(key) then
-                Send({ t = "RPW", w = list }, "WHISPER", key, "ctrl")
-                return
-            end
+            if key ~= me and key ~= via and CanAssignLeader(key) then planners[#planners + 1] = key end
         end
+        if #planners == 0 then return end
+        local known = sync:KnownHolders(planners, list, true)
+        local to = known and known[1 + Util.Adler32(me or "") % #known] or planners[1]
+        Send({ t = "RPW", w = list }, "WHISPER", to, "ctrl")
     end)
 end
 
@@ -988,6 +1029,11 @@ local function MergeRecord(root, kind, rec, via)
         ns:Debug("RaidPlan: %s store full, %s dropped", kind, rec.id)
         return false
     end
+    if not Vouched(kind, rec, via) then
+        HoldBack(kind, rec, via)
+        AskPlanner((kind == "T" and "T:" or kind == "S" and "S:" or "O:") .. rec.id, rec.rev, via)
+        return false
+    end
     store[rec.id] = rec
     if Trusted(root, kind, rec) then ns.AuditSaw("rp." .. kind, cur, rec, { via = via }) end
     local p = pending[kind .. ":" .. rec.id]
@@ -1001,7 +1047,7 @@ end
 
 -- The refused versions again, after a change of the guild's roles (or of who shares an account).
 local function RetryPending()
-    local root = next(pending) and Root(false)
+    local root = (next(pending) or next(Merge.pendingU)) and Root(false)
     if not root then return end
     local list = pending
     pending = {}
@@ -1009,6 +1055,8 @@ local function RetryPending()
     for _, p in pairs(list) do
         if MergeRecord(root, p.kind, p.rec, p.via) then changed = true end
     end
+    -- (and the relayed sign-ups nobody vouched for yet)
+    if Merge.RetrySignups(root) then changed = true end
     if changed then Changed() end
 end
 
@@ -1064,10 +1112,14 @@ function Lineup.MergeWait(root, tid, ln, key, e)
     return true
 end
 
--- A team's waitlists as relayed (RPG w): { [lineup id] = { [player] = entry } }. Returns true when one changed.
-function Lineup.MergeAll(tid, w)
+-- A team's waitlists as relayed (RPG w) by `via`: { [lineup id] = { [player] = entry } }. Returns true when one
+-- changed. 2026-11-09 (authority holes, round 2): an entry is written by its player (joining, leaving) or the GM and
+-- the guild council (RTW); a relayed one is taken only from its player, the council or a raid planner (who hold only
+-- entries taken that way), else a planner's copy of the team is asked for.
+function Lineup.MergeAll(tid, w, via)
     local root = Root(true)
     if not root then return false end
+    local trusted = via == nil or Util.IsMe(via) or CanTeams(via) or CanAssignLeader(via)
     local now, changed, nl = Now(), false, 0
     for ln, list in pairs(w) do
         nl = nl + 1
@@ -1079,7 +1131,11 @@ function Lineup.MergeAll(tid, w)
                 if n > Lineup.MAX_STORED then break end
                 local k = WireKey(key)
                 local c = k and Lineup.CleanWait(e, now)
-                if c and Lineup.MergeWait(root, tid, ln, k, c) then changed = true end
+                if c and not (trusted or SamePlayer(via, k)) then
+                    AskPlanner("T:" .. tid, "w:" .. k .. ":" .. tostring(c.rev), via)
+                elseif c and Lineup.MergeWait(root, tid, ln, k, c) then
+                    changed = true
+                end
             end
         end
     end
@@ -1372,15 +1428,77 @@ local function OnHostSignups(sender, msg, dist)
     if changed then Changed() end
 end
 
+-- 2026-11-09 (authority holes, round 2): may a sign-up of `key` for occurrence occId, passed on by `via`, be believed?
+-- A sign-up is written by its owner only (RPS; another character of theirs, RPA; Discord answers, the Discord host,
+-- RPH). A copy passed on (RPG) can't prove who wrote it, so it is taken only from who could have sent it themselves or
+-- holds only copies taken that way: the owner (any character of theirs), a raid planner, the raid's own leader, the
+-- Discord host. Every client stores only such copies, so a planner's copy is as good as the owner's. Anyone else's
+-- copy waits (Merge.pendingU) while the planner or the owner online is asked for theirs (an owner also sends their
+-- answers at login): any member answers the login sync, and could otherwise slip in, change or withdraw anyone's
+-- answer on a client that missed the real one.
+Merge.pendingU = {}                 -- ["occId|key"] = { o, k, s, via }: relayed sign-ups not taken for now
+Merge.askedOwner = {}               -- ["occId|key"] = rev: the owner was asked about this answer
+
+function Merge.SignupVouched(root, occId, key, via)
+    if via == nil or Util.IsMe(via) or SamePlayer(via, key) or CanAssignLeader(via) then return true end
+    local G = Guild()
+    if G and G.IsDiscordHost and G:IsDiscordHost(via) then return true end
+    local v = ResolveOcc(root, occId)
+    return v ~= nil and v.rl ~= nil and SamePlayer(via, v.rl)
+end
+
+-- A relayed sign-up nobody vouched for: kept to try again when the guild's roles change, and asked for from a raid
+-- planner and the owner (whoever is online; once per answer).
+function Merge.HoldSignup(root, occId, key, s, via)
+    local cur = root.U[occId] and root.U[occId][key]
+    if cur and not Newer(s, cur) then return end
+    local pk = occId .. "|" .. key
+    local p = Merge.pendingU[pk]
+    if not p or Newer(s, p.s) then
+        if p or CountTable(Merge.pendingU) < MAX_PENDING * 3 then
+            Merge.pendingU[pk] = { o = occId, k = key, s = s, via = via }
+        end
+    end
+    AskPlanner("O:" .. occId, "u:" .. key .. ":" .. s.rev, via)
+    if Merge.askedOwner[pk] == s.rev then return end
+    Merge.askedOwner[pk] = s.rev
+    local G = Guild()
+    for _, m in ipairs(G and G.GetOnlineMembers and G:GetOnlineMembers() or {}) do
+        if m ~= via and not Util.IsMe(m) and SamePlayer(m, key) then
+            Send({ t = "RPW", w = { "O:" .. occId } }, "WHISPER", m, "ctrl")
+            return
+        end
+    end
+end
+
+-- The relayed sign-ups held back, again (the guild's roles changed: a planner may be known now). Returns true when
+-- one was taken.
+function Merge.RetrySignups(root)
+    if not next(Merge.pendingU) then return false end
+    local changed = false
+    for pk, p in pairs(Merge.pendingU) do
+        local cur = root.U[p.o] and root.U[p.o][p.k]
+        if cur and not Newer(p.s, cur) then
+            Merge.pendingU[pk] = nil
+        elseif Merge.SignupVouched(root, p.o, p.k, p.via) then
+            Merge.pendingU[pk] = nil
+            if MergeSignup(root, p.o, p.k, p.s) then changed = true end
+        end
+    end
+    return changed
+end
+
 -- RPG: one item (a team, a series, or an occurrence's override + sign-ups), relayed by anyone in the guild. The
 -- records go through the same checks as a live edit (MergeRecord); who relays them only counts for a raid's leader.
+-- Sign-ups and waitlist entries are taken only from who vouches for them (Merge.SignupVouched, Lineup.MergeAll).
 local function OnGive(sender, msg, dist)
     if dist ~= "WHISPER" then return end
     local changed = false
     if msg.T ~= nil then
         changed = StoreRecord("T", msg.T, sender)
-        -- (1.3.2) its waitlists: { [lineup id] = { [player] = entry } }, taken at their word like relayed sign-ups
-        if type(msg.w) == "table" and type(msg.T) == "table" and IsId(msg.T.id) and Lineup.MergeAll(msg.T.id, msg.w) then
+        -- (1.3.2) its waitlists: { [lineup id] = { [player] = entry } }, from who vouches for them (Lineup.MergeAll)
+        if type(msg.w) == "table" and type(msg.T) == "table" and IsId(msg.T.id)
+            and Lineup.MergeAll(msg.T.id, msg.w, sender) then
             changed = true
         end
     elseif msg.S ~= nil then
@@ -1400,7 +1518,13 @@ local function OnGive(sender, msg, dist)
                 if n > MAX_SIGNUPS then break end
                 local k = WireKey(key)
                 local c = k and CleanSignup(s, now)
-                if c and MergeSignup(root, msg.o, k, c) then changed = true end
+                if c then
+                    if not Merge.SignupVouched(root, msg.o, k, sender) then
+                        Merge.HoldSignup(root, msg.o, k, c, sender)
+                    elseif MergeSignup(root, msg.o, k, c) then
+                        changed = true
+                    end
+                end
             end
         end
     end
@@ -1417,12 +1541,50 @@ end
 -- (teams and series first: the items go one per message behind a throttle, and occurrences need their series)
 SYNC.giveSort = Merge.GiveBefore
 
+-- (DigestSync's recheck waits while relayed records or sign-ups are held back and a planner or their owner was asked
+-- for them: another member's copy would be held back the same way)
+-- (round 4: the planners' digests heard on GUILD say which of them holds what AskPlanner asks for)
+SYNC.holderHint = function(key) return CanAssignLeader(key) end
+
+SYNC.waiting = function()
+    if not next(Merge.pendingU) and not next(pending) then return false end
+    local root = Root(false)
+    if not root then return false end
+    for _, p in pairs(pending) do
+        local cur = type(p.rec) == "table" and root[p.kind] and root[p.kind][p.rec.id]
+        if type(p.rec) == "table" and (not cur or Newer(p.rec, cur)) then return true end
+    end
+    for _, p in pairs(Merge.pendingU) do
+        local cur = root.U[p.o] and root.U[p.o][p.k]
+        if not cur or Newer(p.s, cur) then return true end
+    end
+    return false
+end
+
 ---------------------------------------------------------------------------
 -- Public API: reading
 ---------------------------------------------------------------------------
 
 function RaidPlan:GetInstances()
     return INSTANCES
+end
+
+-- The raid sizes in order ({ 10, 25 }; WoW Forever { 10, 20, 40 }), the default one, and the level cap a raid can
+-- ask for (70; Forever 60). Data/ForeverRaids.lua sets them on Forever.
+function RaidPlan:GetSizes()
+    return SIZE_LIST
+end
+
+function RaidPlan:IsSize(n)
+    return SIZES[n] == true
+end
+
+function RaidPlan:GetDefaultSize()
+    return DEFAULT_SIZE
+end
+
+function RaidPlan:GetMaxLevel()
+    return MAX_LEVEL
 end
 
 function RaidPlan:GetInstance(key)
@@ -1847,13 +2009,24 @@ local function OnBlacklist(sender, msg, dist)
         if v > 0 then e.v = v end           -- (the same shape as mine before the two are hashed)
         local cur = rec.l[k]
         local cv = Merge.EntryRev(cur)
+        -- 2026-11-09 (authority holes, round 2): who blacklisted them (by) is the sender's word: from anyone but that
+        -- manager the entry keeps who passed it on (rec.rb[k], local), and the same entry from its writer clears it
+        local first = SamePlayer(e.by, sender)
         if v <= limit and v > (rec.x[k] or 0)
             and (not cur or v > cv or (v == cv and Util.Hash(e) > Util.Hash(cur)))
             and (cur or CountTable(rec.l) < MAX_BLACKLIST) then
             rec.l[k] = e
+            if type(rec.rb) ~= "table" then rec.rb = {} end
+            rec.rb[k] = not first and sender or nil
             ns.AuditSaw("rp.BL", cur, e, { key = k, via = sender })
             changed = true
+        elseif first and cur and type(rec.rb) == "table" and rec.rb[k] and Util.Hash(e) == Util.Hash(cur) then
+            rec.rb[k] = nil
+            changed = true
         end
+    end
+    if type(rec.rb) == "table" then
+        for k in pairs(rec.rb) do if not rec.l[k] then rec.rb[k] = nil end end
     end
     Merge.TrimMarks(rec)
     -- what I hold that the sender lacks (a list before 1.3.3 can't tell: it is not answered)
@@ -1926,7 +2099,7 @@ function RaidPlan:GetBlacklistEntry(key)
     local hit = InSet(rec.l, key)
     local e = hit and rec.l[hit]
     if type(e) ~= "table" then return nil end
-    return { key = hit, reason = e.r, by = e.by, at = e.at }
+    return { key = hit, reason = e.r, by = e.by, at = e.at, via = type(rec.rb) == "table" and rec.rb[hit] or nil }
 end
 
 function RaidPlan:IsBlacklisted(key)
@@ -1938,7 +2111,10 @@ function RaidPlan:GetBlacklist()
     local out = {}
     local rec = BlacklistRec(false)
     for key, e in pairs(rec and rec.l or {}) do
-        if type(e) == "table" then out[#out + 1] = { key = key, reason = e.r, by = e.by, at = e.at } end
+        if type(e) == "table" then
+            out[#out + 1] = { key = key, reason = e.r, by = e.by, at = e.at,
+                              via = type(rec.rb) == "table" and rec.rb[key] or nil }
+        end
     end
     tsort(out, function(a, b) return a.key < b.key end)
     return out
@@ -1976,6 +2152,7 @@ function RaidPlan:SetBlacklisted(name, reason)
     if type(rec.x) ~= "table" then rec.x = {} end
     local v = max(Now(), Merge.EntryRev(cur) + 1, (rec.x[key] or 0) + 1)
     rec.l[key] = { r = r, by = Util.PlayerKey(), at = cur and cur.at or Now(), v = v }
+    if type(rec.rb) == "table" then rec.rb[key] = nil end
     rec.x[key] = nil
     ns.AuditSaw("rp.BL", cur, rec.l[key], { key = key, mine = true })
     SaveBlacklist(rec)
@@ -2621,7 +2798,7 @@ function RaidPlan:ResolveTeam(team)
         name = team.name or team.n, members = members,
         specs = (type(team.specs) == "table" and team.specs) or (type(team.s) == "table" and team.s) or {},
         groups = (type(team.groups) == "table" and team.groups) or (type(team.grp) == "table" and team.grp) or {},
-        size = SIZES[size] and size or 25,
+        size = SIZES[size] and size or DEFAULT_SIZE,
         comp = ns.RaidComp:CleanComp(comp) or nil,
     }
 end
@@ -3232,7 +3409,7 @@ function RaidPlan:SaveTeam(id, name, members, opts)
                            cp = l.comp or nil }
         end
     else
-        for i, l in ipairs(cur and Lineup.Of(cur) or { { id = "1", sz = 25 } }) do
+        for i, l in ipairs(cur and Lineup.Of(cur) or { { id = "1", sz = DEFAULT_SIZE } }) do
             lineups[i] = { id = l.id, n = l.n, sz = l.sz, s = l.s, grp = l.grp, gs = l.gs, cp = l.cp }
         end
         local l = lineups[1]
@@ -3261,7 +3438,7 @@ function RaidPlan:SaveTeam(id, name, members, opts)
             until not used[l.id] and IsId(l.id)
             used[l.id] = true
         end
-        if not SIZES[l.sz] then return false, "Team size must be 10 or 25." end
+        if not SIZES[l.sz] then return false, "Team size must be " .. SizesText() .. "." end
         if l.s and not next(l.s) then l.s = nil end
         if l.grp and not next(l.grp) then l.grp, l.gs = nil, nil end
         if l.cp ~= nil then
@@ -3461,7 +3638,7 @@ local function ApplyFields(rec, f, partial)
         end
     end
     if f.sz ~= nil then
-        if not SIZES[f.sz] then return false, "Raid size must be 10 or 25." end
+        if not SIZES[f.sz] then return false, "Raid size must be " .. SizesText() .. "." end
         rec.sz = f.sz
     end
     if f.t ~= nil or not partial then

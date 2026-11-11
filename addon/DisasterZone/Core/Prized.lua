@@ -597,6 +597,17 @@ end
 SYNC.clean = function(kind, r) return CLEAN[kind](r) end
 SYNC.merge, SYNC.state = Merge, State
 
+-- 2026-11-09 (authority holes, round 2): every Prized record needs a role of its writer (rec.by, a field the sender
+-- controls): a relayed one (PZG) is taken only from its writer (any of their characters) or from someone who could
+-- have written it (their stores hold only versions taken that way; they answer a newcomer's sync first).
+SYNC.vouch = function(root, kind, rec, via)
+    if via == rec.by then return true end
+    local G = ns.Guild
+    if G and G.SameAccount and G:SameAccount(via, rec.by) then return true end
+    if kind == "G" then return Prized:CanRecordGiven(via) end
+    return Prized:CanEdit(via)
+end
+
 
 -- My own change: stored (merged like anyone's), then sent to the guild. Returns ok, the clean record.
 local function Commit(kind, rec) return sync:Commit(kind, rec) end
@@ -1364,6 +1375,27 @@ function Prized:BuildDemo()
         return { att = { m = "r", p = 75, w = 6 }, rank = { m = "r", i = 3 }, main = { m = "r" },
                  cd = { m = "r", w = 4 }, order = { m = mode or "p", g = order }, vote = { s = "all" } }
     end
+    local F = ns.Compat and ns.Compat.isForever
+    -- WoW Forever: level-60 dungeon drops (its raids have no loot yet); one spec per class, so class orders
+    local T = F and { tr1 = 11815, tr2 = 13213, pair = { 18717, 18718 }, caster = 11832, tr3 = 11819, bow = 12651,
+                      formula = 16252, tank = 11810 }
+              or { tr1 = 28830, tr2 = 30627, pair = { 32837, 32838 }, caster = 32483, tr3 = 32505, bow = 34334,
+                   formula = 22559, tank = 34427 }
+    if F then
+        melee = { "ROGUE", "WARRIOR" }
+        item({ T.tr1 }, trinket({ melee, { "PALADIN", "DRUID" } }))
+        item({ T.tr2 }, trinket({ melee, { "PALADIN", "DRUID" } }))
+        item(T.pair, { att = { m = "r", p = 80, w = 8 }, main = { m = "r" }, guild = { m = "r" },
+                       queue = { m = "r", n = { me, K(3), K(5) } }, pair = { m = "r" }, vote = { s = "3q" } })
+        item({ T.caster }, trinket({ { "MAGE", "WARLOCK", "PRIEST", "DRUID" } }, "r"))
+        item({ T.tr3 }, trinket({ { "PRIEST", "PALADIN", "DRUID" } }))
+        item({ T.bow }, { att = { m = "r", p = 80, w = 8 }, main = { m = "r" }, order = { m = "r", g = { { "HUNTER" } } },
+                          queue = { m = "r", n = { K(6), K(8) } }, vote = { s = "3q" } })
+        item({ T.formula }, { prof = { m = "r", p = 285, s = 300, a = true, n = true }, guild = { m = "r" },
+                              vote = { s = "half" } })
+        item({ T.tank }, { att = { m = "p", p = 60, w = 4 }, rank = { m = "r", i = 3 }, cd = { m = "r", w = 4 },
+                           order = { m = "p", g = { { "WARRIOR", "PALADIN", "DRUID" } } }, vote = { s = "2t" } })
+    else
     item({ 28830 }, trinket({ melee, { "WARRIOR:Fury", "PALADIN:Retribution" } }))
     item({ 30627 }, trinket({ melee, { "WARRIOR:Fury", "PALADIN:Retribution" } }))
     item({ 32837, 32838 }, { att = { m = "r", p = 80, w = 8 }, main = { m = "r" }, guild = { m = "r" },
@@ -1377,6 +1409,7 @@ function Prized:BuildDemo()
     item({ 34427 }, { att = { m = "p", p = 60, w = 4 }, rank = { m = "r", i = 3 }, cd = { m = "r", w = 4 },
                       order = { m = "p", g = { { "WARRIOR:Protection", "PALADIN:Protection", "DRUID:Feral (Bear)" } } },
                       vote = { s = "2t" } })
+    end
     local n = 0
     local function given(rid, it, to, ago, extra)
         n = n + 1
@@ -1384,11 +1417,12 @@ function Prized:BuildDemo()
         for k, v in pairs(extra or {}) do g[k] = v end
         demo.G[g.id] = CleanGiven(g)
     end
-    given("30627", 30627, me, 18 * DAY)
-    given("28830", 28830, K(2), 3 * WEEK, { ag = 5 })
-    given("28830", 28830, K(3), 5 * WEEK, { ag = 3 })
-    given("32505", 32505, K(4), 2 * WEEK)
-    given("28830", 28830, K(7), 9 * WEEK, { ov = { "cd" }, why = "Nobody else in the first group was there.", ag = 5 })
+    local tr1, tr2, tr3 = tostring(T.tr1), tostring(T.tr2), tostring(T.tr3)
+    given(tr2, T.tr2, me, 18 * DAY)
+    given(tr1, T.tr1, K(2), 3 * WEEK, { ag = 5 })
+    given(tr1, T.tr1, K(3), 5 * WEEK, { ag = 3 })
+    given(tr3, T.tr3, K(4), 2 * WEEK)
+    given(tr1, T.tr1, K(7), 9 * WEEK, { ov = { "cd" }, why = "Nobody else in the first group was there.", ag = 5 })
     local h = 0
     local function hist(rid, text, ago, by)
         h = h + 1
@@ -1396,9 +1430,10 @@ function Prized:BuildDemo()
                                           t = text })
     end
     for id in pairs(demo.I) do hist(id, "Made a prized item", 10 * WEEK) end
-    hist("28830", "Attendance from 70% over 6 weeks to 75% over 6 weeks", 2 * DAY)
-    hist("28830", "Added spec order (rogues, hunters, Enhancement shamans and Feral (Cat) druids)", 6 * WEEK, K(1))
-    hist("32837", "Queue from " .. Util.ShortName(K(3)) .. ", " .. Util.ShortName(K(5)) .. " to " .. Util.ShortName(me) ..
+    hist(tr1, "Attendance from 70% over 6 weeks to 75% over 6 weeks", 2 * DAY)
+    hist(tr1, F and "Added class order (rogues and warriors)"
+                or "Added spec order (rogues, hunters, Enhancement shamans and Feral (Cat) druids)", 6 * WEEK, K(1))
+    hist(tostring(T.pair[1]), "Queue from " .. Util.ShortName(K(3)) .. ", " .. Util.ShortName(K(5)) .. " to " .. Util.ShortName(me) ..
         ", " .. Util.ShortName(K(3)) .. ", " .. Util.ShortName(K(5)), 4 * DAY)
     itemIndex = nil
     return demo

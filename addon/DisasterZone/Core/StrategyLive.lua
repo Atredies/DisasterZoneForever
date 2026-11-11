@@ -734,9 +734,19 @@ local function MarkUnit(unit, guid, npc)
         if not want then return end               -- every mark of that creature is taken (more mobs than marks)
         cur.assigned[guid], cur.owner[want] = want, guid
     end
-    local have = GetRaidTargetIndex(unit)
-    if have == want then return end
+    local raw = GetRaidTargetIndex(unit)
     local r = cur.remarks[guid] or { n = 0, at = -100 }
+    if ns.Compat.IsSecret(raw) then
+        -- (WoW Forever: the mark on a unit is secret, so it can't be checked: mark each creature once, never again,
+        -- as SetRaidTarget with the mark it already has would take it off. UNVERIFIED in game.)
+        if r.at > -100 then return end
+        r.at = GetTime()
+        cur.remarks[guid] = r
+        SetRaidTarget(unit, want)
+        return
+    end
+    local have = raw
+    if have == want then return end
     if have ~= nil then
         -- someone / something changed it: the plan wins, but don't fight forever
         if r.n >= REMARK_MAX then return end
@@ -766,6 +776,7 @@ local function EachUnit(fn)
     local seen = {}
     local function try(unit)
         local guid = UnitGUID(unit)
+        if guid and ns.Compat and ns.Compat.IsSecret(guid) then guid = nil end   -- (Forever: secret in instances)
         if guid and not seen[guid] then
             seen[guid] = true
             fn(unit, guid)
@@ -792,9 +803,9 @@ function Live:UpdateHealth()
     local changed = false
     EachUnit(function(unit, guid)
         local npc = NpcOf(guid)
-        local max = npc and UnitHealthMax(unit) or 0
-        if npc and max > 0 then
-            local pct = floor(UnitHealth(unit) / max * 100 + 0.5)
+        local raw = npc and ns.Compat.HealthPct(unit)       -- (nil on Forever: health is secret)
+        if raw then
+            local pct = floor(raw + 0.5)
             if cur.hp[npc] ~= pct then
                 cur.hp[npc] = pct
                 changed = true
@@ -808,6 +819,7 @@ end
 -- A unit became visible: near its boss? then mark it.
 function Live:OnUnit(unit)
     local guid = UnitGUID(unit)
+    if guid and ns.Compat and ns.Compat.IsSecret(guid) then return end   -- (Forever: secret in instances)
     local npc = NpcOf(guid)
     if not npc then return end
     local bossRef = self:BossOfNpc(npc)
@@ -1207,7 +1219,9 @@ function Live:OnInit()
     f:RegisterEvent("RAID_TARGET_UPDATE")
     f:RegisterEvent("ENCOUNTER_START")
     f:RegisterEvent("ENCOUNTER_END")
-    f:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+    if not ns.Compat or ns.Compat:CanUseCombatLog() then   -- (forbidden on WoW Forever: Core/Compat.lua)
+        f:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+    end
     f:RegisterEvent("GROUP_LEFT")
     f:SetScript("OnEvent", function(_, event, ...)
         if event == "NAME_PLATE_UNIT_ADDED" then

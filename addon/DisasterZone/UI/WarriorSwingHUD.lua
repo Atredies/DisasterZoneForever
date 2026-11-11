@@ -130,8 +130,8 @@ if ns.ClassKit then ns.ClassKit:Extend("war", { iconPath = "Interface\\Icons\\Ab
     local lines = { { value = 0, text = "Auto" } }
     for _, n in ipairs({ 30, 40, 50, 60, 70, 80 }) do lines[#lines + 1] = { value = n, text = n .. " rage" } end
     S:DropdownSetting(sec, "Heroic Strike line", "Queue it when your rage is over this.", "war.hsLine", 0, lines,
-        "Auto uses WoWSims' line: 40 rage for Fury and dual-wield Arms, 80 for Arms with a two-hander. Raise it if "
-            .. "you run out of rage for Bloodthirst or Mortal Strike.")
+        "Auto: 40 rage for Fury and dual-wield Arms, 80 for Arms with a two-hander. Raise it if you run out of "
+            .. "rage for Bloodthirst or Mortal Strike.")
     S:SwitchSetting(sec, "Rage in the timer", "Off: the globe (or the rage bar) goes and the next press takes the middle "
         .. "of the ring, as on the Ret and Hunter rings. The resource bar (Class tools) can show your rage instead.",
         "war.rage", true)
@@ -140,9 +140,11 @@ if ns.ClassKit then ns.ClassKit:Extend("war", { iconPath = "Interface\\Icons\\Ab
         .. "bars slide to the new value. Off: it just shows the level.", "war.motion", true)
     S:SwitchSetting(sec, "Brighter off hand", "The off-hand ring brightens while Heroic Strike is queued "
         .. "(the queue lifts the dual-wield miss penalty).", "war.ohBright", true)
-    S:SwitchSetting(sec, "Whirlwind", "In Berserker stance. On in WoWSims' rotation.", "war.use.ww", true)
+    S:SwitchSetting(sec, "Whirlwind", "In Berserker stance.", "war.use.ww", true)
     S:SwitchSetting(sec, "Slam", "Arms with a two-hander: right after each swing.", "war.use.slam", true)
-    S:SwitchSetting(sec, "Rampage", "When it is usable and running out.", "war.use.rampage", true)
+    if ns.WarriorSwing and ns.WarriorSwing.IDS.rampage then     -- (WoW Forever has no Rampage)
+        S:SwitchSetting(sec, "Rampage", "When it is usable and running out.", "war.use.rampage", true)
+    end
     S:SwitchSetting(sec, "Battle Shout", "With 10 seconds or less left.", "war.use.shout", true)
     S:SwitchSetting(sec, "Bloodrage", "Off the GCD, under 90 rage.", "war.use.brage", true)
     S:SwitchSetting(sec, "Hamstring weaving", "Over 60 rage when nothing else is up. Only pays with Sword "
@@ -162,9 +164,9 @@ if ns.ClassKit then ns.ClassKit:Extend("war", { iconPath = "Interface\\Icons\\Ab
     local Ch = ns.SituationChoices
     ns.SituationSettings(S, sec, "war", { pack = true,
         packRows = function(S, sec, R)
-            R(select(2, S:DropdownSetting(sec, "Cleave line", "Queue Cleave from this much rage in a pack (WoWSims: "
+            R(select(2, S:DropdownSetting(sec, "Cleave line", "Queue Cleave from this much rage in a pack (default "
                 .. "40 for every spec).", "war.cleaveLine", 40, Ch({ 20, 30, 40, 50, 60, 70, 80 }, "%d rage"))))
-            R(select(2, ns.SituationPicks(S, sec, "Pack presses", "WoWSims' list for more than one target. Each only "
+            R(select(2, ns.SituationPicks(S, sec, "Pack presses", "The presses for more than one target. Each only "
                 .. "shows when you have the spell.", "war.pack.", { { "sweep", "Sweeping Strikes" },
                     { "ww", "Whirlwind" }, { "slam", "Slam" }, { "ms", "Mortal Strike" }, { "exe", "Execute" },
                     { "cleave", "Cleave" } })))

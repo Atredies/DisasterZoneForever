@@ -79,3 +79,35 @@ ns.ClassData.RESOURCE = {
     SHIFTS = { 768, 9634, 5487 },
     ADRENALINE_RUSH = 13750,        -- energy comes twice as fast while it runs
 }
+
+-- WoW Forever (every id checked against Wowhead's Forever spell database, 2026-11-09): the TBC top ranks are not in the
+-- game, so each press is its rank 1 there (a higher rank counts as known by name); the presses Forever does not have
+-- go (Rampage, Mangle, Lacerate, Lifebloom, Envenom, Crusader Strike, Avenger's Shield, Circle of Healing, Prayer of
+-- Mending, Binding Heal, Arcane Blast, Ice Lance, Incinerate, Unstable Affliction, Seed of Corruption, Steady Shot,
+-- Kill Command; Shiv needs level 70 there). Mutilate and Holy Shock are there.
+if ns.Compat and ns.Compat.isForever then
+    local FOREVER_IDS = {
+        WARRIOR = { hs = 78, cleave = 845, bt = 23881, ms = 12294, ww = 1680, slam = 1464, exe = 5308, shout = 6673,
+                    ham = 1715, op = 7384, pummel = 6552, bash = 72, intercept = 20252, sunder = 7386, revenge = 6572,
+                    slamshield = 23922, tclap = 6343, demo = 1160 },
+        ROGUE = { ss = 1752, bs = 53, hemo = 16511, muti = 1329, snd = 5171, evis = 2098, rupture = 1943, expose = 8647,
+                  kick = 1766, gouge = 1776, feint = 1966 },
+        DRUID = { shred = 5221, rip = 1079, fb = 22568, rake = 1822, claw = 1082, maul = 6807, swipe = 779, roar = 99,
+                  ht = 5185, rejuv = 774, regrowth = 8936, wrath = 5176, starfire = 2912, moonfire = 8921 },
+        PALADIN = { hl = 635, fol = 19750, shock = 20473, judge = 20271, cons = 26573, exo = 879, how = 24275,
+                    hshield = 20925 },
+        PRIEST = { gheal = 2060, flash = 2061, poh = 596, renew = 139, shield = 17, blast = 8092, swp = 589, smite = 585 },
+        SHAMAN = { hw = 331, lhw = 8004, ch = 1064, lb = 403, cl = 421, es = 8042, ss = 17364 },
+        MAGE = { fireball = 133, frostbolt = 116, scorch = 2948, fblast = 2136, pyro = 11366, aexp = 1449, blizzard = 10 },
+        WARLOCK = { sbolt = 686, immo = 348, corr = 172, agony = 980, pain = 5676, burn = 17877 },
+        HUNTER = { multi = 2643, arcane = 3044, aimed = 19434, serpent = 1978, raptor = 2973, volley = 1510 },
+    }
+    local P = ns.ClassData.RESOURCE.PRESSES
+    for cls, list in pairs(P) do
+        local ids = FOREVER_IDS[cls] or {}
+        for i = #list, 1, -1 do
+            local id = ids[list[i].key]
+            if id then list[i].id = id else table.remove(list, i) end
+        end
+    end
+end

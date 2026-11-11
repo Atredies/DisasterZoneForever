@@ -18,11 +18,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 TESTS = os.path.dirname(HERE)
 sys.path.insert(0, os.path.join(TESTS, "boot-ui"))
 
-from _common import case, run_all, solo, no_errors, strip_codes  # noqa: E402
+from _common import case, run_all, solo, no_errors, strip_codes, DEV_NAME, DEV_REALM  # noqa: E402
 
 
 def dev():
-    return solo("Tsumil", class_file="PALADIN", guild_rank=0)
+    return solo(DEV_NAME, class_file="PALADIN", guild_rank=0, realm=DEV_REALM)
 
 
 @case
@@ -157,8 +157,8 @@ def measure_names_each_handler_by_its_file_and_weighs_it():
 def measure_names_who_sends_each_addon_message_and_what_i_send():
     sys.path.insert(0, os.path.join(TESTS, "raidplan"))
     from rp_common import world  # noqa: E402
-    w, c = world((("Gina", 0, "PALADIN"), ("Tsumil", 1, "MAGE"), ("Lee", 3, "WARRIOR")))
-    gina, me = c["Gina"], c["Tsumil"]
+    w, c = world((("Gina", 0, "PALADIN"), (DEV_NAME, 1, "MAGE"), ("Lee", 3, "WARRIOR")))
+    gina, me = c["Gina"], c[DEV_NAME]
     assert me.eval("return ns.Perf:Measure(6)") is True
     r = gina.eval_py("local ok, k = ns.RaidPlan:SetBlacklisted(...) return { ok = ok }", "Xavier-Thunderstrike")
     assert r["ok"] is True, r

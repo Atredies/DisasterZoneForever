@@ -386,7 +386,7 @@ local function register()
         if not (Sync and Sync.GetVersions and U and U.CompareVersions) then return {} end
         local best, cutoff = nil, ns.Util.Now() - 14 * DAY
         for _, e in ipairs(Sync:GetVersions()) do
-            if type(e.v) == "string" and (e.lastSeen or 0) >= cutoff and U.CompareVersions(e.v, ns.version) > 0
+            if type(e.v) == "string" and (e.lastSeen or 0) >= cutoff and U.PeerVersionNewer(e.v, e.fi)
                 and (not best or U.CompareVersions(e.v, best) > 0) then
                 best = e.v
             end
@@ -423,8 +423,12 @@ local function whisper(key)
     if open then open("/w " .. name .. " ") end
 end
 
-local MILESTONE = { [58] = "hit level 58: off to Outland", [70] = "hit level 70", d = "did a first dungeon with the guild",
-                    r = "came to a first raid with the guild" }
+-- (the milestone keys 58 / 70 are kept; the level each means: Core/Recruit.lua MILESTONE_LEVEL, Forever 40 / 60)
+local MILESTONE = (ns.Compat and ns.Compat.isForever)
+    and { [58] = "hit level 40: riding", [70] = "hit level 60", d = "did a first dungeon with the guild",
+          r = "came to a first raid with the guild" }
+    or { [58] = "hit level 58: off to Outland", [70] = "hit level 70", d = "did a first dungeon with the guild",
+         r = "came to a first raid with the guild" }
 
 local function registerRecruit(N)
     local Rc = ns.Recruit
@@ -506,10 +510,12 @@ local function registerRecruit(N)
     end, { "RECRUIT_UPDATED", "RECRUIT_LIVE", "RECRUIT_RULES_CHANGED", "ROSTER_UPDATED" })
     ns:On("RECRUIT_ONLINE", function() N:Refresh("recruit") end)
 
-    -- Raid leaders: someone joined onto their team's bench, a raider hit 70
+    -- Raid leaders: someone joined onto their team's bench, a raider hit the level cap (70; Forever 60). (n.why "70"
+    -- is the milestone key, kept on the wire.)
+    local CAP = tostring((Rc and Rc.MAX_LEVEL) or ((ns.Compat and ns.Compat.isForever) and 60 or 70))
     N:RegisterKind("recruitTeam", {
         section = "Recruitment", page = "raids", icon = { 46, 19, 4 }, color = S.C.GOLD,
-        label = "New raiders for the teams", desc = "Someone joined onto a team's bench, or a new member who wants to raid hit 70.",
+        label = "New raiders for the teams", desc = "Someone joined onto a team's bench, or a new member who wants to raid hit " .. CAP .. ".",
         needsYou = false, popup = true, sound = false, home = true,
         kicker = function() return "Recruitment · for raid leaders" end,
         open = function(it)
@@ -537,7 +543,7 @@ local function registerRecruit(N)
             local where = team and (n.why == "70" and (team.name .. " has a place for them")
                 or (onTeam and ("on " .. team.name .. "'s bench") or ("for " .. team.name))) or ""
             out[#out + 1] = { key = n.id, from = n.by, time = n.at, data = { id = n.id, team = n.team },
-                title = UI():ColoredName(n.key, n.c) .. (n.why == "70" and " hit 70 and wants to raid" or " joined the guild"),
+                title = UI():ColoredName(n.key, n.c) .. (n.why == "70" and (" hit " .. CAP .. " and wants to raid") or " joined the guild"),
                 text = (what ~= "" and where ~= "") and (what .. " · " .. where) or (what .. where),
                 short = Short(n.key) .. (n.why == "70" and " wants to raid" or " joined") }
         end

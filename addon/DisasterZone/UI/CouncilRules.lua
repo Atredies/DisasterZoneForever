@@ -59,11 +59,11 @@ local STEPS = {
       opts = { { "r", "Highest roll" }, { "d", "Driest first" } },
       tip = "The highest roll wins, or the player with the most raids since their last item (the roll breaks a tie). "
           .. "With Longest use on, it comes first: then this." },
-    { key = "o", title = "Longest use", sub = "phases on their list, counted up to",
-      opts = { { 0, "Off" }, { 3, "P3" }, { 4, "P4" }, { 5, "P5" } },
-      tip = "Inside a list, the player who keeps the item on their BiS list for more phases goes first (then the "
-          .. "line above, then the roll). Counted from the guild's phase up to the one you pick: with P4, a pick kept "
-          .. "P2-P4 and replaced in P5 counts the same as one kept in P5 too. Off: phases don't matter." },
+    { key = "o", title = "Longest use", sub = ns.PHASE_WORD:lower() .. "s on their list, counted up to",
+      opts = { { 0, "Off" }, { 3, ns.PHASE_LETTER .. "3" }, { 4, ns.PHASE_LETTER .. "4" }, { 5, ns.PHASE_LETTER .. "5" } },
+      tip = "Inside a list, the player who keeps the item on their BiS list for more " .. ns.PHASE_WORD:lower()
+          .. "s goes first (then the line above, then the roll). Counted from the guild's " .. ns.PHASE_WORD:lower()
+          .. " up to the one you pick. Off: " .. ns.PHASE_WORD:lower() .. "s don't matter." },
     { key = "y", title = "Since loot counts", sub = "raids since their last item",
       opts = { { "n", "Nights there" }, { "a", "Any night" } },
       tip = "The SINCE LOOT column (the dry streak): only nights they were really there for (a boss kill or half "

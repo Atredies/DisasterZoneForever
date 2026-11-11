@@ -29,7 +29,10 @@ local CARD_W, ROW_H, ROW_GAP = 170, 50, 6
 local GROUP_X, GROUP_W = CARD_W + GAP, 104
 local CELL_X, CELL_W = CARD_W + GAP + GROUP_W + 2, 58
 local HERO_X, HERO_W = CELL_X + 4 * CELL_W + 6, 74
-local ES_X = HERO_X + HERO_W + 6
+-- (WoW Forever has no Heroism / Bloodlust: no Heroism column, Earth Shield takes its place)
+local SD = ns.ClassData and ns.ClassData.SHAMAN
+local HAS_HERO = SD == nil or SD.HEROISM ~= nil or SD.BLOODLUST ~= nil
+local ES_X = HAS_HERO and (HERO_X + HERO_W + 6) or HERO_X
 local ES_W = GRID_W - ES_X
 -- boss changes: a rule across the width ("BOSS CHANGES 2 ---- +"), then chips from the left edge, 4 a line (the
 -- Blessings planner's exceptions)
@@ -634,9 +637,9 @@ end
 -- ---------------------------------------------------------------------------------------------------------------
 -- Refresh
 -- ---------------------------------------------------------------------------------------------------------------
--- The banner's picture: the raid I am in, else the raid planned for (demo: Serpentshrine).
+-- The banner's picture: the raid I am in, else the raid planned for (demo: Serpentshrine; Forever: Hyjal Summit).
 local function ArtKey()
-    if T():IsDemo() then return "SerpentshrineCavern" end
+    if T():IsDemo() then return (ns.Compat and ns.Compat.isForever) and "HyjalForever" or "SerpentshrineCavern" end
     local id = tonumber((select(8, GetInstanceInfo())))
     if id and ns.ItemDB and ns.ItemDB.ItemKeyOf and ns.ItemDB:ItemKeyOf(id) then return id end
     return T():RaidKey() or "other"
@@ -726,7 +729,7 @@ local function FillShaman(row, s, roster, inGroup, heroCasters)
     row.emptySub = nil
     row.emptyFace:Hide()
     row.card:Show()
-    row.hero:Show()
+    row.hero:SetShown(HAS_HERO)
     row.es:Show()
     local edit = Tm:CanEdit(name)
     local card = row.card
@@ -911,7 +914,7 @@ function TUI:Refresh()
         h.els[el]:ClearAllPoints()
         h.els[el]:SetPoint("TOPLEFT", c, "TOPLEFT", CELL_X + (el - 1) * CELL_W, -headY)
     end
-    h.hero:SetText(Tm:HeroName():upper())
+    if HAS_HERO then h.hero:SetText(Tm:HeroName():upper()) end
 
     -- rows: each raid group in order, its shamans, or a "No shaman" row (raids only); shamans outside the roster last
     local entries = {}
@@ -977,6 +980,7 @@ function TUI:Refresh()
         rowsH = floor(empty:GetHeight() + 0.5) + 4
     end
     for _, fs in pairs({ h.shaman, h.group, h.hero, h.es }) do fs:SetShown(#entries > 0) end
+    h.hero:SetShown(#entries > 0 and HAS_HERO)
     for el = 1, 4 do h.els[el]:SetShown(#entries > 0) end
 
     -- bottom (All bosses tab): the rule ("BOSS CHANGES 2 ---- +"), then a chip per change under it, 4 a line

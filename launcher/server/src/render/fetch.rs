@@ -4,12 +4,17 @@
 use std::collections::HashSet;
 use std::sync::Mutex;
 
+/// Wowhead's WoW Forever tooltip data (the one dev/generators/forever_names.py reads): JSON with the item's icon.
+pub fn tooltip_url(id: u32) -> String {
+    format!("https://nether.wowhead.com/forever/tooltip/item/{id}")
+}
+
 /// Items tried this session (found or not): never asked twice.
 static TRIED: Mutex<Option<HashSet<u32>>> = Mutex::new(None);
 
 async fn fetch_one(client: &reqwest::Client, id: u32) -> Option<Vec<u8>> {
     let tip: serde_json::Value = client
-        .get(format!("https://nether.wowhead.com/tbc/tooltip/item/{id}"))
+        .get(tooltip_url(id))
         .send()
         .await
         .ok()?
@@ -61,4 +66,13 @@ pub fn snapshot_items(snap: &serde_json::Value) -> Vec<u32> {
         .and_then(|i| i.as_object())
         .map(|m| m.keys().filter_map(|k| k.parse().ok()).collect())
         .unwrap_or_default()
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn icons_come_from_wowheads_forever_tooltips() {
+        assert_eq!(super::tooltip_url(19019), "https://nether.wowhead.com/forever/tooltip/item/19019");
+        assert_eq!(crate::signup::WOWHEAD_ITEM, "https://www.wowhead.com/forever/item=");
+    }
 }

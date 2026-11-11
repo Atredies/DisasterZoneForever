@@ -212,7 +212,7 @@ local function Generate()
             rankName = RANK_NAMES[rankIndex] or "Member",
             classFile = classFile,
             online = online and true or false,
-            level = 70,
+            level = (ns.Compat and ns.Compat.isForever) and 60 or 70,
         }
         if inRaid then raidSet[key] = true end
         memberKeys[#memberKeys + 1] = key
@@ -382,6 +382,34 @@ local DEMO_RAIDS = {
     { "Karazhan", 3, 0, 6 }, { "GruulsLair", 3, 1 },
     { "Karazhan", 4, 0, 4 },
 }
+-- WoW Forever: its raids (Thursday Barrow Deeps, Wednesday Hyjal Summit and Onyxia). Their bosses have no encounter
+-- ids and no loot yet: the demo numbers the bosses itself and hands out level-60 dungeon loot (DEMO_LOOT_DUNGEONS).
+local FOREVER = ns.Compat and ns.Compat.isForever
+if FOREVER then
+    DEMO_RAIDS = {
+        { "HyjalForever", 0, 0 }, { "BarrowDeeps", 0, 1 }, { "Onyxia", 0, 1 },
+        { "HyjalForever", 1, 0, nil }, { "BarrowDeeps", 1, 1, 6, true },
+        { "HyjalForever", 2, 0, 9 }, { "Onyxia", 2, 1 },
+        { "HyjalForever", 3, 0, 7 }, { "BarrowDeeps", 3, 1 },
+        { "HyjalForever", 4, 0, 5 },
+    }
+end
+local DEMO_LOOT_DUNGEONS = { Scholomance = true, StratholmeLive = true, StratholmeUndead = true, UBRS = true,
+                             DireMaulNorth = true, BlackmawHold = true, ShapersTerrace = true }
+local demoLoot   -- (built on first use) every item of DEMO_LOOT_DUNGEONS' bosses
+local function DemoLoot()
+    if not demoLoot then
+        demoLoot = {}
+        for _, d in ipairs(ns.Data and ns.Data.Dungeons or {}) do
+            if DEMO_LOOT_DUNGEONS[d.key] then
+                for _, b in ipairs(d.bosses or {}) do
+                    for _, id in ipairs(b.items or {}) do demoLoot[#demoLoot + 1] = id end
+                end
+            end
+        end
+    end
+    return demoLoot
+end
 local DEMO_REASONS = { "bis", "bis", "bis", "alt", "up", "os", "de" }
 
 -- 1.3.5 (time-based attendance): a demo raid as a planned raid with its expected players, presence pieces, and the
@@ -468,7 +496,10 @@ local function BuildRaidLog()
             local start = base - def[2] * 7 * 86400 - def[3] * 86400 + (def[3] > 0 and 3600 or 0)
             local bosses = {}
             for _, b in ipairs(raid.bosses or {}) do
-                if b.encounterID and not b.isTrash then
+                if FOREVER and not b.encounterID and not b.isTrash then
+                    -- (stand-in encounter ids until the real ones are known: `/dz raiddata`)
+                    bosses[#bosses + 1] = setmetatable({ encounterID = -(#bosses + 1) }, { __index = b })
+                elseif b.encounterID and not b.isTrash then
                     local dup = false
                     for _, x in ipairs(bosses) do if x.encounterID == b.encounterID then dup = true end end
                     if not dup then bosses[#bosses + 1] = b end
@@ -495,6 +526,7 @@ local function BuildRaidLog()
                 rec.bosses[bi] = { enc = b.encounterID, name = b.name, ts = t, roster = roster }
                 -- one or two awards per boss from its loot
                 local items = b.items or {}
+                if FOREVER and #items == 0 then items = DemoLoot() end
                 for a = 1, (#items > 0) and (1 + rng.Int(2) - 1) or 0 do
                     local winner = present[rng.Int(#present)]
                     rec.demoAwards[#rec.demoAwards + 1] = { id = "demo-" .. n .. "-" .. bi .. "-" .. a,

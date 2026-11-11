@@ -840,7 +840,7 @@ function RaidsUI:CreatePanel(parent)
     p.layout = UI:CreateLayout("board", p)
     local bar = p.layout.toolbar
     p.toolbar = bar
-    bar:SetTabs({
+    local tabs = {
         { key = "upcoming", text = "Upcoming" }, { key = "teams", text = "Teams" },
         { key = "strategies", text = "Strategies" },
         -- 1.3.2: the guest book and the blacklist (players kept out of every raid), for the GM, officers and the raid
@@ -848,7 +848,9 @@ function RaidsUI:CreatePanel(parent)
         { key = "guests", text = "Guests" }, { key = "log", text = "Raid log" },
         { key = "raids", text = "Raids", small = true }, { key = "players", text = "Attendance", small = true },
         { key = "reviews", text = "Reviews", small = true },
-    }, H.OnTab)
+    }
+    if ns.FOREVER_HIDDEN and ns.FOREVER_HIDDEN.strategies then table.remove(tabs, 3) end   -- (WoW Forever)
+    bar:SetTabs(tabs, H.OnTab)
     p.upcomingBtn, p.teamsBtn, p.stratBtn = bar:GetTab("upcoming"), bar:GetTab("teams"), bar:GetTab("strategies")
     p.guestsBtn, p.logBtn = bar:GetTab("guests"), bar:GetTab("log")
     p.raidsBtn, p.playersBtn, p.reviewsBtn = bar:GetTab("raids"), bar:GetTab("players"), bar:GetTab("reviews")
@@ -1079,6 +1081,7 @@ function RaidsUI:SetView(view)
         if ns.CouncilUI then ns.CouncilUI:SetView("rules") end
         return
     end
+    if ns.FOREVER_HIDDEN and ns.FOREVER_HIDDEN.strategies and view == "strategies" then view = "upcoming" end
     if view ~= "teams" and view ~= "log" and view ~= "strategies" and view ~= "guests" then
         view = "upcoming"
     end

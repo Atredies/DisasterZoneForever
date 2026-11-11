@@ -725,7 +725,7 @@ end
 local function addWantersTooltip(tt, d)
     local wanters = d.wanters or {}
     tt:AddLine(" ")
-    tt:AddLine(string.format("|cffff8000DisasterZone|r · P%d: %d wanting", d.phase or currentPhase(), d.n or 0))
+    tt:AddLine(string.format("|cffff8000DisasterZone|r · %s: %d wanting", ns.PhaseLabel(d.phase or currentPhase()), d.n or 0))
     if #wanters == 0 then
         tt:AddLine("Nobody has this on their list.", 0.6, 0.6, 0.6)
     end
@@ -808,17 +808,17 @@ local function cellTooltip(cell, tt)
         -- §36: the player doesn't need this slot in this phase
         tt:AddLine(slotLabel)
         tt:AddLine("Disabled by player", 0.75, 0.75, 0.75)
-        tt:AddLine(coloredName(d.key, d.classFile) .. S:Wrap("DIM", string.format(" doesn't need this slot in P%d.", phase)))
+        tt:AddLine(coloredName(d.key, d.classFile) .. S:Wrap("DIM", string.format(" doesn't need this slot in %s.", ns.PhaseLabel(phase))))
         tt:AddLine("Click: member view", 0.5, 0.5, 0.5)
         return
     end
     if main then
         tt:AddLine(" ")
         tt:AddLine("|cffff8000DisasterZone|r · " .. coloredName(d.key, d.classFile) .. " - " .. slotLabel)
-        tt:AddLine(string.format("Main (P%d)", phase), color("main"))
+        tt:AddLine("Main (" .. ns.PhaseLabel(phase) .. ")", color("main"))
     else
         tt:AddLine(slotLabel)
-        tt:AddLine(coloredName(d.key, d.classFile) .. S:Wrap("DIM", string.format(" has no P%d pick here.", phase)))
+        tt:AddLine(coloredName(d.key, d.classFile) .. S:Wrap("DIM", string.format(" has no %s pick here.", ns.PhaseLabel(phase))))
     end
     if alt then
         tt:AddLine("Alt: " .. itemText(alt), color("alt"))
@@ -917,7 +917,7 @@ local function rosterTip(row, tt)
     local rank = ns.Guild and ns.Guild.GetRankName and ns.Guild:GetRankName(d.key)
     if rank then tt:AddLine(rank, 0.8, 0.8, 0.8) end
     tt:AddLine(PRESENCE_TEXT[d.presence] or "", 0.8, 0.8, 0.8)
-    local counts = string.format("P%d: %d picks · %d obtained · %d needed", phase, d.filled, d.filled - d.need, d.need)
+    local counts = string.format("%s: %d picks · %d obtained · %d needed", ns.PhaseLabel(phase), d.filled, d.filled - d.need, d.need)
     if (d.disabled or 0) > 0 then counts = counts .. string.format(" · %d disabled", d.disabled) end
     tt:AddLine(counts, 1, 1, 1)
     local updated = "List updated " .. formatAgo(d.ts)
@@ -1231,7 +1231,7 @@ local function initTreeRow(row, d)
         V.desaturate(row.art, idle)
         row.art:SetAlpha(idle and 0.45 or 1)
         UI:SetEdgeColor(row.strip, S:Color(on and "EDGE_FOCUS" or "EDGE"))
-        local tag = (d.phase and d.phase ~= phase) and S:Wrap("DIM", "  P" .. d.phase) or ""
+        local tag = (d.phase and d.phase ~= phase) and S:Wrap("DIM", "  " .. ns.PhaseLabel(d.phase)) or ""
         local room = TREE_W - 16 - 34
         local short = d.type == "raid" and d.raidKey and ns.ItemDB:RaidShort(d.raidKey)
         UI:SetTextStyle(row.text, "emph", idle and "SUB" or "GOLD")
@@ -1589,8 +1589,8 @@ local function initItemRow(row, d)
         local n = #d.items
         row.foldText:ClearAllPoints()
         row.foldText:SetPoint("LEFT", row, "LEFT", CARD_PAD + (math.min(n, 5) - 1) * 12 + 16 + 10, 1)
-        row.foldText:SetText(string.format("%d %s nobody has on a P%d list", n, n == 1 and "item" or "items",
-            d.phase or currentPhase()))
+        row.foldText:SetText(string.format("%d %s nobody has on a %s list", n, n == 1 and "item" or "items",
+            ns.PhaseLabel(d.phase or currentPhase())))
         UI:SetChevronUp(row.chev, state.showUnwanted)
         return
     end
@@ -1749,7 +1749,7 @@ local function refreshItems(phase, members, resetScroll, keepTreeScroll)
     for _, r in ipairs(rows) do
         if (r.n or 0) > 0 then wantedN = wantedN + 1 end
     end
-    local sub = string.format("%d %s wanted in P%d", wantedN, wantedN == 1 and "item" or "items", phase)
+    local sub = string.format("%d %s wanted in %s", wantedN, wantedN == 1 and "item" or "items", ns.PhaseLabel(phase))
     if state.selectedNode == OTHER_NODE then
         v.banner:SetArt(nil)
         v.banner:SetTitle("Other / no raid source")
@@ -1763,7 +1763,7 @@ local function refreshItems(phase, members, resetScroll, keepTreeScroll)
     -- nothing to list: the illustrated empty state
     local emptyTitle
     if #tree == 0 then
-        emptyTitle = "No raids or wanted items for this phase."
+        emptyTitle = "No raids or wanted items for this " .. ns.PHASE_WORD:lower() .. "."
     elseif state.search ~= "" then
         emptyTitle = "No items match the search."
     else
@@ -1984,9 +1984,9 @@ local function refreshMemberCenter(v, key, data, phase, rec)
         end
         local text
         if filled == 0 then
-            text = string.format("P%d: no picks yet", phase)
+            text = string.format("%s: no picks yet", ns.PhaseLabel(phase))
         else
-            text = string.format("P%d: %d / %d obtained · %d needed", phase, filled - need, filled, need)
+            text = string.format("%s: %d / %d obtained · %d needed", ns.PhaseLabel(phase), filled - need, filled, need)
         end
         if disabled > 0 then text = text .. S:Wrap("DIM", string.format(" · %d disabled", disabled)) end
         c.summary:SetText(text)
@@ -2405,7 +2405,7 @@ local function councilPhaseOptions()
     local opts = {}
     for _, p in ipairs(ns.PHASES or { 1, 2, 3, 4, 5 }) do
         local info = ns.PHASE_INFO and ns.PHASE_INFO[p]
-        local text = "P" .. p
+        local text = ns.PhaseLabel(p)
         if info and info.raids then text = text .. " · " .. info.raids end
         opts[#opts + 1] = { value = p, text = text }
     end
@@ -2515,7 +2515,7 @@ local function createCouncilSection(parent, kind)
     s.picker.frame:SetPoint("TOPLEFT", s, "TOPLEFT", IN, -40)
 
     if isGuild then
-        s.phaseLabel = label(s, "Guild phase")
+        s.phaseLabel = label(s, "Guild " .. ns.PHASE_WORD:lower())
         s.phaseDD = ns.UI:CreateSleekDropdown(s, CTRL_W, councilPhaseOptions,
             function() return getDraft("guild").phase end,
             function(value) CouncilUI:SetCouncilDraftPhase(value) end)
@@ -2879,7 +2879,7 @@ local function phaseOptions()
     local marker = groupSet and " (group)" or " (guild)"
     for _, p in ipairs(ns.PHASES or { 1, 2, 3, 4, 5 }) do
         local info = ns.PHASE_INFO and ns.PHASE_INFO[p]
-        local text = (info and info.short) or ("P" .. p)
+        local text = (info and info.short) or ns.PhaseLabel(p)
         if p == guildPhase then text = text .. marker end
         opts[#opts + 1] = { value = p, text = text }
     end
@@ -3017,7 +3017,7 @@ local function createToolbar(p)
     local baseRefresh = p.phaseDD.Refresh
     function p.phaseDD:Refresh()
         baseRefresh(self)
-        self:SetText("P" .. currentPhase())
+        self:SetText(ns.PhaseLabel(currentPhase()))
     end
     p.phaseDD:Refresh()
     p.phaseDD:SetPoint("RIGHT", box, "RIGHT", 0, 0)
@@ -3529,7 +3529,7 @@ function CouncilUI:SaveCouncil(kind)
     resetDraft(kind)
     local n = countSet(members)
     if kind == "guild" then
-        ns:Print("Guild council saved and shared: %s, phase P%d.", membersText(n), d.phase or 1)
+        ns:Print("Guild council saved and shared: %s, %s.", membersText(n), ns.PhaseLabel(d.phase or 1))
     elseif amRaidLeader() then
         ns:Print("Raid council saved and shared with your raid: %s.", membersText(n))
     else

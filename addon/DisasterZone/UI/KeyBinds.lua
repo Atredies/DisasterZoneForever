@@ -700,7 +700,7 @@ local function BuildOverlay()
     Vignette(overlay)
     overlay:SetScript("OnKeyDown", function(self, key)
         local handled = KB:OnKey(key)
-        if not InCombat() then self:SetPropagateKeyboardInput(not handled) end
+        if not InCombat() then ns.Util.SetPropagateKeys(self, not handled) end
     end)
     local since = 0
     overlay:SetScript("OnUpdate", function(_, elapsed)

@@ -1,7 +1,7 @@
 if DisasterZoneBoot and DisasterZoneBoot.Run("Games/HubUI.lua", ...) then return end -- DisasterZone Games/HubUI.lua
 -- ns.GamesUI: the "Games" tab. A spotlight carousel: one game's poster in front, its neighbours dimmed at the sides
 -- (arrows, mouse wheel, the dots or a click on a side poster turn it). A poster is the game's cover, alive while the
--- tab is open (your Bingo card filling in, the Trainer's bosses and best times, a walk through Azeromon's Elwynn),
+-- tab is open (your Bingo card filling in, a walk through Azeromon's Elwynn),
 -- then its name, one line, one stat of yours and who plays it now. Clicking the front poster grows it into the game:
 -- a slim strip on top ("< GAMES", the game, who plays, share) and the game's panel under it.
 -- While a Bingo game runs the carousel opens on Bingo (LIVE); otherwise on the game you opened last.
@@ -32,8 +32,8 @@ local RAID_ICON = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_"
 
 -- the games' colours (the front poster's edge, the room's glow, the rule under the text)
 local ACCENT = {
-    bingo = ns.Style.C.GOLD, trainer = { 0.31, 0.83, 0.88 }, azeromon = { 0.53, 0.85, 0.42 },
-    chess = { 0.74, 0.58, 1 }, illidan = { 0.65, 0.94, 0.29 }, holdtheline = { 1, 0.76, 0.32 },
+    bingo = ns.Style.C.GOLD, azeromon = { 0.53, 0.85, 0.42 },
+    chess = { 0.74, 0.58, 1 }, holdtheline = { 1, 0.76, 0.32 },
 }
 local DEFAULT_ACCENT = ns.Style.C.GOLD
 local OUT_ACCENT = { 0.56, 0.55, 0.53 }            -- a game that doesn't run here (not installed, switched off, ...)
@@ -44,9 +44,7 @@ local WARN_DOT = { 1, 0.69, 0.4 }                   -- its kicker's dot when it 
 -- shadow hang outside it), and the art set that brought it.
 local LOGOS = {
     bingo = { file = MEDIA .. "Games\\logo_bingo", tw = 512, th = 256, k = 2, l = 10, t = 2, r = 294, b = 137, pack = 14 },
-    trainer = { file = MEDIA .. "Games\\logo_trainer", tw = 512, th = 256, k = 2, l = 17, t = 17, r = 474, b = 143, pack = 14 },
     chess = { file = MEDIA .. "Games\\logo_chess", tw = 512, th = 256, k = 2, l = 16, t = 3, r = 383, b = 114, pack = 14 },
-    illidan = { file = MEDIA .. "Games\\logo_illidan", tw = 512, th = 256, k = 2, l = 17, t = 6, r = 429, b = 124, pack = 14 },
     holdtheline = { file = MEDIA .. "Games\\logo_holdtheline", tw = 512, th = 256, k = 2, l = 50, t = 95, r = 466, b = 158,
                     pack = 16 },
     azeromon = { file = MEDIA .. "Games\\logo_azeromon", tw = 256, th = 64, k = 1, l = 1, t = 2, r = 139, b = 48, pack = 16,
@@ -277,30 +275,6 @@ INFO.bingo = function()
     return out
 end
 
--- Raid Trainer: clears and tries over every boss and difficulty (the bosses' best times are on the cover).
-INFO.trainer = function()
-    local out = { kicker = "PRACTICE", art = "ssc" }
-    local data = Saved("trainer")
-    local tries, clears = 0, 0
-    for _, diffs in pairs(type(data.enc) == "table" and data.enc or {}) do
-        for _, rec in pairs(type(diffs) == "table" and diffs or {}) do
-            if type(rec) == "table" then
-                tries, clears = tries + (tonumber(rec.tries) or 0), clears + (tonumber(rec.clears) or 0)
-            end
-        end
-    end
-    local T = ns.Trainer
-    local last = T and T:GetEncounter(data.last)
-    if last and last.id == "teron" then out.art = "bt" end
-    if tries > 0 then
-        out.plates = { Plate(clears, Plural(clears, "clear", "clears")), Plate(tries, Plural(tries, "try", "tries")),
-            Plate(floor(clears * 100 / tries + 0.5) .. "%", "clear rate") }
-    else
-        out.stat = "Not played yet"
-    end
-    return out
-end
-
 -- Azeromon: badges and tamed beasts from the save; who is out walking Elwynn now.
 INFO.azeromon = function()
     local out = { kicker = "ADVENTURE" }
@@ -357,34 +331,6 @@ INFO.chess = function()
     end
     if #out.plates == 0 then out.plates, out.stat = nil, "Not played yet" end
     if open > 0 then out.foot = string.format("%d %s open", open, Plural(open, "game", "games")) end
-    return out
-end
-
--- The Binding of Illidan: your wins and fastest (and the items found), else the deepest floor.
-INFO.illidan = function()
-    local out = { kicker = "ROGUELIKE", art = "bt" }
-    local data = Saved("illidan")
-    local G = ns.BoIGame
-    local n, all = 0, 0
-    if G then n, all = G:ItemCount() end
-    if (tonumber(data.wins) or 0) > 0 and G then
-        out.plates = { Plate(data.wins, Plural(data.wins, "win", "wins")), Plate(G.Clock(tonumber(data.fastest) or 0), "fastest") }
-        if n > 0 then out.plates[3] = Plate(n .. "/" .. all, "items") end
-    elseif (tonumber(data.best) or 0) > 0 then
-        local f = ns.BoIData.FLOORS[data.best]
-        out.stat = "Deepest: " .. (f and f.name or ("floor " .. data.best))     -- (a name, not a number: one line)
-    else
-        out.stat = "Not played yet"
-    end
-    if n > 0 and not out.plates then out.foot = string.format("%d of %d items found", n, all) end
-    -- today's dungeon: who played it, and the best of the day
-    local B = ns.BoIBoard
-    local list = B and B:Board() or {}
-    if #list > 0 then
-        out.faces = {}
-        for i = 1, #list do out.faces[i] = list[i].key end
-        out.foot = string.format("Today %d played  \194\183  %s %s", #list, list[1].name, B:ResultText(list[1].e))
-    end
     return out
 end
 
@@ -813,105 +759,6 @@ COVERS.chess = function(parent)
     return c
 end
 
--- Raid Trainer: one chip per boss with your best clear time (any difficulty); the one you played last is lit.
-COVERS.trainer = function(parent)
-    local c = CreateFrame("Frame", nil, parent)
-    c.chips, c.shown = {}, {}
-    c.frontOnly = true      -- (a side poster is too narrow for the boss names)
-    local function chip(i)
-        local ch = c.chips[i]
-        if ch then return ch end
-        ch = CreateFrame("Frame", nil, c)
-        ch:SetHeight(26)
-        ch.bg = ch:CreateTexture(nil, "BACKGROUND")
-        ch.bg:SetAllPoints()
-        ch.bg:SetColorTexture(0.03, 0.06, 0.07, 0.78)
-        ns.UI:AddEdges(ch, "BORDER")
-        ch.dot = ch:CreateTexture(nil, "ARTWORK")
-        ch.dot:SetTexture(CIRCLE)
-        ch.dot:SetSize(6, 6)
-        ch.dot:SetPoint("LEFT", 10, 0)
-        ch.name = UI:Text(ch, 11.5, WHITE)
-        ch.name:SetPoint("LEFT", ch.dot, "RIGHT", 8, 0)
-        ch.time = UI:Text(ch, 11.5, WHITE)
-        ch.time:SetJustifyH("RIGHT")
-        ch.time:SetPoint("RIGHT", -10, 0)
-        ch.last = UI:Text(ch, 8)                   -- (LAST: the boss you practised last)
-        ch.last:SetPoint("RIGHT", ch.time, "LEFT", -10, 0)
-        ch.last:SetText("LAST")
-        ch.bar = ch:CreateTexture(nil, "ARTWORK")
-        ch.bar:SetPoint("TOPLEFT")
-        ch.bar:SetPoint("BOTTOMLEFT")
-        ch.bar:SetWidth(2)
-        ch.name:SetPoint("RIGHT", ch.last, "LEFT", -8, 0)
-        c.chips[i] = ch
-        return ch
-    end
-    -- the rows' header: what the times are
-    c.head = UI:Text(c, 8.5)
-    c.head:SetText("BEST CLEAR")
-    c.head:SetTextColor(0.61, 0.73, 0.74)
-    function c:Layout(w, h)
-        self.lw, self.lh = w, h
-        self:SetSize(w - 32, max(60, h - 52 - (self.lift or 0)))   -- (the rows end just above the title or logo)
-        for i, ch in ipairs(self.chips) do
-            ch:ClearAllPoints()
-            ch:SetPoint("BOTTOMLEFT", self, "BOTTOMLEFT", 0, (#self.shown - i) * 32)
-            ch:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", 0, (#self.shown - i) * 32)
-        end
-        self.head:ClearAllPoints()
-        if self.shown[1] then self.head:SetPoint("BOTTOMLEFT", self.shown[1], "TOPLEFT", 2, 6) end
-        self.head:SetShown(self.shown[1] ~= nil)
-    end
-    function c:Refresh()
-        local T = ns.Trainer
-        local encs = T and T:GetEncounters() or {}
-        local data = Saved("trainer")
-        local a = Accent("trainer")
-        self.shown = {}
-        for i = 1, min(3, #encs) do
-            local e = encs[#encs - i + 1]     -- (the newest boss first)
-            local ch = chip(i)
-            local best
-            local diffs = type(data.enc) == "table" and data.enc[e.id]
-            for _, rec in pairs(type(diffs) == "table" and diffs or {}) do
-                local bt = type(rec) == "table" and tonumber(rec.bestTime)
-                if bt and (not best or bt < best) then best = bt end
-            end
-            local on = data.last == e.id
-            ch.name:SetText(e.name or e.id)
-            ch.name:SetTextColor(on and 1 or 0.81, on and 1 or 0.81, on and 1 or 0.81)
-            ch.time:SetText(best and Clock(best) or "|cff8a8a8anot cleared|r")
-            ch.dot:SetVertexColor(a[1], a[2], a[3], on and 1 or 0.35)
-            ch.last:SetTextColor(a[1], a[2], a[3])
-            ch.last:SetShown(on)
-            ch.bar:SetColorTexture(a[1], a[2], a[3], 1)
-            ch.bar:SetShown(on)
-            ns.UI:SetEdgeColor(ch, a[1], a[2], a[3], on and 0.5 or 0.16)
-            ch:Show()
-            self.shown[i] = ch
-        end
-        for i = #self.shown + 1, #self.chips do self.chips[i]:Hide() end
-        if self.lw then self:Layout(self.lw, self.lh) end
-    end
-    return c
-end
-
-
--- The Binding of Illidan: the game playing itself (ns.BoIUI:NewAttract - its own engine and renderer, demo scenes of
--- your class through rooms and bosses), filling the painting as Azeromon's film does; the poster's shades lie over it.
-COVERS.illidan = function(parent, poster)
-    local c = CreateFrame("Frame", nil, poster.artFrame)
-    c:SetAllPoints(poster.artFrame)
-    c:SetClipsChildren(true)
-    c.frontOnly = true                       -- (only the front poster plays; the sides keep their painting)
-    local demo = ns.BoIUI and ns.BoIUI.NewAttract and ns.BoIUI:NewAttract(c)
-    function c:Layout() end
-    function c:Refresh() end
-    function c:Tick(elapsed) if demo then demo:Tick(elapsed) end end
-    c.demo = demo
-    return c
-end
 
 -- Hold the Line: the game playing itself (ns.HTLUI:NewPoster - its own engine and renderer, a Paladin then a Mage
 -- holding the line), filling the painting; it plays in front, the sides keep their painting.

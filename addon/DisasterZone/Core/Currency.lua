@@ -20,8 +20,13 @@ local tconcat = table.concat
 
 local HONOR, ARENA, BADGE, MONEY = "c1901", "c1900", "29434", "g"
 Currency.HONOR, Currency.ARENA, Currency.BADGE, Currency.MONEY = HONOR, ARENA, BADGE, MONEY
--- always on the currency bar, in this order
-Currency.PINNED = { HONOR, ARENA, BADGE }
+-- always on the currency bar, in this order. WoW Forever has no arenas and no Badge of Justice: Honor only (its
+-- currency id 1901 is the TBC Classic one, UNVERIFIED on Forever: a Forever PvP vendor scan shows the real key).
+if ns.Compat and ns.Compat.isForever then
+    Currency.PINNED = { HONOR }
+else
+    Currency.PINNED = { HONOR, ARENA, BADGE }
+end
 
 -- Honor's icon: the faction's TargetingFrame UI-PVP texture (Blizzard's HONOR_POINT_TEXTURES, Alliance / Horde); the
 -- emblem fills only the top left 40 of its 64 pixels (the merchant window cuts it the same way)

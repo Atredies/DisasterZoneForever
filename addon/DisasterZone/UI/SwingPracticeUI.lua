@@ -622,6 +622,7 @@ function PUI:StartSelected()
 end
 
 function PUI:Open()
+    if ns.SwingTimer and not ns.SwingTimer.twist then return end   -- (WoW Forever: no Seal of Blood, no twist)
     if not frame then self:Build() end
     local ok, why = SP():CanPractice()
     if not ok and not (ST() and ST():IsRet()) then ns:Print(why) return end

@@ -142,7 +142,8 @@ local everyone = {
       anchor = function() return ns.NotifyUI and shown(ns.NotifyUI:GetBell()) end },
     { title = "Feedback, news and settings", side = "bottom",
       text = "Send the developer a bug or an idea (the speech bubble), read what's new (the page) and change your "
-          .. "settings (the cog). Settings > Help has this tour and the strategy board's.",
+          .. "settings (the cog). Settings > Help has this tour"
+          .. ((ns.FOREVER_HIDDEN and ns.FOREVER_HIDDEN.strategies) and "." or " and the strategy board's."),
       anchor = function() return navTab("feedback"), navTab("changelog"), navTab("settings") end },
 }
 
@@ -156,18 +157,22 @@ local leader = {
           .. "itself, and the players of its team get the sign-up reminder.",
       enter = raidsView("upcoming"), anchor = raidsField("newRaidBtn") },
     { title = "Teams", side = "bottom",
-      text = "A team is one roster with lineups for 10 and 25 players, and a waitlist. Its raid nights show on the "
-          .. "board before anyone joins.",
+      text = "A team is one roster with lineups for "
+          .. ((ns.Compat and ns.Compat.isForever) and "10, 20 and 40" or "10 and 25")
+          .. " players, and a waitlist. Its raid nights show on the board before anyone joins.",
       enter = raidsView("upcoming"), anchor = raidsField("teamsBtn") },
     { title = "Sign-ups and groups",
-      text = "Open a raid for its sign-ups. Groups places the players in the raid's groups, Assignments fills the "
-          .. "bosses' strategies with them.",
+      text = (ns.FOREVER_HIDDEN and ns.FOREVER_HIDDEN.strategies)
+          and "Open a raid for its sign-ups. Groups places the players in the raid's groups."
+          or ("Open a raid for its sign-ups. Groups places the players in the raid's groups, Assignments fills the "
+          .. "bosses' strategies with them."),
       enter = raidsView("upcoming"),
       anchor = spot(function() return panel("raids") end) },
     { title = "Strategies", side = "bottom",
       text = "The boss strategy boards. On a raid's page you pick the ones it uses; its players see their own jobs "
           .. "on them. The board has its own tutorial (its ? button).",
-      enter = raidsView("upcoming"), anchor = raidsField("stratBtn") },
+      enter = raidsView("upcoming"), anchor = raidsField("stratBtn"),
+      skip = function() return ns.FOREVER_HIDDEN and ns.FOREVER_HIDDEN.strategies and true or false end },
     { title = "Running the raid",
       text = "When the group is formed, the WoW group leader starts the raid from the bar at the top of the screen: "
           .. "attendance and boss kills are logged from then on, and loot council sessions start.\n\n" .. GREY

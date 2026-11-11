@@ -52,7 +52,7 @@ end
 -- of the square texture, which the game shows at 4:3), fw = how much of its width (default 0.9).
 -- The art's file and the crop for a w x h picture: path, left, right, top, bottom.
 function EUI:ArtCoords(key, w, h, cx, cy, fw)
-    local path = B() and B():ArtPath(key) or "Interface\\Glues\\LoadingScreens\\LoadScreenNagrandArenaBattlegrounds"
+    local path = B() and B():ArtPath(key) or "Interface\\Glues\\LoadingScreens\\LoadScreenWarsongGulch"
     w, h = max(1, w or 100), max(1, h or 50)
     cx, cy, fw = cx or 0.5, cy or 0.62, fw or 0.9
     local top = 0.21                       -- the logo's band

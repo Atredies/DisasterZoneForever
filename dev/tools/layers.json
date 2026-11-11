@@ -60,6 +60,7 @@
   "Core/RaidNights.lua": 3,
   "Core/Attendance.lua": 3,
   "Core/RaidComp.lua": 3,
+  "Core/RaidLearn.lua": 3,
   "Core/RaidInvite.lua": 3,
   "Core/RaidLink.lua": 3,
   "Core/SessionInfo.lua": 3,

@@ -1,5 +1,11 @@
 # DisasterZone — Architecture & Implementation Spec (v1)
 
+> **DisasterZoneForever note (2026-11-09):** this spec and the rest of `dev/docs/` are the upstream design docs of
+> tsumilo's original DisasterZone for **TBC Anniversary** (Interface 20506, folder `_anniversary_`). They are kept as
+> reference for how the engines work. This repo targets **WoW Forever** (client 1.60.1, Interface 16001, folder
+> `_forever_`). For what Forever changes and the current state, see `_DisasterZoneForever-vault/` (start at `Home.md`,
+> then `01-Overview/Deep Dive Synthesis.md`). Paths like `C:\World of Warcraft\_anniversary_` are upstream's.
+
 Guild loot-assistance addon for **<Casual Disaster>** on the **WoW TBC Anniversary** client (game 2.5.6, TOC `Interface: 20506`, Lua 5.1).
 Addon folder: `C:\World of Warcraft\_anniversary_\Interface\AddOns\DisasterZone` (below: `DisasterZone/`).
 Scratch/research folder: `C:\Users\emilo\AppData\Local\Temp\claude\C--World-of-Warcraft--anniversary--Interface-AddOns-DisasterZone\ad52e6fc-e309-49be-aa3a-9ce45a30ad4b\scratchpad` (below: `SCRATCH/`).

@@ -10,7 +10,7 @@ the developer's review decisions (what to bake into Data/BossMods/*.lua).
 Usage (from dev):
     luaenv\Scripts\python.exe tools\bossmods_learned.py [SavedVariables.lua ...] [--json] [--boss KEY] [--raid RAID]
                                                        [--all] [--no-names]
-    no path: C:\World of Warcraft\_anniversary_\WTF\Account\*\SavedVariables\DisasterZone*.lua (every file that has
+    no path: C:\World of Warcraft\_forever_\WTF\Account\*\SavedVariables\DisasterZone*.lua (every file that has
     DisasterZoneBossLearnDB). --all also lists bosses without pulls. --no-names skips the 2.5.6 spell name table
     (art/rooms/db2/SpellName.csv, read only when it is already there: never downloaded).
 Exit code 0, or 2 when no file has the table.
@@ -28,7 +28,11 @@ from lupa import lua51
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEV = os.path.dirname(HERE)
 ADDON = os.environ.get("DISASTERZONE_ADDON_DIR") or os.path.join(DEV, "..", "addon", "DisasterZone")
-DEFAULT_GLOB = r"C:\World of Warcraft\_anniversary_\WTF\Account\*\SavedVariables\DisasterZone*.lua"
+# The boss mod data is TBC's: its boss keys are in the TBC item data (dev/fixtures/tbc; the addon ships Forever's).
+_TBC_ITEMS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "fixtures", "tbc", "Data", "Items.lua")
+TBC_FIX = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "fixtures", "tbc")
+ITEMS_LUA = _TBC_ITEMS if os.path.exists(_TBC_ITEMS) else os.path.join(ADDON, "Data", "Items.lua")
+DEFAULT_GLOB = r"C:\World of Warcraft\_forever_\WTF\Account\*\SavedVariables\DisasterZone*.lua"
 SPELL_CSV = os.path.join(DEV, "art", "rooms", "db2", "SpellName.csv")
 DASH = "\u2013"
 
@@ -36,7 +40,7 @@ DASH = "\u2013"
 def raid_names():
     """{raid key: name}, {boss key: name} from Data/Items.lua (plain text: no Lua run)."""
     raids, bosses, raid = {}, {}, None
-    path = os.path.join(ADDON, "Data", "Items.lua")
+    path = ITEMS_LUA
     for line in open(path, encoding="utf-8"):
         m = re.match(r'^  \{ key = "(\w+)", name = "([^"]+)"', line)
         if m:
@@ -72,15 +76,15 @@ class Lua:
         self._run = self.lua.eval("function(src, name, ns) local f, e = loadstring(src, '@' .. name); "
                                   "if not f then error(e) end; return f('DisasterZone', ns) end")
         self.load(os.path.join("Core", "BossLearnMath.lua"))
-        data = os.path.join(ADDON, "Data", "BossMods")
+        data = os.path.join(TBC_FIX, "Data", "BossMods")     # (the TBC raids' mods; Forever has none yet)
         for f in sorted(os.listdir(data)):
             if f.endswith(".lua"):
-                self.load(os.path.join("Data", "BossMods", f))
+                self.load(os.path.join("Data", "BossMods", f), TBC_FIX)
         self.M = self.ns["BossLearnMath"]
         self.mods = self.ns["Data"]["BossMods"]
 
-    def load(self, rel):
-        src = open(os.path.join(ADDON, rel), encoding="utf-8").read()
+    def load(self, rel, base=None):
+        src = open(os.path.join(base or ADDON, rel), encoding="utf-8").read()
         self._run(src, rel.replace("\\", "/"), self.ns)
 
     def saved(self, path):

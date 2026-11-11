@@ -367,12 +367,18 @@ function CT:SetZones()
 end
 CT:SetZones()
 
-local function OnPlateAdded(_, token)
+-- (WoW Forever: in instances a plate's GUID is a secret value, which can't be a table key: those plates aren't kept)
+local function PlateGUID(token)
     local g = UnitGUID and UnitGUID(token)
+    if g == nil or (ns.Compat and ns.Compat.IsSecret(g)) then return nil end
+    return g
+end
+local function OnPlateAdded(_, token)
+    local g = PlateGUID(token)
     if g then plates[g] = token end
 end
 local function OnPlateRemoved(_, token)
-    local g = UnitGUID and UnitGUID(token)
+    local g = PlateGUID(token)
     if g and plates[g] == token then plates[g] = nil end
     for guid, t in pairs(plates) do if t == token then plates[guid] = nil end end
 end
@@ -415,7 +421,7 @@ function CT:Restyle()
 end
 
 ---------------------------------------------------------------------------
--- The demo pull: the mockup's Void Reaver pull (Try it, demo mode, Edit layout's preview)
+-- The demo pull: the mockup's Void Reaver pull (Try it, demo mode, Edit layout's preview); Forever: Onyxia's
 ---------------------------------------------------------------------------
 
 local I = "Interface\\Icons\\"
@@ -446,6 +452,24 @@ local PULL = {
     { 10.20, "out", 5921, "Hammer of Wrath", "Ability_ThunderClap", "holy", { crit = true, overkill = 1380 } },
 }
 CT.PULL_LENGTH = 12
+-- WoW Forever (vanilla content): an Onyxia pull with vanilla spells (no Crusader Strike or Bloodlust; no shaman's
+-- Windfury on a paladin: Hand of Justice's extra swing instead)
+if ns.Compat and ns.Compat.isForever then
+    local SWAP = { ["Crusader Strike"] = { "Judgement of Righteousness", "Spell_Holy_RighteousFury", "holy" },
+                   ["Pounding"] = { "Wing Buffet", "INV_Misc_MonsterScales_05", "phys" },
+                   ["Arcane Orb"] = { "Fireball", "Spell_Fire_FlameBolt", "fire" },
+                   ["Bloodlust"] = { "Power Infusion", "Spell_Holy_PowerInfusion", nil, 15 },
+                   ["Windfury Attack"] = { "Hand of Justice", "INV_Jewelry_Talisman_01", "phys" } }
+    for _, row in ipairs(PULL) do
+        local s = SWAP[row[4]]
+        if s then
+            row[4], row[5] = s[1], s[2]
+            if s[3] then row[6] = s[3] end
+            if s[4] and row[7] then row[7].dur = s[4] end
+            if row[7] and row[7].gname == "Melee + Windfury" then row[7].gname = "Melee + Hand of Justice" end
+        end
+    end
+end
 
 function CT.PullEvent(row)
     local ev = { k = row[2], amt = row[3], spell = row[4], icon = row[5] and (I .. row[5]) or nil, school = row[6],

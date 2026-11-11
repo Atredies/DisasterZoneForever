@@ -390,7 +390,7 @@ local function bisDrops(raid)
         for _, d in ipairs(dropsIn(missing, r)) do drops[#drops + 1] = d end
     end
     if #drops == 0 then return nil end
-    local tip = { "Your Phase " .. phase .. " BiS picks that can drop in " .. tconcat(names, " or ") }
+    local tip = { "Your " .. ns.PHASE_WORD .. " " .. phase .. " BiS picks that can drop in " .. tconcat(names, " or ") }
     for i, d in ipairs(drops) do
         if i > 15 then
             tip[#tip + 1] = dim("+" .. (#drops - 15) .. " more")
@@ -400,8 +400,8 @@ local function bisDrops(raid)
             .. dim(" - " .. d.boss .. (d.via == "token" and " (token)" or ""))
     end
     tip[#tip + 1] = dim("Click to open My BiS")
-    return { text = (#drops == 1 and "1 of your P%d picks can drop here" or (#drops .. " of your P%d picks can drop here"))
-                        :format(phase),
+    return { text = (#drops == 1 and "1 of your %s picks can drop here" or (#drops .. " of your %s picks can drop here"))
+                        :format(ns.PhaseLabel(phase)),
              tip = tip, onClick = function() openMyBiS(phase) end }
 end
 
@@ -546,7 +546,7 @@ local function readiness(v, ctx)
             end
             if filled == 0 then empty[#empty + 1] = key end
         end
-        add(empty, "%d without a P" .. ctx.phase .. " list", "No BiS picks for Phase " .. ctx.phase)
+        add(empty, "%d without a " .. ns.PhaseLabel(ctx.phase) .. " list", "No BiS picks for " .. ns.PHASE_WORD .. " " .. ctx.phase)
     end
     local Sync = ns.Sync
     local noAddon, oldAddon = {}, {}
@@ -665,13 +665,13 @@ local function collectActions(ctx)
     local s = ctx.bis
     local star = { tex = UI():Tex("star") }
     if s.filled == 0 then
-        out[#out + 1] = { text = "Pick your Phase " .. ctx.phase .. " BiS", kind = "warn", icon = star,
-                          tip = { "Your Phase " .. ctx.phase .. " list is empty", "The council can't see what you need." },
+        out[#out + 1] = { text = "Pick your " .. ns.PHASE_WORD .. " " .. ctx.phase .. " BiS", kind = "warn", icon = star,
+                          tip = { "Your " .. ns.PHASE_WORD .. " " .. ctx.phase .. " list is empty", "The council can't see what you need." },
                           onClick = function() openMyBiS(ctx.phase) end }
     elseif s.filled < s.total then
         local empty = s.total - s.filled
-        out[#out + 1] = { text = "Phase " .. ctx.phase .. ": " .. plural(empty, "empty slot"), kind = "info", icon = star,
-                          tip = { "Fill or disable the empty slots of your Phase " .. ctx.phase .. " list" },
+        out[#out + 1] = { text = ns.PHASE_WORD .. " " .. ctx.phase .. ": " .. plural(empty, "empty slot"), kind = "info", icon = star,
+                          tip = { "Fill or disable the empty slots of your " .. ns.PHASE_WORD .. " " .. ctx.phase .. " list" },
                           onClick = function() openMyBiS(ctx.phase) end }
     end
     local BiS = ns.BiS
@@ -1333,7 +1333,7 @@ local function fillRaid(f, ctx)
         if inst and key ~= "other" then names[#names + 1] = inst.name end
     end
     if (v.ti or #names > 1) and #names > 0 then parts[#parts + 1] = { tconcat(names, " + "), 9 } end
-    parts[#parts + 1] = { (v.sz or 25) .. "-player", 3 }
+    parts[#parts + 1] = { (v.sz or RP():GetDefaultSize()) .. "-player", 3 }
     if v.rl then parts[#parts + 1] = { UI():ColoredName(v.rl) .. " leads", 8 } end
     local teams = teamsText(v)
     if teams then parts[#parts + 1] = { teams, 5 } end
@@ -1356,7 +1356,7 @@ local function fillRaid(f, ctx)
 
     -- the accepted by role and how full it is (the tooltip has every answer and who hasn't answered)
     local _, counts, roles, noAnswer = signupCounts(v)
-    local size = v.sz or 25
+    local size = v.sz or RP():GetDefaultSize()
     if counts.A == 0 and counts.T == 0 then
         f.meter:SetText(dim("No answers yet"))
     else
@@ -1601,7 +1601,7 @@ local function eventTip(ev)
         local when = date("%A %d %B %H:%M", v.t)
         if v.t >= Now() - CURRENT_FOR and not v.cancelled then when = when .. " · " .. whenText(v.t) end
         tip[#tip + 1] = when
-        local sub = { (v.sz or 25) .. "-player" }
+        local sub = { (v.sz or RP():GetDefaultSize()) .. "-player" }
         local teams = teamsText(v)
         if teams then sub[#sub + 1] = teams end
         if v.weekly then sub[#sub + 1] = "weekly" end

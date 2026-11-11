@@ -47,7 +47,7 @@ local ASK_W, ASK_H = 420, 312   -- the card that asks first
 local ASK_OPT_Y, OPT_H = 44, 44 -- its two ways to share (from its body's top)
 
 local panel
-local state = { cont = 1945, zone = nil, hot = nil }
+local state = { cont = (ns.GuildMap and ns.GuildMap.DEFAULT_CONTINENT) or 1945, zone = nil, hot = nil }
 local GM = function() return ns.GuildMap end
 
 local function UI() return ns.UI end
@@ -566,12 +566,14 @@ local function CreateAskCard(p, over)
     card.text:SetText("Only guildmates who share see each other. Pick how much of you they see; the eye at the top "
         .. "right changes it any time.")
     card.opts = {
-        OptionRow(body, "zone", "Zone only", "\"In Nagrand\". No dot, no exact spot.", ASK_OPT_Y),
+        OptionRow(body, "zone", "Zone only", ((ns.Compat and ns.Compat.isForever) and "\"In Tanaris\"" or "\"In Nagrand\"")
+            .. ". No dot, no exact spot.", ASK_OPT_Y),
         OptionRow(body, "exact", "Exact spot", "A dot that moves with you, every few seconds.", ASK_OPT_Y + OPT_H + 6),
     }
     card.note = UI():Text(body, "small", "DIM", ON_ART)
     card.note:SetPoint("BOTTOMLEFT", 0, 6)
-    card.note:SetText("Always hidden in battlegrounds and arenas.")
+    card.note:SetText((ns.Compat and ns.Compat.isForever) and "Always hidden in battlegrounds."   -- (Forever: no arenas)
+        or "Always hidden in battlegrounds and arenas.")
     card.share = UI():CreateSleekButton(body, "Share", 84, S.BTN_H, function()
         GM():SetShare(card.choice or "exact")
     end, "primary")
@@ -742,9 +744,9 @@ function GuildMapUI:CreatePanel(parent)
     return p
 end
 
--- The continent a map lies on (or itself), else Outland.
+-- The continent a map lies on (or itself), else the default one (Outland; Forever: Eastern Kingdoms).
 local function ContinentFor(map)
-    return (map and GM():ContinentOf(map)) or 1945
+    return (map and GM():ContinentOf(map)) or GM().DEFAULT_CONTINENT or 1945
 end
 
 function GuildMapUI:ShowContinent(id)

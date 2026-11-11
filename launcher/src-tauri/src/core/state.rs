@@ -1,6 +1,6 @@
 //! The launcher's own settings (one JSON file in the OS config folder).
 
-use super::error::Result;
+use super::error::{msg, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs;
@@ -8,6 +8,19 @@ use std::path::PathBuf;
 
 /// Where releases are published (the public releases repository). A setting can point elsewhere for testing.
 pub const DEFAULT_SOURCE: &str = include_str!("../../../source.txt");
+
+/// The game folder of WoW Forever, the version DisasterZoneForever is made for.
+pub const FOREVER: &str = "_forever_";
+
+/// What a WoW Forever install or update says while the release source is still upstream's.
+pub const NO_FOREVER_SOURCE: &str = "No WoW Forever release source is configured yet.";
+
+/// A URL that still points at upstream's (tsumilo's TBC) releases repository: its addon must not go into `_forever_`
+/// and its launcher must not replace ours. The guards that use this fall away once source.txt and the updater
+/// endpoint in tauri.conf.json name our own repository.
+pub fn is_upstream_source(url: &str) -> bool {
+    url.to_ascii_lowercase().contains("tsumilo/disasterzone-releases")
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
@@ -63,7 +76,7 @@ impl Default for Settings {
     fn default() -> Self {
         Settings {
             wow_root: None,
-            flavor: "_anniversary_".into(),
+            flavor: "_forever_".into(),
             channel: "stable".into(),
             seen_seq: BTreeMap::new(),
             hold: false,
@@ -100,6 +113,16 @@ pub struct FlavorPacks {
 impl Settings {
     pub fn source(&self) -> String {
         self.source.clone().filter(|s| !s.trim().is_empty()).unwrap_or_else(|| DEFAULT_SOURCE.trim().to_string())
+    }
+
+    /// The source an install, update or release check reads: refused for WoW Forever while it is still upstream's
+    /// (other game versions keep upstream's feed, as before).
+    pub fn release_source(&self) -> Result<String> {
+        let src = self.source();
+        if self.flavor == FOREVER && is_upstream_source(&src) {
+            return msg(NO_FOREVER_SOURCE);
+        }
+        Ok(src)
     }
 
     pub fn flavor_dir(&self) -> Option<PathBuf> {
@@ -147,6 +170,24 @@ pub fn save(s: &Settings) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn forever_refuses_upstreams_release_source() {
+        let upstream = "https://raw.githubusercontent.com/tsumilo/DisasterZone-releases/main/";
+        assert!(is_upstream_source(upstream));
+        assert!(!is_upstream_source("https://raw.githubusercontent.com/Atredies/DisasterZoneForever-releases/main/"));
+        let forever = |src: &str| Settings { flavor: FOREVER.into(), source: Some(src.into()), ..Default::default() };
+        assert_eq!(forever(upstream).release_source().unwrap_err().to_string(), NO_FOREVER_SOURCE);
+        let ours = "https://example.org/forever-releases/";
+        assert_eq!(forever(ours).release_source().unwrap(), ours);
+        assert_eq!(forever("/home/me/dz-build").release_source().unwrap(), "/home/me/dz-build");
+        // other game versions keep upstream's feed
+        let anniversary = Settings { flavor: "_anniversary_".into(), source: Some(upstream.into()), ..Default::default() };
+        assert_eq!(anniversary.release_source().unwrap(), upstream);
+        // (the built-in source as shipped: refused for Forever only while source.txt is upstream's)
+        let built_in = Settings { flavor: FOREVER.into(), source: None, ..Default::default() };
+        assert_eq!(built_in.release_source().is_err(), is_upstream_source(DEFAULT_SOURCE));
+    }
 
     #[test]
     fn each_game_version_keeps_its_own_game_choices() {

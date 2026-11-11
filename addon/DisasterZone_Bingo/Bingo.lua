@@ -40,11 +40,14 @@ local function DemoGame()
     if demoGame then return demoGame end
     local me = Util.PlayerKey()
     local now = time()
-    local g = { id = "demo", host = me, started = now - 2700, hits = {}, who = {}, raid = "ssc", demo = true }
+    -- (WoW Forever: Hyjal Summit, which has no deck of its own there, Squares.lua RAIDS; a Forever boss in the list)
+    local forever = ns.Compat and ns.Compat.isForever
+    local g = { id = "demo", host = me, started = now - 2700, hits = {}, who = {}, raid = forever and "hyjal" or "ssc",
+        demo = true }
     demoGame = g
     local card = Bingo:GetCard(me)
     local leg = Bingo:GetLegendary(me)
-    local who = { "Victhar", "Fazerblue", "Lady Vashj", "Saltykim", "Dyrma", "Lidevna" }
+    local who = { "Victhar", "Fazerblue", forever and "Onyxia" or "Lady Vashj", "Saltykim", "Dyrma", "Lidevna" }
     local n = 0
     for _, i in ipairs({ 11, 12, 14, 15, 5, 10, 20, 1, 7, 22, 18 }) do
         local id = card and card[i]

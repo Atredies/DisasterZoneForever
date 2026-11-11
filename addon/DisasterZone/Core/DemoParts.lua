@@ -360,7 +360,9 @@ end
 -- Quick picks: { key, label, tip }; the page draws them in this order.
 Demo.PRESETS = {
     { key = "pages", label = "Pages only", tip = "The demo guild fills the pages. Nothing plays on screen." },
-    { key = "combat", label = "In combat", tip = "Meters, combat text, boss mods and nameplates: one made-up pull." },
+    { key = "combat", label = "In combat",
+      tip = (ns.Compat and ns.Compat.isForever) and "Combat text and nameplates: one made-up pull."
+        or "Meters, combat text, boss mods and nameplates: one made-up pull." },
     { key = "frames", label = "Raid frames", tip = "A made-up party and main tanks next to you." },
     { key = "class", label = "My class", tip = "Your class's tools with made-up data." },
     { key = "all", label = "Everything", tip = "The demo guild and every part, for every class." },

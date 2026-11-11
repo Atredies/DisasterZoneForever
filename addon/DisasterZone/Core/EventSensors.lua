@@ -245,7 +245,7 @@ local function Targeted(clickOnly)
     if not Call(UnitIsPlayer, "target") then return end
     local whom = Util.UnitKey("target")
     if not whom or whom == Me() then return end
-    local click = Call(UnitIsUnit, "mouseover", "target") and not FocusIsUnitFrame()
+    local click = ns.Compat.SameUnit("mouseover", "target") and not FocusIsUnitFrame()
     if clickOnly and not click then return end
     local near = click and Call(CheckInteractDistance, "target", NEAR) and true or false
     for occId, a in pairs(active) do
@@ -267,7 +267,7 @@ end
 -- the mouse goes down over them in the world.
 local function OnMouseDown(_, button)
     if not want.touch.click or (button ~= "LeftButton" and button ~= "RightButton") then return end
-    if Call(UnitIsPlayer, "mouseover") and Call(UnitIsUnit, "mouseover", "target") then Targeted(true) end
+    if Call(UnitIsPlayer, "mouseover") and ns.Compat.SameUnit("mouseover", "target") then Targeted(true) end
 end
 
 -- A unit token for a player I can measure to: my target, the mouseover, or a member of my group.
@@ -360,6 +360,30 @@ local function OnCombatLog()
     if src ~= Call(UnitGUID, "player") and src ~= Call(UnitGUID, "pet") then return end
     if type(dst) ~= "string" or dst:find("^Player") then return end   -- creatures only
     Happen("kill", { creature = type(dstName) == "string" and dstName or nil })
+end
+
+-- The same without a combat log (WoW Forever): PARTY_KILL (attackerGUID, targetGUID), UnitDocumentation.lua. The
+-- GUIDs may be secret (SecretWhenUnitIdentityRestricted, e.g. inside an instance): then it is not counted. The
+-- creature's name is the one of a unit I can see with that GUID (target, mouseover, ...), else unknown.
+-- UNVERIFIED in game that an addon frame receives PARTY_KILL with plain GUIDs in the open world.
+local KILL_UNITS = { "target", "mouseover", "focus", "pettarget" }
+local function OnPartyKill(_, src, dst)
+    if not want.happen.kill then return end
+    local C = ns.Compat
+    if C then src, dst = C.Plain(src), C.Plain(dst) end
+    if type(src) ~= "string" or type(dst) ~= "string" then return end
+    local GUID = C and C.GUID or function(u) return Call(UnitGUID, u) end
+    if src ~= GUID("player") and src ~= GUID("pet") then return end
+    if dst:find("^Player") then return end                              -- creatures only
+    local name
+    for _, u in ipairs(KILL_UNITS) do
+        if GUID(u) == dst then
+            name = Call(UnitName, u)
+            name = C and C.Plain(name) or name
+            break
+        end
+    end
+    Happen("kill", { creature = type(name) == "string" and name or nil })
 end
 
 -- "You receive loot: %s." (and "...: %sx%d.") as Lua patterns (any language): { {pat, multiple} }.
@@ -471,7 +495,7 @@ end
 
 -- My World flags as the run keeps them (EventEngine Run:Pos): flying, swimming, in combat, mounted, moving, dead.
 local function Flags()
-    local speed = tonumber((Call(GetUnitSpeed, "player"))) or 0
+    local speed = tonumber((ns.Compat.UnitSpeed("player"))) or 0      -- (secret on Forever in combat: 0)
     return { fl = Call(IsFlying) and true or false, sw = Call(IsSwimming) and true or false,
         cb = Call(UnitAffectingCombat, "player") and true or false, mt = Call(IsMounted) and true or false,
         mv = speed > 0, dd = Call(UnitIsDeadOrGhost, "player") and true or false }
@@ -728,7 +752,7 @@ local function Poll()
     local any = next(active) ~= nil
     if any then
         if want.happen.move or want.happen.stop then
-            local speed = Call(GetUnitSpeed, "player")
+            local speed = ns.Compat.UnitSpeed("player")                -- (nil while secret on Forever)
             Look("moving", true, (tonumber(speed) or 0) > 0, "move", "stop")
         end
         if want.happen.mount or want.happen.dismount then
@@ -802,7 +826,9 @@ function S:Refresh()
     Watch("PLAYER_TARGET_CHANGED", OnTargetChanged, w.target)
     Watch("GLOBAL_MOUSE_DOWN", OnMouseDown, w.touch.click)
     Watch("CHAT_MSG_TEXT_EMOTE", OnTextEmote, w.emote)
-    Watch("COMBAT_LOG_EVENT_UNFILTERED", OnCombatLog, w.happen.kill)
+    local log = not (ns.Compat and not ns.Compat:CanUseCombatLog())
+    Watch("COMBAT_LOG_EVENT_UNFILTERED", OnCombatLog, w.happen.kill and log)
+    Watch("PARTY_KILL", OnPartyKill, w.happen.kill and not log)
     Watch("CHAT_MSG_LOOT", OnLoot, w.happen.loot or w.happen.fish)
     Watch("LOOT_OPENED", OnLootOpened, w.happen.fish)
     Watch("LOOT_CLOSED", OnLootClosed, w.happen.fish)

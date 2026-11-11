@@ -3556,18 +3556,45 @@ function UI.SetFocus(on)
     wipe(held)
     acc = 0
 end
+-- SetPropagateKeyboardInput is protected in combat on the retail engine (WoW Forever): the client blocks it
+-- (ADDON_ACTION_BLOCKED, not a Lua error, so pcall does not help). In combat the wish waits for PLAYER_REGEN_ENABLED
+-- (as Core/Util.lua SetPropagateKeys does; a pack keeps its own guard).
+local SetPropagate
+do
+    local later, watch = {}, nil
+    function SetPropagate(frame, on)
+        if not (frame and frame.SetPropagateKeyboardInput) then return end
+        on = on and true or false
+        if InCombatLockdown and InCombatLockdown() then
+            later[frame] = on
+            if not watch and CreateFrame then
+                watch = CreateFrame("Frame")
+                watch:RegisterEvent("PLAYER_REGEN_ENABLED")
+                watch:SetScript("OnEvent", function()
+                    for f, v in pairs(later) do
+                        later[f] = nil
+                        pcall(f.SetPropagateKeyboardInput, f, v)
+                    end
+                end)
+            end
+            return
+        end
+        later[frame] = nil
+        pcall(frame.SetPropagateKeyboardInput, frame, on)
+    end
+end
 local function OnKeyDown(self, key)
     if key == "ESCAPE" then
-        if overlay == "dev" then UI.CloseDev() pcall(self.SetPropagateKeyboardInput, self, false) return end
-        if overlay == "pause" then ClosePause() pcall(self.SetPropagateKeyboardInput, self, false) return end
-        if run and not run.attract and not run.over and overlay == nil then ShowPause() pcall(self.SetPropagateKeyboardInput, self, false) return end
+        if overlay == "dev" then UI.CloseDev() SetPropagate(self, false) return end
+        if overlay == "pause" then ClosePause() SetPropagate(self, false) return end
+        if run and not run.attract and not run.over and overlay == nil then ShowPause() SetPropagate(self, false) return end
         UI.SetFocus(false)
-        pcall(self.SetPropagateKeyboardInput, self, false)
+        SetPropagate(self, false)
         return
     end
     -- (paused, every key but Esc goes on to the game: move, cast, open bags like in WoW's own menu-less pause)
     local mine = KEYS[key] and overlay ~= "pause"
-    if not InCombatLockdown() and self.SetPropagateKeyboardInput then pcall(self.SetPropagateKeyboardInput, self, not mine) end
+    if not InCombatLockdown() and self.SetPropagateKeyboardInput then SetPropagate(self, not mine) end
     if not mine then return end
     held[key] = true
     if overlay == "level" and (key == "1" or key == "2" or key == "3") then UI.TakeLevel(tonumber(key)) end

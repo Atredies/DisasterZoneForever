@@ -2185,7 +2185,7 @@ function AUI:LeaderRender()
     f:SetHeight(-y + (showNH and 44 or 14))
 end
 
--- Swap in...: guild members in the raid who weren't expected (mark them), or online guild members at level 70 to
+-- Swap in...: guild members in the raid who weren't expected (mark them), or online guild members at max level to
 -- invite in their place (sorted by name; pugs and offline players left out).
 function AUI:SwapMenu(owner, out)
     if not out then return end
@@ -2218,7 +2218,7 @@ function AUI:SwapMenu(owner, out)
         for _, key in ipairs(G and G.GetOnlineMembers and G:GetOnlineMembers() or {}) do
             local m = G.GetMember and G:GetMember(key)
             local level = m and tonumber(m.level)
-            if not inRaid[key] and not ns.Util.IsMe(key) and (not level or level >= 70) then online[#online + 1] = key end
+            if not inRaid[key] and not ns.Util.IsMe(key) and (not level or level >= ((ns.RaidPlan and ns.RaidPlan.GetMaxLevel and ns.RaidPlan:GetMaxLevel()) or 70)) then online[#online + 1] = key end
         end
         tsort(online)
         if #online > 0 then

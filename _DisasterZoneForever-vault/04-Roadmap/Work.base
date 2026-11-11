@@ -1,0 +1,25 @@
+filters:
+  and:
+    - file.hasTag("task")
+properties:
+  status: {displayName: Status}
+  priority: {displayName: Priority}
+  effort: {displayName: Effort}
+  completed: {displayName: Completed}
+views:
+  - type: kanban
+    name: Board
+    groupBy: {property: status, direction: ASC}
+    groupOrder:
+      - "4 - Later"
+      - "3 - To do"
+      - "2 - Next up"
+      - "1 - In progress"
+      - "5 - Done"
+      - "6 - Dropped"
+    order: [file.name, priority, effort]
+    newItemFolder: 04-Roadmap/Tasks
+    newItemProperties: {tags: task, status: "3 - To do", priority: p2}
+  - type: table
+    name: All work
+    order: [file.name, status, priority, effort, completed]

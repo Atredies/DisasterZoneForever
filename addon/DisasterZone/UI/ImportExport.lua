@@ -24,6 +24,9 @@ local type, tostring, tonumber, ipairs, pairs = type, tostring, tonumber, ipairs
 local tconcat = table.concat
 
 local W, H = 640, 670
+-- WoW Forever: no WoWSims sim and no known Wowhead Forever gear planner link format (Core/BiSExport.lua), so Import
+-- doesn't offer them and Export makes only our own JSON (the "wowsims" key: the same text, read back by Import).
+local FOREVER = ns.Compat and ns.Compat.isForever
 local MAX_SHOWN = 16000
 local ROW_H, HEADER_ROW_H = 32, 20
 local NUM_SLOTS = 17
@@ -94,6 +97,10 @@ local WHERE_LINES = {
     { "Anything else", "Item links from chat, Wowhead item links, item numbers or item names, one per line "
         .. "(a table copied from a guide works too)." },
 }
+if FOREVER then
+    WHERE_LINES[3] = { "DisasterZone", "A guildmate's export (Export > DisasterZone text)." }
+    table.remove(WHERE_LINES, 4)
+end
 
 local function ImportPlan()
     if not state.parsed then return nil end
@@ -554,13 +561,14 @@ local FORMATS = {
     { key = "bulk", label = "WoWSims Bulk" },
     { key = "wowhead", label = "Wowhead link" },
 }
+if FOREVER then FORMATS = { { key = "wowsims", label = "DisasterZone text" } } end
 
 -- text, help line
 local function ExportText()
     local exp = Exp()
     local bis = state.what == "bis"
     local list = state.exList == "os" and "os" or nil
-    if state.format == "bulk" then
+    if state.format == "bulk" and not FOREVER then
         if not bis then return "", "A Bulk list holds BiS picks: choose BiS list above." end
         local text, n = exp:Bulk(state.exPhase, list)
         if n == 0 then return "", PL(state.exPhase) .. " has no picks yet." end
@@ -571,6 +579,10 @@ local function ExportText()
     local specs, kept = nil, 0
     if bis then specs, kept = exp:PhaseSpecs(state.exPhase, list) else specs = exp:EquippedSpecs() end
     local keptText = (bis and kept > 0) and ("  " .. Plural(kept, "slot") .. " without a pick use what you wear.") or ""
+    if FOREVER then
+        return exp:WoWSims(specs), "Send this text to a guildmate: their My BiS > Import reads the gear and enchants "
+            .. "back." .. keptText
+    end
     if state.format == "wowhead" then
         return exp:WowheadLink(specs), "Paste the link into your browser: Wowhead's TBC gear planner opens with these "
             .. "items and gems (enchants are left out)." .. keptText
@@ -646,7 +658,7 @@ function Win:SetExport(what, format)
         if state.what == "gear" and state.format == "bulk" then state.format = "wowsims" end
     end
     if format then
-        state.format = format
+        state.format = FOREVER and "wowsims" or format
         if format == "bulk" then state.what = "bis" end
     end
     self:RefreshExport()
@@ -690,6 +702,10 @@ local PANE_INFO = {
         .. "planner link, or item links." },
     export = { icon = "export", title = "Export", sub = "Your gear or a BiS phase for WoWSims or Wowhead." },
 }
+if FOREVER then
+    PANE_INFO.import.sub = "From That's My BiS, Sixty Upgrades, a guildmate's DisasterZone export, or item links."
+    PANE_INFO.export.sub = "Your gear or a BiS phase as text a guildmate can import."
+end
 
 local function Create()
     local ui = UI()

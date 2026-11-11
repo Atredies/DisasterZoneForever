@@ -214,10 +214,22 @@ def specs_come_from_my_bis_and_else_from_the_talents():
     w.assert_no_errors()
 
 
+def one_account(a, o):
+    """a and o are one player's characters: each client knows the other as its own (the saved variables are per
+    account), so their vouches (Guild accounts, 25-45 s after login) name each other and every client sees them as one
+    account. Call it right after guild(). (2026-11-09: a record of a character is believed from that player only,
+    Professions.Vouches, so the other character's client has to be theirs for the guild, not only for itself.)"""
+    for x, other in ((a, o), (o, a)):
+        x.eval("local k = ...; local gk = ns.Guild:GetGuildKey(); ns.db.accounts = ns.db.accounts or {}; "
+               "ns.db.accounts[gk] = ns.db.accounts[gk] or { mine = {}, v = {} }; ns.db.accounts[gk].mine[k] = true",
+               K(other.name))
+
+
 def alt_world():
     """Alfa and Alto are one player (one account: Alfa's client holds both records as its own); Alto knows Tailoring."""
     w, c = guild([("Gina", "PALADIN"), ("Alfa", "MAGE"), ("Alto", "PRIEST"), ("Bert", "ROGUE")])
     g, a, o, b = c["Gina"], c["Alfa"], c["Alto"], c["Bert"]
+    one_account(a, o)
     set_skills(a, [("Alchemy", 375, 375)])
     set_skills(o, [("Tailoring", 375, 375)])
     w.tick(5)
@@ -492,8 +504,10 @@ def a_debug_role_sees_the_notes_ui_without_touching_the_real_notes():
     on that PC; nothing is sent, no real note arrives, and the real officers' notes are untouched."""
     w = World()
     c = {}
+    from _common import DEV_NAME, DEV_REALM  # noqa: E402
     for name, rank, cls in (("Gina", 0, "PALADIN"), ("Otto", 1, "WARRIOR"), ("Tsumil", 3, "ROGUE"), ("Sam", 3, "MAGE")):
-        c[name] = Client(w, name, guild_rank=rank, class_file=cls)
+        c[name] = (Client(w, DEV_NAME, realm=DEV_REALM, guild_rank=rank, class_file=cls) if name == "Tsumil"   # the dev
+                   else Client(w, name, guild_rank=rank, class_file=cls))
     for x in c.values():
         x.load_addon()
         set_skills(x, [])
@@ -521,7 +535,7 @@ def a_debug_role_sees_the_notes_ui_without_touching_the_real_notes():
     w.tick(120)
     assert note(tsu, "Sam") == "A test note."
     assert not [e for e in w.addon_log[start:] if e["chat_type"] == "WHISPER" and e["prefix"] == "CDLd"
-                and str(e["target"]).split("-")[0] == "Tsumil"]
+                and str(e["target"]).split("-")[0] == "Arakis War"]
     tsu.slash("/dz members")
     w.tick(1)
     tsu.eval("%s:SelectMember(...)" % UI, K("Sam"))
@@ -694,6 +708,7 @@ def an_account_without_a_main_gets_its_highest_level_character():
     the highest level one becomes the main and the others its alts."""
     w, c = guild([("Gina", "PALADIN"), ("Alfa", "MAGE"), ("Alto", "PRIEST")])
     g, a, o = c["Gina"], c["Alfa"], c["Alto"]
+    one_account(a, o)
     a.level = 12
     w._sync(roster_changed=True)
     w.tick(SYNC)

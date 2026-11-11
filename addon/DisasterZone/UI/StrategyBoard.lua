@@ -783,7 +783,7 @@ local function createWindow()
         local handled = false
         local focus = GetCurrentKeyBoardFocus and GetCurrentKeyBoardFocus()
         if not focus then handled = Board:OnKey(key) end
-        if not InCombatLockdown() then self:SetPropagateKeyboardInput(not handled) end
+        if not InCombatLockdown() then ns.Util.SetPropagateKeys(self, not handled) end
     end)
     f:SetScript("OnHide", function()
         if prompt then prompt:Hide() end
@@ -2903,7 +2903,7 @@ local function createKeys()
     k:SetScript("OnKeyDown", function(self, key)
         local used = key == "ESCAPE"
         if used then self:Hide() end
-        if not InCombatLockdown() and self.SetPropagateKeyboardInput then self:SetPropagateKeyboardInput(not used) end
+        if not InCombatLockdown() and self.SetPropagateKeyboardInput then ns.Util.SetPropagateKeys(self, not used) end
     end)
     k:Hide()
     return k

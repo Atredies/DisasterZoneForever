@@ -4,7 +4,7 @@ places.
 Covers: the message starts empty and says only what the parts say (their words; the helpers' facts: the guild's name,
 a team's open comp places as specs or classes, any left out, every team's, a team's nights), in their order (moved,
 left out, removed), joined as picked; one line, 255 at most (a longer one isn't posted); the 1.6 beta's text and
-minutes carry over; places: Trade and GuildRecruitment at first, Say / Yell / any channel added, each with its own
+minutes carry over; places: Trade (on) and GuildRecruitment (off: a guilded character isn't in it) at first, Say / Yell / any channel added, each with its own
 interval (30 seconds to 12 hours) and a "major cities only" tick; Post goes to every place that is on, skips the ones
 I can't post to now and says why; officers take turns per place; the reminder: only the places that are due; the key
 binding posts what is due; a member can't post; Raids > Guests' Recruit mark brings a guest into Recruitment.
@@ -219,7 +219,7 @@ def the_beta_message_carries_over():
 def places_each_with_their_own_interval():
     w, c = guild()
     gina = c["Gina"]
-    assert places(gina) == [("ch:trade", 3600, True, True), ("ch:guildrecruitment", 3600, True, True)], places(gina)
+    assert places(gina) == [("ch:trade", 3600, True, True), ("ch:guildrecruitment", 3600, False, True)], places(gina)
     assert gina.eval_py("return { ns.RecruitMessage:AddPlace('YELL', nil, 30) }")[0] is True
     assert gina.eval_py("return { ns.RecruitMessage:AddPlace('CHANNEL', 'General', 1200) }")[0] is True
     assert gina.eval_py("return { ns.RecruitMessage:AddPlace('CHANNEL', 'disasterhangout') }")[0] is True
@@ -242,10 +242,11 @@ def post_goes_where_it_can_and_says_where_it_couldnt():
     for x in (gina, cora):
         say(x, "Chill guild, /w me")
     gina.eval("ns.RecruitMessage:AddPlace('YELL'); ns.RecruitMessage:AddPlace('CHANNEL', 'General')")
+    gina.eval("ns.RecruitMessage:SetPlace('ch:guildrecruitment', { on = true })")
     assert post(cora)["ok"] is False                                        # a member can't
     res = post(gina)
     assert res["ok"] is True and lst(res["a"]) == ["Trade", "Yell", "General"], res
-    assert lst(res["b"]) == ["GuildRecruitment: you're not in GuildRecruitment"], res
+    assert lst(res["b"]) == ["GuildRecruitment: you're not in it, type /join GuildRecruitment"], res
     w.tick(3)
     kinds = [e["chat_type"] for e in w.chat_log if e["sender"].startswith("Gina")]
     assert kinds == ["CHANNEL", "YELL", "CHANNEL"], kinds
@@ -256,6 +257,32 @@ def post_goes_where_it_can_and_says_where_it_couldnt():
     # Bob heard about the Trade post: Trade's turn waits for him, General's too
     assert bob.eval("return ns.RecruitMessage:LastPost('ch:trade') ~= nil") is True
     assert cora.eval("return ns.RecruitMessage:LastPost('ch:trade')") is None
+    w.assert_no_errors()
+
+
+@case
+def channels_get_the_message_without_icons():
+    # Forever's server tells clients not to draw raid icons in Trade and other channels ("{rt1}" shows as text), so
+    # channels get the words only; Say and Yell keep the icons
+    w, c = guild()
+    gina = c["Gina"]
+    gina.eval("ns.RecruitMessage:AddPart('icon', { m = 1 })")
+    say(gina, "<CD> {star} chill guild {nope}")
+    gina.eval("ns.RecruitMessage:AddPart('icon', { m = 8 })")
+    gina.eval("ns.RecruitMessage:SetSep(' - ')")
+    assert compose(gina)[0] == "{rt1} - <CD> {star} chill guild {nope} - {rt8}", compose(gina)
+    gina.eval("ns.RecruitMessage:AddPlace('SAY')")
+    res = post(gina)
+    assert res["ok"] is True and lst(res["a"]) == ["Trade", "Say"], res
+    w.tick(3)
+    got = {e["chat_type"]: e["text"] for e in w.chat_log if e["sender"].startswith("Gina")}
+    assert got == {"CHANNEL": "<CD> chill guild {nope}", "SAY": "{rt1} - <CD> {star} chill guild {nope} - {rt8}"}, got
+    # a message of icons only says nothing in a channel: skipped, with why
+    gina.eval("local M = ns.RecruitMessage for _, p in ipairs(M:GetParts()) do if p.k == 'text' then M:RemovePart(p.id) end end")
+    w.tick(3601)
+    res = post(gina)
+    assert lst(res["a"]) == ["Say"], res
+    assert lst(res["b"]) == ["Trade: only icons, and channels don't show them"], res
     w.assert_no_errors()
 
 

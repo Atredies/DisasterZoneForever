@@ -89,6 +89,7 @@ local DEFAULTS = {
         -- rage = the rage globe / bar in the timer (off: the next press takes the middle, as on the Ret and Hunter rings)
         war = { enabled = false, style = "bar", idle = false, scale = 1, latencyMs = 0, hsLine = 0, number = true,
                 motion = true, ohBright = true, sound = false,
+                -- (rampage: TBC only; WoW Forever has no Rampage and never suggests it)
                 use = { bt = true, ms = true, ww = true, slam = true, exe = true, rampage = true, shout = true,
                         brage = true, ham = false, hs = true },
                 -- sit = its situations (Core/Situation.lua: a pack from 2 within 10 yd); pack.* / player.* = the

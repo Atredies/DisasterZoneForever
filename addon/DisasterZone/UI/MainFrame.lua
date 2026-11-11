@@ -303,6 +303,7 @@ end
 -- Layouts.lua), kept on the tab (MainFrame:GetTabLayout); a page without one works as before.
 function MainFrame:RegisterTab(key, label, order, createFn, isAvailableFn, opts)
     if type(key) ~= "string" then return end
+    if ns.FOREVER_HIDDEN and ns.FOREVER_HIDDEN[key] then return end   -- (no Forever data yet: Core/Constants.lua)
     local def = tabDefs[key]
     if not def then
         def = { key = key }

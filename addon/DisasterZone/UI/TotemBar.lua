@@ -160,10 +160,20 @@ local function ImbueLeft(hand)
     return hasOH and (ohExp or 0) / 1000 or nil
 end
 
+-- [id] = { start, dur }: the cooldown last seen running, kept while the client keeps it secret (Forever in combat)
+local cdSeen = {}
 local function SpellCooldown(id)
-    if not GetSpellCooldown then return nil end
-    local start, dur = GetSpellCooldown(id)
-    if start and dur and dur > 1.5 then return start, dur end
+    local start, dur, found = ns.Compat.SpellCooldown(id)
+    if start == nil then
+        local seen = found and cdSeen[id]
+        if seen and seen[1] + seen[2] > GetTime() then return seen[1], seen[2] end
+        return nil
+    end
+    if dur > 1.5 then
+        cdSeen[id] = { start, dur }
+        return start, dur
+    end
+    cdSeen[id] = nil
     return nil
 end
 
@@ -319,8 +329,9 @@ function Bar:Update()
     end
     -- header: Heroism, Mana Tide
     local heroId, heroIcon = Tm:HeroSpell()
+    frame.hero:SetShown(Tm:HasHero())                    -- (WoW Forever: no Heroism, no cell)
     frame.hero.spellId = heroId
-    frame.hero:SetAttribute("spell", (not Tm:IsDemo()) and Tm:HeroName() or nil)
+    frame.hero:SetAttribute("spell", (heroId and not Tm:IsDemo()) and Tm:HeroName() or nil)
     frame.hero.iconPath = heroIcon
     frame.tide:SetShown(list.tide)
     frame.tide:SetAttribute("spell", (list.tide and not Tm:IsDemo()) and Tm:TotemName(3, 3) or nil)
@@ -394,12 +405,14 @@ function Bar:UpdateLooks()
     local urgent = self:Urgent(list)
     local now = GetTime()
     -- header: Heroism (gold = ready; on cooldown it greys and a dark swipe runs over it), Mana Tide the same
-    local start, dur = SpellCooldown(frame.hero.spellId or 0)
-    if Tm:IsDemo() then start, dur = nil, nil end
     F:ShowPlanner(frame.plan)
-    F:Set(frame.hero.face, { icon = frame.hero.iconPath, desat = start ~= nil, tone = start and "dim" or "on",
-        cdStart = start, cdDur = dur })
-    F.Aim(frame.hero.face, F:Targets(frame.hero.face, false))
+    if frame.hero:IsShown() then
+        local start, dur = SpellCooldown(frame.hero.spellId or 0)
+        if Tm:IsDemo() then start, dur = nil, nil end
+        F:Set(frame.hero.face, { icon = frame.hero.iconPath, desat = start ~= nil, tone = start and "dim" or "on",
+            cdStart = start, cdDur = dur })
+        F.Aim(frame.hero.face, F:Targets(frame.hero.face, false))
+    end
     if frame.tide:IsShown() then
         local ts, td = SpellCooldown(Tm:Totem(3, 3).id)
         if Tm:IsDemo() then

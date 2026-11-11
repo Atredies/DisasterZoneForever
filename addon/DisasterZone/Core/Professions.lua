@@ -27,7 +27,9 @@ if DisasterZoneBoot and DisasterZoneBoot.Run("Core/Professions.lua", ...) then r
 --   PFR { k, i = profId, e, rr, d }    one part (at most 250 recipes) of a character's recipes
 --   PFW { s = { key, ... }, r = { { key, profId }, ... } }   WHISPER: send me these summaries / recipes
 -- Anyone in the guild may pass on anyone's record (that is how offline members' professions are known); the owner's
--- own client always wins for its own character.
+-- own client always wins for its own character. A copy is believed from its owner or an officer (the officer-only
+-- main link, sb, only from an officer); passed on by anyone else, it is kept marked rb = who passed it on only while
+-- nothing else is known of that member, its main link doesn't count, and the owner's copy is asked for (ApplySummary).
 local addonName, ns = ...
 
 local Prof = ns:NewModule("Professions")
@@ -60,6 +62,12 @@ local LIST = {
     { id = 129, name = "First Aid",      spell = 3273,  icon = ICONS .. "Spell_Holy_SealOfSacrifice", crafts = true },
     { id = 356, name = "Fishing",        spell = 7620,  icon = ICONS .. "Trade_Fishing" },
 }
+-- WoW Forever has no Jewelcrafting (9 primary professions, skill cap 300). Rows go by skill id, never by position.
+if ns.Compat and ns.Compat.isForever then
+    for i = #LIST, 1, -1 do
+        if LIST[i].id == 755 then table.remove(LIST, i) end
+    end
+end
 local BY_ID = {}
 for i, def in ipairs(LIST) do
     def.order = i
@@ -482,21 +490,23 @@ end
 
 -- Talent points per tab of talent group 1 (primary) and, with dual talents, 2 (secondary): { a, b, c [, a2, b2, c2] }.
 -- nil while the client can't tell.
-local function TabPoints(tab, group)
-    local C = C_SpecializationInfo
-    if C and C.GetSpecializationInfo then
-        local ok, _, _, _, _, _, _, points = pcall(C.GetSpecializationInfo, tab, false, false, nil, nil, group)
-        if ok and tonumber(points) then return tonumber(points) end
+-- (ns.Compat.TalentTabPoints: 2.5.6's tabs or WoW Forever's trait groups)
+local function TabPoints(tab, group) return ns.Compat.TalentTabPoints(tab, group) end
+
+-- Talent groups (dual spec): GetNumTalentGroups, or on WoW Forever (no such global) whether a second spec group has a
+-- config (C_SpecializationInfo.GetCombatConfigIDForSpecGroup).
+local function NumTalentGroups()
+    if GetNumTalentGroups then return tonumber(GetNumTalentGroups()) or 1 end
+    local CS = C_SpecializationInfo
+    if CS and CS.GetCombatConfigIDForSpecGroup then
+        local ok, id = pcall(CS.GetCombatConfigIDForSpecGroup, 2)
+        if ok and id then return 2 end
     end
-    if GetTalentTabInfo then
-        local ok, r1, _, r3, _, r5 = pcall(GetTalentTabInfo, tab, false, false, group)
-        if ok then return (type(r1) == "string") and tonumber(r3) or tonumber(r5) end
-    end
-    return nil
+    return 1
 end
 
 local function ReadTalents()
-    local groups = (GetNumTalentGroups and tonumber(GetNumTalentGroups())) or 1
+    local groups = NumTalentGroups()
     local out = {}
     for group = 1, min(max(groups, 1), 2) do
         local total = 0
@@ -657,9 +667,34 @@ end
 local RECIPE_KINDS = { "enchant", "spell" }
 local ITEM_KINDS = { "item" }
 
+-- WoW Forever's profession window is the retail one (C_TradeSkillUI); GetTradeSkillLine and the craft window are gone.
+-- GetAllRecipeIDs lists every recipe of the open profession, learned or not (507 for Blacksmithing, measured
+-- 2026-11-08): keep the learned ones. A recipe id is the recipe's spell id, as on the older clients.
+local function ScanTradeSkillUI()
+    local T = C_TradeSkillUI
+    if not (T and T.GetAllRecipeIDs and T.GetRecipeInfo and T.GetBaseProfessionInfo) then return end
+    if (T.IsTradeSkillLinked and T.IsTradeSkillLinked()) or (T.IsTradeSkillGuild and T.IsTradeSkillGuild())
+        or (T.IsNPCCrafting and T.IsNPCCrafting()) then
+        return   -- somebody else's profession, a guild list or an NPC's crafting
+    end
+    local info = T.GetBaseProfessionInfo()
+    local id = info and IdByName(info.professionName)
+    if not id then return end
+    local found = {}
+    for _, recipe in ipairs(T.GetAllRecipeIDs() or {}) do
+        local r = type(recipe) == "number" and recipe > 0 and recipe <= MAX_SPELL and T.GetRecipeInfo(recipe)
+        if r and r.learned then
+            local out = T.GetRecipeOutputItemData and T.GetRecipeOutputItemData(recipe)
+            local item = out and tonumber(out.itemID)
+            found[recipe] = (item and item > 0 and item <= MAX_ITEM) and item or 0
+        end
+    end
+    MergeOwnRecipes(id, found)
+end
+
 -- The trade skill window (every profession but, on this client, Enchanting).
 local function ScanTradeSkill()
-    if not (GetTradeSkillLine and GetNumTradeSkills and GetTradeSkillInfo) then return end
+    if not (GetTradeSkillLine and GetNumTradeSkills and GetTradeSkillInfo) then return ScanTradeSkillUI() end
     if IsTradeSkillLinked and IsTradeSkillLinked() then return end   -- somebody else's profession link
     local id = IdByName((GetTradeSkillLine()))
     if not id then return end
@@ -797,6 +832,20 @@ end
 -- Asking for recipes (in small steps, from whoever is online and has them)
 ---------------------------------------------------------------------------
 
+-- (who vouches for a record of `key`: see ApplySummary)
+local function IsOfficer(key)
+    local Guild = ns.Guild
+    return (Guild and Guild.IsReady and Guild:IsReady() and Guild:IsOfficer(key, true)) and true or false
+end
+
+local function Vouches(sender, key)
+    if sender == nil or Util.IsMe(sender) or sender == key then return true end
+    local Guild = ns.Guild
+    if Guild and Guild.SameAccount and Guild:SameAccount(sender, key) then return true end
+    return IsOfficer(sender)
+end
+Prof.Vouches = Vouches
+
 local function NeedsRecipes(key, id)
     local rec = GetRec(key)
     local e = rec and not Util.IsMe(key) and rec.p[id]
@@ -810,9 +859,10 @@ local function WantSource(w)
     if w.tries < 2 and IsOnline(w.key) and not Util.IsMe(w.key) then return w.key end
     local src = rec and rec.src
     if w.tries < 3 and type(src) == "string" and IsOnline(src) and not Util.IsMe(src) then return src end
+    -- (then officers online: a vouched record takes recipes only from its owner or an officer, OnRecipes)
     local online = {}
     for key in pairs(peers) do
-        if IsOnline(key) then online[#online + 1] = key end
+        if IsOnline(key) and (rec and rec.rb or IsOfficer(key)) then online[#online + 1] = key end
     end
     if #online == 0 then return nil end
     tsort(online)
@@ -929,6 +979,52 @@ local function ParseSummary(s)
     return { key = key, rev = s.v, p = p, t = t, a = main, ms = s.ms, os = s.os, g = gear, sb = sb }
 end
 
+-- 2026-11-09 (authority holes 4): who vouches for a record of `key`. Its owner (another character of theirs) does,
+-- and officers do (they keep only copies vouched for: everything they hold came through this check). An officer's
+-- main link (sb) only from an officer, about a link an officer set. Anybody else passing a record on is believed
+-- about nothing but that they passed it on: a record of someone I know nothing of is kept marked rb = who passed it on
+-- (so a member who was offline still sees the guild's professions), its main link doesn't count (GetMain), and it
+-- never replaces a record I hold; the owner's (or an officer's) copy is asked for (AskOwner) and replaces it.
+local askOwner = {}     -- [target] = { key, ... } waiting to go out
+local askedOwner = {}   -- [key .. "|" .. target] = rev asked for
+
+local function FlushAsks()
+    for target, keys in pairs(askOwner) do
+        if #keys > 0 then Send({ t = "PFW", s = keys }, "WHISPER", target) end
+    end
+    askOwner = {}
+end
+
+-- A record passed on by someone who doesn't vouch for it: asked for from its owner, else an officer online.
+local function AskOwner(key, rev, via)
+    local Guild = ns.Guild
+    if not (Guild and Guild.IsReady and Guild:IsReady() and Guild.GetOnlineMembers) then return end
+    local target
+    for _, m in ipairs(Guild:GetOnlineMembers()) do
+        if m ~= via and not Util.IsMe(m) then
+            if m == key or (Guild.SameAccount and Guild:SameAccount(m, key)) then target = m break end
+            if not target and IsOfficer(m) then target = m end
+        end
+    end
+    if not target then return end
+    local k = key .. "|" .. target
+    if askedOwner[k] and askedOwner[k] >= rev then return end
+    askedOwner[k] = rev
+    local list = askOwner[target] or {}
+    askOwner[target] = list
+    if #list >= INDEX_PART then return end
+    list[#list + 1] = key
+    Util.Debounce("prof-ask-owner", 2, FlushAsks)
+end
+
+-- The records I hold marked as passed on: asked for again from their owners (or officers) online now.
+local function RetryAsks()
+    local b = Bucket()
+    for key, rec in pairs(b or {}) do
+        if rec.rb then AskOwner(key, rec.rev, rec.rb) end
+    end
+end
+
 -- Returns true when the record changed.
 local function ApplySummary(s, sender)
     local b = Bucket(true)
@@ -943,21 +1039,35 @@ local function ApplySummary(s, sender)
         return false
     end
     local rec = b[s.key]
+    -- an officer's link: set by an officer, and passed on by them or another officer
+    if s.sb and not (IsOfficer(s.sb) and (sender == nil or Util.IsMe(sender) or sender == s.sb or IsOfficer(sender))) then
+        return false
+    end
+    local vouched = s.sb ~= nil or Vouches(sender, s.key)
+    if not vouched then
+        -- passed on by someone who doesn't vouch for it: kept (marked) only when I know nothing of them
+        if not (rec and rec.rev >= s.rev) then AskOwner(s.key, s.rev, sender) end
+        if rec and rec.rev > 0 and not rec.rb then return false end
+        if rec and rec.rb and rec.rev >= s.rev then return false end
+    end
     -- the same version passed on by a client from before 1.3 had no gear: the owner's copy fills it in
-    if rec and rec.rev == s.rev and rec.g == nil and s.g ~= nil then
+    if rec and rec.rev == s.rev and rec.g == nil and s.g ~= nil and vouched and not rec.rb then
         rec.g = s.g
         return true
     end
-    if rec and rec.rev >= s.rev then return false end
+    -- (the owner's or an officer's copy of the version I hold marked as passed on: the mark goes)
+    local confirms = vouched and rec and rec.rb and rec.rev == s.rev
+    if rec and rec.rev >= s.rev and not confirms then return false end
     -- an officer's link never replaces what the member's own client shared (it was set by someone who hadn't seen it)
-    if s.sb and rec and rec.rev > 0 and not rec.sb then return false end
-    local R = rec and rec.R or {}
+    if s.sb and rec and rec.rev > 0 and not rec.sb and not rec.rb then return false end
+    -- (recipes passed on with a copy nobody vouched for go when a vouched copy comes: asked for again, QueueWants)
+    local R = (rec and not (rec.rb and vouched)) and rec.R or {}
     for id, set in pairs(R) do
         local e = s.p[id]
         if not e or set.e < e.e then R[id] = nil end
     end
     b[s.key] = { rev = s.rev, p = s.p, R = R, src = sender, own = rec and rec.own or nil, t = s.t, a = s.a,
-                 ms = s.ms, os = s.os, g = s.g, sb = s.sb }
+                 ms = s.ms, os = s.os, g = s.g, sb = s.sb, rb = (not vouched) and sender or nil }
     QueueWants(s.key)
     return true
 end
@@ -971,7 +1081,8 @@ local function OnBatch(sender, msg, dist)
         if n > 2 * BATCH then break end
         local s = ParseSummary(raw)
         if s then
-            if dist == "GUILD" then
+            -- (only an answer its owner or an officer vouches for keeps the others quiet: OnIndex, OnWant)
+            if dist == "GUILD" and Vouches(sender, s.key) then
                 local seen = guildSeen[s.key]
                 if not seen or seen.v <= s.rev then guildSeen[s.key] = { v = s.rev, at = GetTime() } end
             end
@@ -993,8 +1104,11 @@ local function OnRecipes(sender, msg, dist)
     local got, count = ToMap(msg.d)
     if not got or count == 0 or count > PART_RECIPES then return end
     local rec = b[key]
+    -- recipes of a record I hold vouched for: from its owner or an officer only (ApplySummary)
+    local vouched = Vouches(sender, key)
+    if rec and not rec.rb and rec.rev > 0 and not vouched then return end
     if not rec then
-        rec = { rev = 0, p = {}, R = {}, src = sender }
+        rec = { rev = 0, p = {}, R = {}, src = sender, rb = (not vouched) and sender or nil }
         b[key] = rec
     end
     local set = rec.R[id]
@@ -1223,7 +1337,8 @@ end
 -- (who is not somebody's alt in turn).
 function Prof:GetMain(key)
     local rec = type(key) == "string" and GetRec(key)
-    local main = rec and Visible(key) and rec.a
+    -- (a link passed on by someone who doesn't vouch for it doesn't count: ApplySummary)
+    local main = rec and Visible(key) and not rec.rb and rec.a
     if not main or main == key or not Visible(main) then return key end
     local mrec = GetRec(main)
     if mrec and mrec.a and mrec.a ~= main then return key end
@@ -1627,6 +1742,9 @@ function Prof:OnInit()
     end)
     ns:RegisterEvent("TRADE_SKILL_SHOW", function() Util.Debounce("prof-trade", 0.5, ScanTradeSkill) end)
     ns:RegisterEvent("TRADE_SKILL_UPDATE", function() Util.Debounce("prof-trade", 0.5, ScanTradeSkill) end)
+    -- (WoW Forever / retail window: the recipe list arrives after TRADE_SKILL_SHOW)
+    ns:RegisterEvent("TRADE_SKILL_LIST_UPDATE", function() Util.Debounce("prof-trade", 0.5, ScanTradeSkill) end)
+    ns:RegisterEvent("TRADE_SKILL_DATA_SOURCE_CHANGED", function() Util.Debounce("prof-trade", 0.5, ScanTradeSkill) end)
     ns:RegisterEvent("CRAFT_SHOW", function() Util.Debounce("prof-craft", 0.5, ScanCraft) end)
     ns:RegisterEvent("CRAFT_UPDATE", function() Util.Debounce("prof-craft", 0.5, ScanCraft) end)
     ns:On("GUILD_KEY_READY", function()
@@ -1639,6 +1757,8 @@ function Prof:OnInit()
             Prune()
             ScheduleIndex()
         end
+        -- (someone came online: the owner of a record passed on to me may confirm it now)
+        Util.Debounce("prof-retry-asks", 5, RetryAsks)
     end)
     local Comm = ns.Comm
     if Comm and Comm.Register then

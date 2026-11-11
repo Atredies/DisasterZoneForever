@@ -536,7 +536,10 @@ end
 -- Groups: the parties as cards (Auto-fill's layout), and Arrange the raid
 ---------------------------------------------------------------------------
 
-local THEME = { [25] = { "Tanks", "Melee", "Melee", "Ranged", "Healers" }, [10] = { "Tanks + melee", "Ranged + healers" } }
+local THEME = { [25] = { "Tanks", "Melee", "Melee", "Ranged", "Healers" }, [10] = { "Tanks + melee", "Ranged + healers" },
+    -- (WoW Forever's 20 and 40: Core/RaidComp.lua's auto-fill layouts)
+    [20] = { "Tanks + melee", "Melee", "Ranged", "Healers" },
+    [40] = { "Tanks", "Tanks + melee", "Melee", "Ranged", "Ranged", "Ranged", "Healers", "Healers" } }
 
 local function NewPartyCard()
     local c = CreateFrame("Frame", nil, sh.body)
@@ -576,7 +579,7 @@ local function LayoutGroups(run, width)
         end
     end
     local size = R():GetSize(run)
-    local n = size <= 10 and 2 or 5
+    local n = (Comp and Comp.GroupCount) and Comp:GroupCount(size) or (size <= 10 and 2 or 5)
     local byKey = (Comp and Comp.AutoFill) and Comp:AutoFill(members, size) or {}
     local groups = {}
     for g = 1, n do groups[g] = {} end
@@ -594,7 +597,7 @@ local function LayoutGroups(run, width)
         c:SetPoint("TOPLEFT", sh.body, "TOPLEFT", col * (cw + gap), -(row * (ch + gap)))
         c:SetSize(cw, ch)
         c.title:SetText("Group " .. g)
-        c.theme:SetText((THEME[n == 2 and 10 or 25] or {})[g] or "")
+        c.theme:SetText((THEME[size] or THEME[n == 2 and 10 or 25] or {})[g] or "")
         local list = groups[g]
         table.sort(list)
         for i = 1, 5 do

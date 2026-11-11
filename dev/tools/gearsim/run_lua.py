@@ -24,7 +24,7 @@ DEV = os.path.normpath(os.path.join(HERE, "..", ".."))
 WOWSIMS = os.path.join(DEV, "ext", "wowsims-tbc")
 ADDON = os.path.normpath(os.path.join(DEV, "..", "addon", "DisasterZone"))
 if not os.path.isdir(ADDON):
-    ADDON = r"C:\World of Warcraft\_anniversary_\Interface\AddOns\DisasterZone"
+    ADDON = r"C:\World of Warcraft\_forever_\Interface\AddOns\DisasterZone"
 SIM_FILES = ["Core", "Unit", "Spell", "Attack", "Resources", "Dot", "Pet", "APL", "Character", "Buffs", "Items",
              "Paladin", "Warrior", "Shaman", "Rogue", "Druid", "Priest", "Mage", "Warlock", "Hunter", "Data", "Setup"]
 DATA_FILES = ["Data/Gems.lua", "Data/SimItems.lua"]
@@ -196,7 +196,9 @@ def load_engine(log=None, gamedb=False):
     ns = L.table()
     if gamedb:
         for rel in DATA_FILES:
-            with open(os.path.join(ADDON, rel), encoding="utf-8") as f:
+            # (the sim's data is TBC's: dev/fixtures/tbc; the addon ships Forever's, without the sim)
+            tbc = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "fixtures", "tbc", rel)
+            with open(tbc if os.path.exists(tbc) else os.path.join(ADDON, rel), encoding="utf-8") as f:
                 src = f.read()
             L.eval("function(src, name) local f, err = loadstring(src, name); if not f then error(err) end; return f end")(src, "@" + rel)("DisasterZone", ns)
     for name in SIM_FILES:

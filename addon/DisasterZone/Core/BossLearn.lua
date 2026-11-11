@@ -41,7 +41,7 @@ local LATE_HP = 95                -- % : the boss below this at the pull means i
 local MERGE_TOL = 0.5
 local SEND_MIN, SEND_SPREAD = 3, 9
 local REPORT_AFTER = 15           -- s after the end: the "what we learned" pop-up (after the guild's summaries)
-local MIN_ADDON = "1.4.1"         -- the oldest DisasterZone whose summaries are taken (the first that sends them)
+local MIN_ADDON = "0.1.0"         -- the oldest DisasterZone whose summaries are taken (Forever's first build; was 1.4.1 on TBC)
 local MAX_OBS_ALERT = 400
 local MAX_INBOX = 30
 local MAX_LOG = 20
@@ -114,7 +114,7 @@ local function Leader()
         for i = 1, 4 do
             local u = "party" .. i
             if UnitExists and UnitExists(u) and UnitIsGroupLeader(u) then
-                local n, r = UnitName(u)
+                local n, r = Util.UnitNameRealm(u)
                 if type(n) == "string" then return Util.NormalizeName((r and r ~= "") and (n .. "-" .. r) or n) or n end
             end
         end
@@ -452,8 +452,8 @@ local function BossHealth(def)
     if not (npc and units and UnitGUID and UnitHealth and UnitHealthMax) then return nil end
     for _, u in ipairs(units) do
         if NpcOf(UnitGUID(u)) == npc then
-            local hmax = UnitHealthMax(u) or 0
-            if hmax > 0 then return (UnitHealth(u) or 0) / hmax * 100 end
+            local pct = ns.Compat.HealthPct(u)           -- (nil on Forever: health is secret)
+            if pct then return pct end
         end
     end
     return nil

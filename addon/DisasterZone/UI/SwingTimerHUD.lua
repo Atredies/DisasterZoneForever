@@ -644,7 +644,7 @@ local function KeyRow(S, sec)
         capture:SetAllPoints(UIParent)
         capture:SetFrameStrata("FULLSCREEN_DIALOG")
         capture:EnableKeyboard(true)
-        if capture.SetPropagateKeyboardInput then capture:SetPropagateKeyboardInput(false) end
+        if capture.SetPropagateKeyboardInput then ns.Util.SetPropagateKeys(capture, false) end
         capture.btn = btn
         capture:SetScript("OnKeyDown", function(cf, key)
             if key == "LSHIFT" or key == "RSHIFT" or key == "LCTRL" or key == "RCTRL" or key == "LALT" or key == "RALT" then
@@ -760,6 +760,9 @@ function D:Face(cur, now)
     local nxt = ST:NextSwing(now)
     local lat = snap.lat
     local first = steps[1]
+    if not ST.twist then                                -- (WoW Forever: the swing only, no twist zone)
+        return { from = nxt - snap.speed, to = nxt, extraAt = ST.state.extraAt }
+    end
     return { from = nxt - snap.speed, to = nxt,
              z0 = nxt - ST.OVERLAP + ST.MARGIN - lat, z1 = nxt - ST.MARGIN - lat,
              hot = first and first.key == "sob" and first.twist and true or false,
@@ -797,7 +800,20 @@ function HUD:OnLogin()
 end
 
 -- The kit's Settings section (UI/Settings.lua gives every class tool one; this one shows for Retribution only).
-if ns.ClassKit then ns.ClassKit:Extend("swing", { iconPath = "Interface\\Icons\\Spell_Holy_SealOfBlood",
+-- WoW Forever (no Seal of Blood, Core/SwingTimer.lua): a plain swing timer, so only the ring's settings.
+local function PlainSettings(S, sec)
+    ns.SwingRingSettings(S, sec, "swing", "Auto uses your world latency. /dz swing shows it.")
+    local note = S:Row(sec, "Swings only", "")
+    note.hasDesc = true
+    S.PlaceText(note, 0)
+    note.desc:SetText("This client has no Seal of Blood or Crusader Strike, so there is no seal twist to plan: the "
+        .. "ring shows your swings.")
+    S:EndSection(sec)
+end
+
+if ns.ClassKit and ns.SwingTimer and not ns.SwingTimer.twist then
+    ns.ClassKit:Extend("swing", { iconPath = "Interface\\Icons\\Ability_Warrior_InnerRage", settings = PlainSettings })
+elseif ns.ClassKit then ns.ClassKit:Extend("swing", { iconPath = "Interface\\Icons\\Spell_Holy_SealOfBlood",
     action = { label = "Practice", width = 90, run = function() if ns.SwingPracticeUI then ns.SwingPracticeUI:Open() end end },
     settings = function(S, sec)
     -- (on/off is the switch on the card's header: swing.enabled)

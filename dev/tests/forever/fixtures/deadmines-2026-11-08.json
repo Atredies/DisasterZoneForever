@@ -1,0 +1,2959 @@
+{
+"build": "1.60.1",
+"events": [
+{
+"instType": "none",
+"k": "zone",
+"t": 0,
+"zone": "Stormwind City"
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 1,
+"t": 1141
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 1,
+"t": 1141
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 2,
+"t": 1142
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 2,
+"t": 1154
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 3,
+"t": 1184
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 3,
+"t": 1185
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 4,
+"t": 1214
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 4,
+"t": 1216
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 4,
+"t": 1221
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 4,
+"t": 1233
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 1241
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 1242
+},
+{
+"instType": "none",
+"k": "zone",
+"t": 1262,
+"zone": "Elwynn Forest"
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 1299
+},
+{
+"instType": "none",
+"k": "zone",
+"t": 1301,
+"zone": "Westfall"
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 1354
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 1357
+},
+{
+"k": "combat-start",
+"t": 1378
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 1378,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 1407,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 1407
+},
+{
+"instType": "none",
+"k": "zone",
+"t": 1474,
+"zone": "The Deadmines"
+},
+{
+"k": "combat-start",
+"t": 1508
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 1508,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 1534,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 1534
+},
+{
+"k": "combat-start",
+"t": 1541
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 1541,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 1564,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 1564
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 1570,
+"type": "Map"
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 1571
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 1571
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 1575
+},
+{
+"k": "combat-start",
+"t": 1621
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 1621,
+"type": "Combat"
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 1621
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 1630,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 1630
+},
+{
+"k": "combat-start",
+"t": 1632
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 1632,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 1644,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 1644
+},
+{
+"k": "combat-start",
+"t": 1651
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 1651,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 1688,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 1688
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 1688,
+"type": "Map"
+},
+{
+"k": "combat-start",
+"t": 1690
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 1690,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 1691,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 1691
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 1691
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 1696,
+"type": "Map"
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 1697
+},
+{
+"k": "combat-start",
+"t": 1697
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 1697,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 1724,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 1724
+},
+{
+"k": "combat-start",
+"t": 1756
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 1756,
+"type": "Combat"
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 4,
+"t": 1762
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 1786,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 1786
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 4,
+"t": 1803
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 4,
+"t": 1806
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 1834
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 1835
+},
+{
+"k": "combat-start",
+"t": 1839
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 1839,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 1844,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 1844
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 1849
+},
+{
+"k": "combat-start",
+"t": 1855
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 1855,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 1862,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 1862
+},
+{
+"k": "combat-start",
+"t": 1866
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 1866,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 1871,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 1871
+},
+{
+"k": "combat-start",
+"t": 1873
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 1873,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 1887,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 1887
+},
+{
+"k": "combat-start",
+"t": 1890
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 1890,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 1902,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 1902
+},
+{
+"k": "combat-start",
+"t": 1906
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 1906,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 1932,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 1932
+},
+{
+"k": "combat-start",
+"t": 1948
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 1948,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 1966,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 1966
+},
+{
+"k": "combat-start",
+"t": 1972
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 1972,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 1983,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 1983
+},
+{
+"k": "combat-start",
+"t": 1986
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 1986,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 2006,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 2006
+},
+{
+"k": "combat-start",
+"t": 2013
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 2013,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 2014,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 2014
+},
+{
+"difficulty": 1,
+"id": 2741,
+"k": "encounter-start",
+"name": "Rhahk'Zor",
+"size": 5,
+"t": 2061
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 2061,
+"type": "Encounter"
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 2061,
+"type": "Chat"
+},
+{
+"k": "combat-start",
+"t": 2061
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 2061,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 2119,
+"type": "Encounter"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 2119,
+"type": "Chat"
+},
+{
+"id": 2741,
+"k": "encounter-end",
+"success": 1,
+"t": 2119
+},
+{
+"k": "loot-roll",
+"rollID": 1,
+"t": 2120
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 2120,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 2120
+},
+{
+"k": "combat-start",
+"t": 2142
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 2142,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 2198,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 2198
+},
+{
+"k": "combat-start",
+"t": 2213
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 2213,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 2222,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 2222
+},
+{
+"k": "combat-start",
+"t": 2230
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 2230,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 2267,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 2267
+},
+{
+"k": "combat-start",
+"t": 2271
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 2271,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 2277,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 2277
+},
+{
+"k": "combat-start",
+"t": 2279
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 2279,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 2285,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 2285
+},
+{
+"k": "combat-start",
+"t": 2303
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 2303,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 2310,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 2310
+},
+{
+"k": "combat-start",
+"t": 2312
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 2312,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 2347,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 2347
+},
+{
+"k": "combat-start",
+"t": 2362
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 2362,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 2377,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 2377
+},
+{
+"k": "combat-start",
+"t": 2381
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 2381,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 2384,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 2384
+},
+{
+"k": "combat-start",
+"t": 2394
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 2394,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 2439,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 2439
+},
+{
+"k": "combat-start",
+"t": 2443
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 2443,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 2459,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 2459
+},
+{
+"k": "combat-start",
+"t": 2475
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 2475,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 2522,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 2522
+},
+{
+"k": "combat-start",
+"t": 2534
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 2534,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 2550,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 2550
+},
+{
+"difficulty": 1,
+"id": 2742,
+"k": "encounter-start",
+"name": "Sneed",
+"size": 5,
+"t": 2610
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 2610,
+"type": "Encounter"
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 2610,
+"type": "Chat"
+},
+{
+"k": "combat-start",
+"t": 2610
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 2610,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 2673,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 2673
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 2738,
+"type": "Encounter"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 2738,
+"type": "Chat"
+},
+{
+"id": 2742,
+"k": "encounter-end",
+"success": 1,
+"t": 2738
+},
+{
+"k": "loot-roll",
+"rollID": 2,
+"t": 2739
+},
+{
+"k": "loot-roll",
+"rollID": 3,
+"t": 2744
+},
+{
+"k": "loot-roll",
+"rollID": 4,
+"t": 2753
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 2757
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 2923
+},
+{
+"k": "loot-roll",
+"rollID": 5,
+"t": 3018
+},
+{
+"k": "combat-start",
+"t": 3049
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 3049,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 3067,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 3067
+},
+{
+"k": "combat-start",
+"t": 3070
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 3070,
+"type": "Combat"
+},
+{
+"k": "loot-roll",
+"rollID": 6,
+"t": 3144
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 3153,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 3153
+},
+{
+"k": "combat-start",
+"t": 3167
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 3167,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 3173,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 3173
+},
+{
+"k": "combat-start",
+"t": 3183
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 3183,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 3201,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 3201
+},
+{
+"k": "combat-start",
+"t": 3203
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 3203,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 3222,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 3222
+},
+{
+"k": "loot-roll",
+"rollID": 7,
+"t": 3222
+},
+{
+"k": "combat-start",
+"t": 3231
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 3231,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 3238,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 3238
+},
+{
+"k": "combat-start",
+"t": 3239
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 3239,
+"type": "Combat"
+},
+{
+"k": "loot-roll",
+"rollID": 8,
+"t": 3258
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 3260,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 3260
+},
+{
+"k": "combat-start",
+"t": 3312
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 3312,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 3342,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 3342
+},
+{
+"k": "combat-start",
+"t": 3348
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 3348,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 3393,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 3393
+},
+{
+"k": "combat-start",
+"t": 3429
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 3429,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 3465,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 3465
+},
+{
+"k": "combat-start",
+"t": 3478
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 3478,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 3613,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 3613
+},
+{
+"k": "loot-roll",
+"rollID": 9,
+"t": 3629
+},
+{
+"k": "combat-start",
+"t": 3663
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 3663,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 3678,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 3678
+},
+{
+"k": "combat-start",
+"t": 3687
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 3687,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 3738,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 3738
+},
+{
+"k": "combat-start",
+"t": 3765
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 3765,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 3803,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 3803
+},
+{
+"k": "combat-start",
+"t": 3814
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 3814,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 3829,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 3829
+},
+{
+"k": "combat-start",
+"t": 3845
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 3845,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 3860,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 3860
+},
+{
+"k": "loot-roll",
+"rollID": 10,
+"t": 3861
+},
+{
+"k": "combat-start",
+"t": 3880
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 3880,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 3896,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 3896
+},
+{
+"k": "loot-roll",
+"rollID": 11,
+"t": 3897
+},
+{
+"k": "combat-start",
+"t": 3907
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 3907,
+"type": "Combat"
+},
+{
+"difficulty": 1,
+"id": 2743,
+"k": "encounter-start",
+"name": "Gilnid",
+"size": 5,
+"t": 3907
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 3907,
+"type": "Encounter"
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 3907,
+"type": "Chat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 3958,
+"type": "Encounter"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 3958,
+"type": "Chat"
+},
+{
+"id": 2743,
+"k": "encounter-end",
+"success": 1,
+"t": 3958
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 3958,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 3958
+},
+{
+"k": "loot-roll",
+"rollID": 12,
+"t": 3959
+},
+{
+"k": "loot-roll",
+"rollID": 13,
+"t": 3959
+},
+{
+"k": "combat-start",
+"t": 4016
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 4016,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 4038,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 4038
+},
+{
+"k": "combat-start",
+"t": 4053
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 4053,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 4059,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 4059
+},
+{
+"k": "combat-start",
+"t": 4066
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 4066,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 4078,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 4078
+},
+{
+"k": "combat-start",
+"t": 4082
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 4082,
+"type": "Combat"
+},
+{
+"k": "loot-roll",
+"rollID": 14,
+"t": 4140
+},
+{
+"k": "loot-roll",
+"rollID": 15,
+"t": 4185
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 4185,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 4185
+},
+{
+"k": "combat-start",
+"t": 4247
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 4247,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 4265,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 4265
+},
+{
+"k": "combat-start",
+"t": 4272
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 4272,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 4294,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 4294
+},
+{
+"k": "combat-start",
+"t": 4313
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 4313,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 4314,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 4314
+},
+{
+"k": "combat-start",
+"t": 4316
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 4316,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 4338,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 4338
+},
+{
+"k": "combat-start",
+"t": 4365
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 4365,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 4384,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 4384
+},
+{
+"k": "combat-start",
+"t": 4399
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 4399,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 4437,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 4437
+},
+{
+"k": "combat-start",
+"t": 4445
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 4445,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 4465,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 4465
+},
+{
+"k": "combat-start",
+"t": 4475
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 4475,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 4514,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 4514
+},
+{
+"k": "combat-start",
+"t": 4526
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 4526,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 4542,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 4542
+},
+{
+"k": "combat-start",
+"t": 4548
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 4548,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 4566,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 4566
+},
+{
+"k": "combat-start",
+"t": 4574
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 4574,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 4611,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 4611
+},
+{
+"k": "combat-start",
+"t": 4659
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 4659,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 4676,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 4676
+},
+{
+"k": "combat-start",
+"t": 4678
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 4678,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 4691,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 4691
+},
+{
+"k": "combat-start",
+"t": 4695
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 4695,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 4714,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 4714
+},
+{
+"difficulty": 1,
+"id": 2745,
+"k": "encounter-start",
+"name": "Mr. Smite",
+"size": 5,
+"t": 4768
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 4768,
+"type": "Encounter"
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 4768,
+"type": "Chat"
+},
+{
+"k": "combat-start",
+"t": 4768
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 4768,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 4802,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 4802
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 4854,
+"type": "Encounter"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 4854,
+"type": "Chat"
+},
+{
+"id": 2745,
+"k": "encounter-end",
+"success": 0,
+"t": 4854
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 4858,
+"type": "Map"
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 4861
+},
+{
+"instType": "none",
+"k": "zone",
+"t": 4861,
+"zone": "Westfall"
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 4862
+},
+{
+"instType": "none",
+"k": "zone",
+"t": 4936,
+"zone": "The Deadmines"
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 4991
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 4993,
+"type": "Map"
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 4994
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 4996
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 5000
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 5007
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 5333
+},
+{
+"k": "combat-start",
+"t": 5390
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 5390,
+"type": "Combat"
+},
+{
+"k": "loot-roll",
+"rollID": 16,
+"t": 5425
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 5425,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 5425
+},
+{
+"k": "combat-start",
+"t": 5440
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 5440,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 5472,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 5472
+},
+{
+"k": "combat-start",
+"t": 5518
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 5518,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 5571,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 5571
+},
+{
+"difficulty": 1,
+"id": 2745,
+"k": "encounter-start",
+"name": "Mr. Smite",
+"size": 5,
+"t": 5741
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 5741,
+"type": "Encounter"
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 5741,
+"type": "Chat"
+},
+{
+"k": "combat-start",
+"t": 5741
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 5741,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 5796,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 5796
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 5850,
+"type": "Encounter"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 5850,
+"type": "Chat"
+},
+{
+"id": 2745,
+"k": "encounter-end",
+"success": 1,
+"t": 5850
+},
+{
+"k": "loot-roll",
+"rollID": 17,
+"t": 5851
+},
+{
+"k": "combat-start",
+"t": 5948
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 5948,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 5995,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 5995
+},
+{
+"k": "combat-start",
+"t": 6008
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 6008,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 6029,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 6029
+},
+{
+"k": "combat-start",
+"t": 6039
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 6039,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 6059,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 6059
+},
+{
+"k": "combat-start",
+"t": 6066
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 6066,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 6084,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 6084
+},
+{
+"k": "combat-start",
+"t": 6091
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 6091,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 6140,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 6140
+},
+{
+"k": "combat-start",
+"t": 6154
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 6154,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 6202,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 6202
+},
+{
+"k": "combat-start",
+"t": 6210
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 6210,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 6228,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 6228
+},
+{
+"k": "combat-start",
+"t": 6236
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 6236,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 6303,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 6303
+},
+{
+"k": "combat-start",
+"t": 6323
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 6323,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 6364,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 6364
+},
+{
+"k": "combat-start",
+"t": 6379
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 6379,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 6398,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 6398
+},
+{
+"k": "combat-start",
+"t": 6403
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 6403,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 6441,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 6441
+},
+{
+"k": "combat-start",
+"t": 6447
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 6447,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 6464,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 6464
+},
+{
+"k": "combat-start",
+"t": 6466
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 6466,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 6485,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 6485
+},
+{
+"k": "combat-start",
+"t": 6492
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 6492,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 6526,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 6526
+},
+{
+"k": "combat-start",
+"t": 6543
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 6543,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 6564,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 6564
+},
+{
+"k": "combat-start",
+"t": 6571
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 6571,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 6599,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 6599
+},
+{
+"k": "combat-start",
+"t": 6611
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 6611,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 6629,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 6629
+},
+{
+"k": "combat-start",
+"t": 6636
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 6636,
+"type": "Combat"
+},
+{
+"difficulty": 1,
+"id": 2744,
+"k": "encounter-start",
+"name": "Captain Greenskin",
+"size": 5,
+"t": 6636
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 6636,
+"type": "Encounter"
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 6636,
+"type": "Chat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 6701,
+"type": "Encounter"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 6701,
+"type": "Chat"
+},
+{
+"id": 2744,
+"k": "encounter-end",
+"success": 1,
+"t": 6701
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 6701,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 6701
+},
+{
+"k": "loot-roll",
+"rollID": 18,
+"t": 6702
+},
+{
+"k": "loot-roll",
+"rollID": 19,
+"t": 6702
+},
+{
+"k": "loot-roll",
+"rollID": 20,
+"t": 6714
+},
+{
+"difficulty": 1,
+"id": 2747,
+"k": "encounter-start",
+"name": "Edwin VanCleef",
+"size": 5,
+"t": 6928
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 6928,
+"type": "Encounter"
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 6928,
+"type": "Chat"
+},
+{
+"k": "combat-start",
+"t": 6928
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 6928,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 6968,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 6968
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 6976,
+"type": "Encounter"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 6976,
+"type": "Chat"
+},
+{
+"id": 2747,
+"k": "encounter-end",
+"success": 0,
+"t": 6976
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 6980
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 6982
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 6992
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 6994,
+"type": "Map"
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 6997
+},
+{
+"instType": "none",
+"k": "zone",
+"t": 6997,
+"zone": "Westfall"
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 7029
+},
+{
+"instType": "none",
+"k": "zone",
+"t": 7074,
+"zone": "The Deadmines"
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 7109
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 7118
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 7125
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 7134
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 7164,
+"type": "Map"
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 7164
+},
+{
+"k": "combat-start",
+"t": 7279
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 7279,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 7321,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 7321
+},
+{
+"difficulty": 1,
+"id": 2747,
+"k": "encounter-start",
+"name": "Edwin VanCleef",
+"size": 5,
+"t": 7555
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 7555,
+"type": "Encounter"
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 7555,
+"type": "Chat"
+},
+{
+"k": "combat-start",
+"t": 7555
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 7555,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 7629,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 7629
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 7642,
+"type": "Encounter"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 7642,
+"type": "Chat"
+},
+{
+"id": 2747,
+"k": "encounter-end",
+"success": 1,
+"t": 7642
+},
+{
+"k": "loot-roll",
+"rollID": 21,
+"t": 7644
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 7672,
+"type": "Map"
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 7675
+},
+{
+"instType": "none",
+"k": "zone",
+"t": 7675,
+"zone": "Westfall"
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 7688
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 7693
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 7725
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 7771
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 7824
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 7826
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 7828
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 7913
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 5,
+"t": 7942
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 4,
+"t": 8011
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 8020,
+"type": "Map"
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 4,
+"t": 8021
+},
+{
+"instType": "party",
+"k": "zone",
+"t": 8021,
+"zone": "The Deadmines"
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 4,
+"t": 8049
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 3,
+"t": 8056
+},
+{
+"difficulty": 1,
+"id": 2746,
+"k": "encounter-start",
+"name": "Cookie",
+"size": 5,
+"t": 8058
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 8058,
+"type": "Encounter"
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 8058,
+"type": "Chat"
+},
+{
+"k": "combat-start",
+"t": 8058
+},
+{
+"k": "restriction",
+"state": "Activating",
+"t": 8058,
+"type": "Combat"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 8071,
+"type": "Combat"
+},
+{
+"k": "combat-end",
+"t": 8071
+},
+{
+"id": 2746,
+"k": "encounter-end",
+"success": 0,
+"t": 8072
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 8072,
+"type": "Encounter"
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 8072,
+"type": "Chat"
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 3,
+"t": 8081
+},
+{
+"k": "restriction",
+"state": "Inactive",
+"t": 8084,
+"type": "Map"
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 3,
+"t": 8087
+},
+{
+"instType": "none",
+"k": "zone",
+"t": 8087,
+"zone": "Westfall"
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 2,
+"t": 8125
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 2,
+"t": 8125
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 2,
+"t": 8155
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 2,
+"t": 8238
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 2,
+"t": 8329
+},
+{
+"instType": "none",
+"k": "zone",
+"t": 8332,
+"zone": "Duskwood"
+},
+{
+"instType": "none",
+"k": "zone",
+"t": 8334,
+"zone": "Elwynn Forest"
+},
+{
+"instType": "none",
+"k": "zone",
+"t": 8381,
+"zone": "Stormwind City"
+},
+{
+"inRaid": false,
+"k": "group",
+"n": 2,
+"t": 8598
+}
+],
+"name": "Deadmines full clear, 2026-11-08",
+"player": {
+"class": "WARRIOR",
+"faction": "Alliance",
+"level": 17,
+"race": "Human",
+"realm": "CAMWOW EU4 Realm 4 PvP"
+},
+"source": "DZProbe run 2026-11-08 18:47:31"
+}

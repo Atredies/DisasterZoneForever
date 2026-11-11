@@ -88,9 +88,12 @@ function H.Obj(e)
     return "|cffffffff" .. n .. "|r"
 end
 
+-- (rb: the council member who passed the entry on, when it did not come from its author or my own client: the
+-- author is their word, Core/Audit.lua OnEntries)
 function H.Who(e)
-    if e.w then return Name(e.w) end
-    return "|cff9e9e9eSomeone|r"
+    local by = e.rb and ("  |cff9e9e9e(relayed by " .. Name(e.rb) .. ")|r") or ""
+    if e.w then return Name(e.w) .. by end
+    return "|cff9e9e9eSomeone|r" .. by
 end
 
 function H.Phrase(e)

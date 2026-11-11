@@ -313,7 +313,11 @@ function Intro:OnInit()
     end
     local ev = CreateFrame("Frame")
     ev:RegisterEvent("CHAT_MSG_SYSTEM")
-    ev:SetScript("OnEvent", function(_, _, text) H.OnSystem(text) end)
+    ev:SetScript("OnEvent", function(_, _, text, ...)
+        -- (secret during a boss pull on Forever: skipped, see Core/Compat.lua CanAccess)
+        if ns.Compat and not ns.Compat.CanAccess(text, ...) then return end
+        H.OnSystem(text)
+    end)
 end
 
 function Intro:OnLogin()

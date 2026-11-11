@@ -1,13 +1,19 @@
-# DisasterZone 1.5.5
+# DisasterZone for WoW Forever
 
-BiS lists, a Loot Council overview, boss-drop alerts and rolls for **&lt;Casual Disaster&gt;**.
-For the WoW TBC Anniversary client (2.5.x, interface 20506).
+The guild addon of **&lt;Casual Disaster&gt;** on **WoW Forever** (client 1.60.1, Interface 16001).
 
-- Every player keeps a best-in-slot list for each phase (P1–P5), with a main pick and an alt pick per slot, plus an optional off-spec list.
+- Every player keeps a best-in-slot (BiS) list: a Pre-raid list and a Season 1 list, with a main and an alt pick per
+  slot, plus an optional off-spec list.
 - The Loot Council sees everyone's lists. When a boss is looted, the council sees who has each drop on their list.
-- Raiders get a Roll / Pass popup. Council members can vote for a player on any roll. DisasterZone suggests a winner, the council confirms it, and the award goes into a shared loot log with a reason (BiS, Alt, Offspec, Disenchant, ...).
+- Raiders get a Roll / Pass popup. Council members can vote. DisasterZone suggests a winner, the council confirms it,
+  and the award goes into a shared loot log with a reason (BiS, Alt, Offspec, Disenchant, ...).
+- Raid sign-ups, teams and groups, guests, attendance, soft reserves, the guild's dungeon groups, members and
+  recipes, polls, recruitment, and a few games to play together.
 
 DisasterZone only suggests. The council makes the loot decision.
+
+DisasterZone was written by tsumilo for TBC Anniversary. This is the Forever version: Forever's raids, dungeons, items
+and seasons, and only the features that work on Forever. See [What is not on Forever (yet)](#what-is-not-on-forever-yet).
 
 ---
 
@@ -15,67 +21,54 @@ DisasterZone only suggests. The council makes the loot decision.
 
 1. [Install and update](#install-and-update)
 2. [Opening DisasterZone](#opening-disasterzone)
-3. [Before the first raid](#before-the-first-raid)
-4. [Quick start: Raider](#quick-start-raider)
-5. [The Atlas tab](#the-atlas-tab)
-6. [Raid sign-ups and teams](#raid-sign-ups-and-teams)
-7. [Members tab](#members-tab)
-8. [Quick start: Loot Council](#quick-start-loot-council)
-9. [Quick start: Raid leader](#quick-start-raid-leader)
-10. [Quick start: Guild Master](#quick-start-guild-master)
-11. [How rolls pick a suggested winner](#how-rolls-pick-a-suggested-winner)
-12. [Slash commands](#slash-commands)
-13. [Settings reference](#settings-reference)
-14. [Demo mode (try it solo)](#demo-mode-try-it-solo)
-15. [FAQ and troubleshooting](#faq-and-troubleshooting)
-16. [How it syncs, and privacy](#how-it-syncs-and-privacy)
+3. [Forever in DisasterZone](#forever-in-disasterzone)
+4. [Before the first raid](#before-the-first-raid)
+5. [Raider: My BiS](#raider-my-bis)
+6. [The Atlas](#the-atlas)
+7. [Raids: sign-ups, teams and the raid night](#raids-sign-ups-teams-and-the-raid-night)
+8. [Groups, Members and the other guild pages](#groups-members-and-the-other-guild-pages)
+9. [Loot Council](#loot-council)
+10. [Raid leader](#raid-leader)
+11. [Guild Master](#guild-master)
+12. [How rolls pick a suggested winner](#how-rolls-pick-a-suggested-winner)
+13. [Settings](#settings)
+14. [Demo mode](#demo-mode)
+15. [What is not on Forever (yet)](#what-is-not-on-forever-yet)
+16. [Slash commands](#slash-commands)
+17. [FAQ and troubleshooting](#faq-and-troubleshooting)
+18. [How it syncs, and privacy](#how-it-syncs-and-privacy)
 
 ---
 
 ## Install and update
 
-**Requirements:** the TBC Anniversary client. DisasterZone has no required dependencies because every library it uses is built in.
-No other addon is needed. The suggested BiS lists behind the **Suggest** button of My BiS ship with DisasterZone (they come from LoonBestInSlot's class guides; you don't need that addon installed).
+**Requirements:** the WoW Forever client. Every library DisasterZone uses is built in, so no other addon is needed.
 
 ### Install
-1. Close the game.
-2. Copy the `DisasterZone` folder into `World of Warcraft\_anniversary_\Interface\AddOns\`.
-   The result must be `...\Interface\AddOns\DisasterZone\DisasterZone.toc`.
-   The folder must be named exactly `DisasterZone`. Names such as `DisasterZone-main`, `DisasterZone (2)` or a folder nested inside another `DisasterZone` folder won't load.
-3. Start the game. On the character screen, open **AddOns** and make sure DisasterZone is ticked.
-4. In game, type `/dz` to check that it loaded.
-
-### Moving from CDLoot
-DisasterZone is the new name of CDLoot (from version 0.12.0). It is a new addon folder with its own saved data, so the first start copies your CDLoot data over.
-
-1. Close the game. Copy the `DisasterZone` folder into `Interface\AddOns\`, next to `CDLoot`. **Do not delete `CDLoot` yet.**
-2. Log in. A popup offers to import your CDLoot data. Click **Import + reload**.
-3. DisasterZone copies everything (BiS lists, loot log, settings, games), switches CDLoot off and reloads. From then on only DisasterZone runs.
-4. After that you can delete the `CDLoot` folder.
-
-- The data is shared by the whole account, so one import covers every character. On another character where CDLoot is still ticked, the popup only offers to switch it off.
-- Nothing is removed: `WTF\Account\<ACCOUNT>\SavedVariables\CDLoot.lua` stays as a backup.
-- While CDLoot is switched on, DisasterZone does not run. The two never run together.
-- Deleted `CDLoot` too early? Put the folder back, tick it, log in, and accept the import. If DisasterZone already has data of its own by then, `/dzpatch import` replaces it with the CDLoot data.
-- Members who are still on CDLoot keep syncing with you until they move.
+1. Download `DisasterZone-<version>.zip` from <https://github.com/Atredies/DisasterZoneForever/releases> and close
+   the game.
+2. Unzip it into `World of Warcraft\_forever_\Interface\AddOns\` (or copy the `DisasterZone` folder there).
+   The result must be `...\_forever_\Interface\AddOns\DisasterZone\DisasterZone.toc`.
+   The folder must be named exactly `DisasterZone`. Names such as `DisasterZone-main` or a folder nested inside
+   another `DisasterZone` folder won't load.
+3. The games are optional addon folders next to it: `DisasterZone_Bingo`, `DisasterZone_Chess` (with
+   `DisasterZone_Rooms`), `DisasterZone_Azeromon` and `DisasterZone_HoldTheLine`. Copy the ones you want.
+4. Start the game. On the character screen, open **AddOns** and make sure DisasterZone is ticked.
+5. In game, type `/dz` to check that it loaded.
 
 ### Update
 1. Close the game.
-2. Delete the old `Interface\AddOns\DisasterZone` folder, then copy the new one in. Replacing the whole folder makes sure no old files are left behind.
+2. Delete the old `Interface\AddOns\DisasterZone` folder, then copy the new one in. Replacing the whole folder makes
+   sure no old files are left behind.
 3. Start the game and check the version with `/dz version`. The first line shows your own version.
 
-### Updates that arrive in game
-From version 0.10.0 most updates arrive by themselves. The person who publishes an update sends it over the guild's addon channel; your client downloads it in the background, checks its signature and stores it.
+Your data is safe when you update. Lists, settings and the loot log are stored in
+`_forever_\WTF\Account\<ACCOUNT>\SavedVariables\DisasterZone.lua`, not in the addon folder. That file is shared by
+every character on the account; each character still keeps its own BiS list.
 
-- When an update is ready, a popup asks to reload the interface. **Reload** applies it. **Later** is fine: the next `/reload` or login applies it.
-- The popup never appears in combat or during a boss fight, and nothing changes before you reload.
-- Only updates signed by the publisher are accepted, whoever relays them.
-- An update with new art (maps, Azeromon zones) still needs the download above. You get the rest of that update in game, and a chat line tells you there is new art to download.
-- `/dz update` shows your version and the download progress. `/dzpatch off` turns in-game updates off, `/dzpatch on` back on, and `/dzpatch rollback` goes back to the version you installed.
-- If an in-game update fails to load, DisasterZone switches it off, stays inactive until you click **Reload**, and then runs the version you installed.
-
-Your data is safe when you update. Your lists, settings and the loot log are stored in
-`WTF\Account\<ACCOUNT>\SavedVariables\DisasterZone.lua`, not in the addon folder. That file is shared by every character on the account. Each character still keeps its own BiS list.
+**In-game updates.** DisasterZone can receive signed updates over the guild's addon channel (a popup then asks you to
+reload). The Forever version has no signing keys yet, so in-game updates are off and every update is a new zip from
+the releases page, unzipped by hand. Test builds are 0.x (0.1.0 is the first); 1.0.0 comes when Forever goes live.
 
 Everyone should run the same version. See [Mixed versions](#mixed-versions).
 
@@ -85,257 +78,171 @@ Everyone should run the same version. See [Mixed versions](#mixed-versions).
 
 | How | What it does |
 |---|---|
-| `/dz` or `/disasterzone` | Opens or closes the DisasterZone window (it opens on Home) |
+| `/dz` or `/disasterzone` | Opens or closes the window (it opens on Home) |
 | Minimap button | Left-click opens the window. Right-click opens Settings. Shift-click opens the boss drop panel. |
-| Game Options → AddOns → DisasterZone | **Open DisasterZone settings** |
 
-The window has these tabs:
+The top of the window holds the pages. Some are grouped under one tab; rest the mouse on it to see its pages.
 
-| Tab | Who sees it |
+| Tab | Pages |
 |---|---|
-| **Home** | Everyone: what needs you now, the next raid (sign up in one click), your BiS picks that can drop there, recent loot, and a readiness check for the council and raid leaders |
-| **My BiS** | Everyone |
-| **Atlas** | Everyone: every item you can get (raids, dungeons, crafting, reputation, PvP, vendors, collections), with search. See [The Atlas tab](#the-atlas-tab) |
-| **Council** | Loot Council members (and anyone in demo mode); the Loot Log is one of its views |
-| **Raids** | Everyone in a guild (the Raid log view: council, Guild Master and raid leaders) |
-| **Games** | Everyone |
-| **Settings** | Everyone |
-| **Changelog** | Everyone: what changed in each version |
+| **Home** | What needs you now: the next raids (sign up in one click), your BiS picks that can drop there, players asking to join your group, a newer DisasterZone, what's new |
+| **Raids** | **Raids** (sign-ups, teams, guests, raid log), **Council** (loot council members), **Loot rules** (how the council decides; for everyone) |
+| **Gear** | **My BiS**, **Consumables** (a level-60 kit per spec), **Wardrobe** (outfits you swap in one click), **Atlas** |
+| **Guild** | **Members**, **Map**, **Events** (beta), **Polls**, **Recruitment**, **Audit log** (guild council and GM), **Games** |
+| **Groups** | The guild's dungeon, raid, PvP and other groups |
+| **Settings**, **Changelog**, **Feedback** | Settings, what changed in each version, and reporting a bug or an idea |
 
-The window opens on Home. To open it on the tab you used last instead, pick **Settings → Main window → Open on**.
-When a new version is installed, Home shows a **What's new** chip until you read its notes.
+The bell next to the tabs collects notifications. The mark at the top right shows your list's sharing status. See
+[Sync status](#what-does-the-sync-status-mean).
 
-The top-right of the window shows your list's sharing status. See [Sync status](#what-does-the-sync-status-mean).
+---
+
+## Forever in DisasterZone
+
+| | On Forever |
+|---|---|
+| Level cap | 60 |
+| Raids | **Barrow Deeps** (10 players), **Hyjal Summit** (20) and **Onyxia's Lair** (40). All three open on 9 December 2026. |
+| Gear tiers | **Seasons**. My BiS has a **Pre-raid** list and **Season 1** (S1). Where the TBC addon said "Phase", Forever says "Season". |
+| Dungeons | 35 dungeons, normal only: no heroics, keys or dailies |
+| Battlegrounds | Warsong Gulch, Arathi Basin, Alterac Valley and Darkspear Islands. No arena. |
+| Items | Every item is checked against Forever's item database. No gems, sockets, Jewelcrafting, badges or tier tokens. |
+| Names | Forever names are first name and surname ("Name Surname"). DisasterZone keys players by the full name. |
+| Addon messages | Forever holds addon messages during a boss pull. DisasterZone queues them and sends them when the pull ends. |
+
+Raid loot is empty until the raids open: DisasterZone never shows an item it isn't sure drops there. New dungeons whose
+drops nobody has recorded yet show one list, "Loot (boss not confirmed)".
 
 ---
 
 ## Before the first raid
 
-- [ ] **Everyone** has the same DisasterZone version. The raid leader checks with `/dz version`.
-- [ ] **Everyone** has filled in their My BiS list for the current phase, and the status says "Shared with council".
-- [ ] **Guild Master** has picked the guild council and the guild phase (see [Guild Master](#quick-start-guild-master)).
-- [ ] **Raid leader** has set the group loot rules and, if wanted, extra raid council members (see [Raid leader](#quick-start-raid-leader)).
+- [ ] **Everyone** runs the same DisasterZone version. The raid leader checks with `/dz version`.
+- [ ] **Everyone** has filled in their My BiS list for Season 1, and the status says "Shared with council".
+- [ ] **Guild Master** has picked the guild council (see [Guild Master](#guild-master)).
+- [ ] **Raid leader** has set the group loot rules and, if wanted, extra raid council members (see [Raid leader](#raid-leader)).
 - [ ] **Master looter** has set the loot method to Master Looter if DisasterZone should hand items out.
-- [ ] **Everyone** has BugSack installed so any Lua error can be reported (see [Reporting a Lua error](#reporting-a-lua-error)).
+- [ ] **Everyone** knows how to report a Lua error (see [Reporting a Lua error](#reporting-a-lua-error)).
 
 ---
 
-## Quick start: Raider
+## Raider: My BiS
 
-### 1. Build your list (My BiS tab)
+Open it with **Gear > My BiS** or `/dz bis`.
 
-The top bar holds these controls:
+### Build your list
 
-- **P1 … P5**: which phase you are editing. A small star marks the guild's current phase. If your group's loot leader set a raid phase, it marks that phase instead.
-- **Main spec** / **Off spec**: which of your two lists the tab shows. See [Off-spec list](#7-off-spec-list).
-- **Spec**: pick your spec, or choose **Auto-detect** to use the talent tree with the most points.
-- **Copy from ▾**: copy another phase into this one, using **Copy Pn (fill empty)** or **Copy Pn (overwrite)**. It also offers the same phase of your other list, e.g. **Copy main spec Pn**.
-- **Suggest ▾**: **Fill empty slots (spec Pn)** from the suggested BiS list of your spec and phase, or **Replace all (confirm)**. You must choose your spec first.
-- **More (…)**, at the end of the bar, holds the three entries below. While the raid has the lists locked, only Export works.
-- **Import**: paste a list you keep on another site. The window recognises what you paste:
-  - **That's My BiS**: on thatsmybis.com, Guild → Exports → "Just Wishlists" → View CSV, copy everything. Your character is picked out of the guild's list (choose another one in the window if your name differs). Items marked off spec go to your off-spec list, and items it lists as received can be marked obtained.
-  - **Sixty Upgrades** (Seventy Upgrades moved there): the set's Export text.
-  - **WoWSims**: its JSON export, or the WoWSims exporter addon's text.
-  - **Wowhead**: a gear planner link (wowhead.com/tbc/gear-planner/…).
-  - Anything else: item links from chat, Wowhead item links, item numbers or item names, one per line.
+The top bar:
 
-  Items go to the main pick of their slot, then the alt, in the list's order (rings and trinkets fill both slots first). A tier token becomes your class's piece; if your class has several tier sets, the one on your spec's suggested lists. The preview shows each slot next to what you have now, and what didn't fit and why. Pick the phase, then **Fill empty slots** or **Replace Pn** (it asks first when the phase has picks). Gems and enchants from those sites are not kept: BiS lists have none.
-- **Export**: your BiS list (a phase) or the gear you wear, as text to paste elsewhere. The text is selected; press Ctrl+C.
-  - **WoWSims**: on wowsims.com/tbc open your spec's sim, Import → Addon, paste. It brings gear, enchants, gems, talents, race and professions. In a BiS export, slots without a pick use what you wear, and picks you wear keep their gems and enchant.
-  - **WoWSims Bulk**: your main and alt picks of the phase, for the sim's Bulk tab (Import), so it can rank them.
-  - **Wowhead link**: opens Wowhead's TBC gear planner with the items and gems (Wowhead's links can't carry the enchants).
-- **Clear Pn**: removes every pick in this phase. It asks first.
+- **Pre-raid** / **S1**: which list you are editing. Pre-raid is for dungeons, reputation, crafting and PvP gear; only
+  you see it. Season 1 is the raid list the council sees.
+- **Main spec** / **Off spec**: which of your two lists the page shows. See [Off-spec list](#off-spec-list).
+- **Spec**: pick your spec, or **Auto-detect**.
+- **Copy from**: copy the other list into this one (fill empty slots, or overwrite).
+- **Suggest** is empty on Forever: there are no reliable Forever BiS guides yet, so you build your list by hand.
+- **More (...)**: **Import**, **Export** and **Clear**.
+  - **Import** takes a That's My BiS CSV ("Just Wishlists"), a Sixty Upgrades export, or item links, item numbers or
+    item names, one per line. The preview shows what fits and what doesn't.
+  - **Export** gives your list or your worn gear as text. The WoWSims and Wowhead formats there still point at the TBC
+    sites; don't rely on them on Forever.
 
-Below the top bar is a paper doll with all 17 slots. Each slot has a **main** pick (the large icon) and an **alt** pick (the small icon next to it).
+Below the bar is a paper doll. Each slot has a **main** pick (the large icon) and an **alt** pick (the small icon).
 
-- **Click a slot** to open the item picker for that slot.
-- **Click the small alt square** (it shows a "+" while empty) to choose an alt. An alt is a backup or upgrade-path item for that slot.
+- **Click a slot** to open the item picker. **Click the small square** to choose an alt.
 - **Drag an item from your bags onto a slot** to use any item, including items the picker doesn't list.
 - **Shift-click** an icon to link the item in chat.
+- **Right-click a slot** for: choose main / alt, swap main and alt, mark obtained or not obtained, clear, link,
+  and disable the slot.
 
-### 2. The item picker
+A **disabled** slot (for example the off hand when you use a two-hander) turns grey and is left out of your progress,
+the council's need counts and drop alerts. Your pick is kept.
 
-The picker opens next to the window. Its title reads, for example, "Choose Head (Main) · P2".
+### The item picker
 
-- **Search**: matches item names, bosses, professions, factions, vendors and seasons.
-- **Phase filter**: **Up to Pn** (the default), **Only Pn**, or **All phases**.
-- **Sources ▾**: a checklist of **Raids**, **5-man dungeons**, **Crafted**, **Reputation**, **Badge vendors** and **PvP**.
-  - The default is Raids + 5-man dungeons. Your choice is remembered.
-  - **Reset to raids + 5-man dungeons** restores the default.
-  - PvP items and faction-only reputation items are shown for your own faction only.
-- **Usable by my class** is on by default. It also hides items that only other classes can use, such as class trinkets, Medallions and PvP set pieces.
-- **My armor type only** is on by default and only appears on armor slots.
-- Each item row shows where it comes from, for example "Blacksmithing (375)", "The Sha'tar — Exalted" or "G'eras — 60 badges". Heroic-only dungeon items carry a **Heroic** tag. Class-restricted items also name their classes, for example "Rogue".
-  - "Main" or "Alt" on the right means the item is already on this phase's list.
-  - "owned" means you already have it.
-- **Tier pieces** are listed under the boss that drops the token and show "via *token name*". Pick the piece you want, not the token.
-- **Clear** (next to the current pick) empties the slot.
-- To use any other item, shift-click its link while the picker is open, or drag it from your bags onto the picker.
+- **Search** matches item names, bosses, professions, factions and vendors.
+- **Sources**: Raids, 5-man dungeons, Crafted, Reputation and PvP. The default is Raids + 5-man dungeons.
+  PvP items and faction-only reputation items are shown for your own faction only.
+- **Usable by my class** and **My armor type only** are on by default.
+- Each row shows where the item comes from, for example "Blacksmithing (300)" or a faction and standing.
+  "Main" or "Alt" on the right means it is already on your list; "owned" means you have it.
 
-The picker won't open while the raid leader has [locked the lists](#lock-and-unlock-bis-lists).
+### Obtained detection
 
-### 3. Right-click a slot for more options
+A pick is marked obtained on its own when you wear it, carry it, or have it in your bank (the bank is only read while
+its window is open, so visit it once). **Mark obtained** sets it by hand.
 
-| Menu entry | What it does |
-|---|---|
-| **Choose main...** / **Choose alt...** | Opens the picker |
-| **Swap main / alt** | Swaps the two picks |
-| **Mark obtained** / **Mark not obtained** | Sets the obtained state by hand, for the main pick |
-| **Clear slot** | Removes both picks |
-| **Link main in chat** | Links the main pick |
-| **Disable slot (Pn)** / **Enable slot (Pn)** | Disables the slot in this phase |
-| **Disable in all phases** / **Enable in all phases** | Disables the slot in every phase |
+### Sharing
 
-### 4. Disabling a slot
+You don't need to do anything. Changes go to online council members about 8 seconds after your last edit, or when you
+close the window. The status shows at the top right of the window and on the My BiS card.
 
-Disable a slot you don't need in a phase. For example, disable the off hand if you use a two-hander, or a slot you have already filled for good.
+### Off-spec list
 
-- The slot turns grey and reads "Disabled — not needed".
-- It is left out of your progress ("x / 16"), the council's need counts and drop alerts.
-- Your picks for that slot in earlier phases stop counting too.
-- Your pick is kept. Click the slot to enable it again.
+Next to your main list you can keep one **off-spec** list, for example tank gear as a Fury warrior.
 
-### 5. Obtained detection
+- Click **+ Off spec** in the top bar, choose the spec, and pick items as usual.
+- Off-spec wanters are listed **after** everyone who has the item on their main list, with an **[OS]** badge.
+- In a roll, an off-spec pick ranks after main-spec BiS and alt picks, but before players who don't list the item.
+- An item won through your off-spec list is recorded as **Offspec** and doesn't count as loot received.
+- To delete the list, choose **Remove off-spec list...** in the off spec's **Spec** dropdown.
 
-DisasterZone marks a pick as obtained on its own when the item is:
+Alts: every character has its own list. Log in on the alt and fill in its My BiS.
 
-| State shown | When |
-|---|---|
-| **Equipped** | You wear it |
-| **In bags** | It's in your bags |
-| **In bank** | It's in your bank. This is only updated while your bank window is open, so visit the bank once. |
-| **Have token** | You hold a tier token or quest item that turns into it |
-| **Marked obtained** | You set it with **Mark obtained** |
+### When loot drops
 
-The centre card shows "Pn · x / 17 obtained" above your character model dressed in the phase's BiS picks (drag to rotate). Empty or disabled slots, and picks that can't be worn such as tier tokens, show what you have equipped.
+- **Toast:** "On your BiS list!" with the item, the slot and whether it's your main or alt pick.
+- **Chat line** and a **Yours** badge with a glow in the loot window.
 
-### 6. Sharing
+### The roll popup
 
-You don't need to do anything to share your list.
-
-- Changes are sent to online council members about 8 seconds after your last edit, or as soon as you close the window.
-- The **Sharing** line on the card and the text at the top-right of the window show the status. See [Sync status](#what-does-the-sync-status-mean).
-
-### 7. Off-spec list
-
-Next to your main-spec list you can keep one **off-spec** list, for example tank gear as a Fury warrior or healing gear as a Retribution paladin.
-
-- Click **+ Off spec** in the top bar. The button reads **Off spec** once you have one. **Main spec** switches back.
-- Choose the off spec in the **Spec** dropdown, then pick items as usual. Everything on the tab (the slots, the picker, **Copy from**, **Suggest**, **Clear phase**, disabling slots and the progress card) works on the list that is shown.
-- **Copy from ▾ → Copy main spec Pn** fills the off-spec list with your main-spec picks for shared slots such as rings, trinkets and cloaks.
-- To delete it, choose **Remove off-spec list...** in the off spec's **Spec** dropdown. It asks first.
-
-How the council uses it:
-
-- Off-spec wanters are listed **after** everyone who has the item on their main-spec list, with an **[OS]** badge.
-- In a roll, an off-spec pick ranks after main-spec BiS and main-spec alt picks, but before players who don't list the item.
-- Winning an item through your off-spec list is recorded as **Offspec**, so it doesn't count as loot received.
-- When an off-spec item drops you get a lighter toast, "On your off-spec list (Protection)". Turn it off in Settings → **Alerts for off-spec list items**.
-
-### 8. Alt characters
-
-Every character has its own list. Log in on the alt and fill in its My BiS tab. It is shared under that character's name.
-
-### 9. When loot drops
-
-You'll see these when one of your needed picks drops:
-
-- **Toast:** "On your BiS list!" with the item's icon, the slot, the phase and whether it's your main or alt pick. Click it to link the item. Right-click it to dismiss it.
-- **Chat line:** "[item] is on your BiS list: Head, P2 (main)".
-- **Loot window:** your item shows a **Yours** badge and a glow.
-
-### 10. The roll popup
-
-When the council starts a roll, a popup appears.
-
-- The top line shows the item and your status for it: "Your P2 BiS (main) - Head", "Your P3 alt - Ring 1", "Your P2 off-spec BiS (Protection) - Main Hand" or "Not on your BiS list".
-- **Wearing:** shows what you have equipped in that slot. For rings, trinkets and weapons it shows both.
-- A countdown shows the time left.
-- **Roll** does a normal `/roll` (1-100). **Pass** passes.
-- Afterwards the popup shows "You rolled 87", "Passed", "Rolls closed", then "Won by Name" or "You won it!". It fades 5 seconds after the item is awarded.
-
-A few rules:
+When the council starts a roll, a popup shows the item, your status for it, what you wear in that slot and a
+countdown. **Roll** does a normal `/roll` (1-100); **Pass** passes.
 
 - Typing `/roll` in chat counts too, so players without DisasterZone can still roll.
-- Only a 1-100 roll counts, and only your **first** roll counts.
-- Only one item is rolled at a time. The others wait in a queue.
-- If you win an item after the popup has moved on to the next one (for example during **Roll all**), chat tells you "You won [item]!".
+- Only a 1-100 roll counts, and only your **first** roll.
+- One item is rolled at a time. The others wait in a queue.
 
-### 11. Tooltips
+### Tooltips
 
-Item tooltips show your own status. For example:
+Item tooltips show your own status ("Your S1 BiS (main) - Head", "obtained"), and who in the guild can craft the item.
 
-- "DisasterZone ★ Your P2 BiS (main) - Head"
-- "Your P3 alt - Ring 1", with "obtained" when you already have it
-- "also P3, P4" when the item is on other phases too
+### When lists are locked
 
-### 12. When lists are locked
-
-During a raid the raid leader can lock everyone's lists. While locked:
-
-- My BiS shows a banner, "BiS lists locked by *name*".
-- You can't change picks, spec or disabled slots.
-- Items you get, and **Mark obtained**, still update and still sync.
+During a raid the raid leader can lock everyone's lists. My BiS then shows "BiS lists locked by *name*", and you can't
+change picks, spec or disabled slots. Obtained items still update and sync.
 
 ---
 
-## The Atlas tab
+## The Atlas
 
-A loot browser for everyone, like AtlasLoot, built in: you don't need another addon to look up an item.
+**Gear > Atlas** is a loot browser, like AtlasLoot, built in.
 
-- **Left**: the sources, grouped under **Raids**, **Dungeons**, **Crafting**, **Reputation**, **PvP**, **Badges & Sunmote**, **Collections** (world epics, mounts, companions, tabards, legendaries), **World Events** and **Sets** (Tier 4–6, arena and honor sets). Click a group to fold it open. Raids show their phase.
-- **Middle**: the bosses or lists of the source you picked, for example a raid's bosses, a profession's recipe lists or a faction's standings. A set source (Tier 6, an arena season) lists the classes; a class shows its sets with a heading per spec (for example Holy, Protection, Retribution). It opens on your class. Dungeons have **Normal** / **Heroic** above the list. A source with a single list (a vendor, tabards) has no middle list.
-- **Right**: the items. Each row shows the slot and armor or weapon type; crafting shows the skill needed, vendors the cost (hover for the full cost). Set pieces say where they come from instead, for example "Token · Prince Malchezaar".
-- The tab opens on the first raid of the guild's phase. Reputation and PvP show your own faction's rewards only.
+- **Left**: the sources: **Raids**, **Dungeons** (Forever's 35), **Crafting**, **Reputation**, **PvP**, **World
+  Events** and **Sets**. Raid loot fills in once the raids open.
+- **Middle**: the bosses or lists of the source you picked.
+- **Right**: the items, with slot and armor or weapon type; crafting shows the skill needed. Under a pattern, plan or
+  formula, an indented row shows what it makes.
+- **Search** (top left) looks through every item at once, by name or item number.
+- **Show**: all items, **My class**, or your spec (it also hides gear whose stats don't suit it).
+- **Shopping list** collects what you still need and what it takes to make it.
 
-**What an item turns into**: indented rows under an item show what it becomes, and they work like any other item (right-click to add one to your BiS list):
-
-- under a tier token (or a quest item such as Magtheridon's Head): the pieces it gives your class;
-- under a Sunwell drop: its Sunmote upgrade; under a Sunmote item (Badges & Sunmote → Sunmote): the drop it's made from;
-- under a pattern, plan, formula or design: what it makes.
-
-**Search** (top left) looks through every item at once. Type part of a name (several words in any order work) or an item number. Tier pieces are found under the boss that drops their token. A result shows where it comes from; click it to open its page with the item highlighted. While you search, the middle column turns into **Found in**: **All** and each category with its number of matches. Click one to see only those.
-
-**Filters**:
-
-- **Show ▾**: **All items**; **My class** hides gear your class can't equip (a paladin still sees leather and mail); **your spec** (for example **Retribution**) also hides gear whose stats don't suit it: spell power, healing, mp5 or spell hit for a melee spec, strength or agility gear for a caster. Gear with nothing to judge by (stamina only, trinkets with a use effect) stays. With an off-spec list there is a choice for it too. Under a filter the middle column only lists pages that have something for your class.
-- The slot menu shows one slot, or **Not gear** (recipes, mounts, enchants and the like).
-- The spec filter reads the item's stats from its tooltip, so an item the game hasn't loaded yet shows until it has (a moment).
-
-**Item rows**
-
-| Action | What it does |
-|---|---|
-| Hover | The item's tooltip (with your BiS line, and for the council who wants it) |
-| Shift-click | Links the item in chat |
-| Ctrl-click | Tries it on in the dressing room |
-| Right-click | **Add to my BiS list** → phase → **As best** / **As alt**, **Try on**, **Link in chat** |
-
-- Rings, trinkets and one-handers ask which slot (for example **Ring 2 · As alt**).
-- A tier token offers the piece of your class that it gives.
-- **Phase N and later** puts the item in phase N, and in every later phase where that place is still empty.
-- With an off-spec list the menu has **Add to main spec** and **Add to off spec**.
-- The entries are missing while the raid leader has [locked the lists](#lock-and-unlock-bis-lists), and for items your class can't use.
-
-**Marks on the right of a row**: a star and the phases when the item is on your list as best (blue **Alt** or purple **OS** for an alt or off-spec pick), a check when you already have it. Loot Council members also see **N want**: how many members have it on their main-spec list and still need it.
+Item rows: hover for the tooltip, Shift-click to link, Ctrl-click to try it on, right-click to **Add to my BiS list**
+(Pre-raid or S1, as best or as alt). Marks on the right show what is on your list and what you have. Loot Council
+members also see **N want**.
 
 ---
 
-## Raid sign-ups and teams
+## Raids: sign-ups, teams and the raid night
 
-Raids are planned in the **Raids** tab. Everyone in the guild has it.
+Open **Raids** or type `/dz raids`.
 
 ### Signing up (everyone)
-1. Open the **Raids** tab (or type `/dz raids`). **Upcoming** lists the raids of this week, next week and later.
-   Raids you still have to answer have an orange bar and "you: not answered".
+1. **Upcoming** lists this week's raids, next week's and later. Raids you still have to answer show "you: not answered".
 2. Pick a raid. Under **Your answer**, click **Accept**, **Tentative**, **Bench** or **Absent**.
-3. Pick your **spec** in the dropdown next to the buttons. It is remembered for your next sign-up. You can add a short
-   **Note** (for example "late 20 min", press Enter to save).
-4. You can change your answer at any time until 6 hours after the raid started.
+3. Pick your **spec** (it is remembered) and, if you like, a short **Note**.
+4. You can change your answer until 6 hours after the raid started.
 
-The raid shows who is coming, sorted into **Tanks / Healers / Melee / Ranged**, followed by Bench, Absent and the
-invited members who haven't answered ("No response"). When you log in, DisasterZone reminds you in chat of the raids of
-your teams in the next 7 days that you haven't answered.
+When you log in, DisasterZone reminds you in chat of your teams' raids in the next 7 days that you haven't answered.
 
 ### Who can do what
 | | Plan raids | Build teams | A raid's groups, Invite & sort | Pick raid leaders |
@@ -345,568 +252,327 @@ your teams in the next 7 days that you haven't answered.
 | Guild council | - | yes | yes | - |
 | Raid leaders | yes | - | yes | - |
 
-With nobody on the raid leaders list, only the Guild Master plans raids.
+With nobody on the raid leaders list, only the Guild Master plans raids. Officers name raid leaders in **Raids > Teams
+> Raid leaders**. Raid leaders see the Raid log (attendance, bench, no-shows) but get no loot council access outside the
+raid they lead.
 
-### Raid leaders (officers)
-Officers can name **raid leaders**: players who run raids but aren't loot council. Open **Raids > Teams >
-Raid leaders**, add them with the search box and click **Save & share**. Everyone can open the window to see who they
-are.
-- Raid leaders plan raids, arrange a raid's groups and use Invite & sort. They see the **Raid log** (attendance,
-  bench, no-shows), but not which items were awarded.
-- They get no loot council access: no Council tab, no other players' BiS lists, no drop panel or votes, no Loot Log.
-  (Like anyone, they are loot council for the raid they are leading at that moment.)
+### Planning raids
+- **Teams**: **New team**, a name, the members, **Save**. A player can be on several teams.
+- **New raid**: pick the raid (Barrow Deeps, Hyjal Summit, Onyxia's Lair or Other), size (10, 20 or 40), day and time,
+  the teams it is for (none = everyone), an optional title and note. **Repeat weekly** keeps the next two weeks planned.
+- **Edit**, **Cancel...** and the red **delete** button change, cancel or remove a raid. For a weekly raid you choose
+  this week only or every week.
+- **Locked**: only the raid's teams and invited players can sign up and see it.
+- **Invite** adds players outside the teams.
 
-### Planning raids (Guild Master and raid leaders; teams: Guild Master and guild council)
-- **Teams**: in the **Teams** view, click **New team**, type a name, add guild members with the search box and click
-  **Save**. A player can be on several teams.
-- **New raid** (Upcoming view): pick the raid, size, day and time, the teams it is for (none = everyone), an optional
-  title (e.g. "Gruul + Mag") and note. Tick **Repeat weekly** for a raid that happens every week: the next two weeks are
-  always planned automatically.
-- **Edit** changes a raid. For a weekly raid you choose **This week only** or **Save every week**. Sign-ups are kept.
-- **Cancel...** cancels this raid (it stays listed as cancelled and can be restored) or stops a weekly raid after this
-  week.
-- The red **delete** button next to Edit removes the raid for everyone, with its sign-ups and groups, after you confirm.
-  For a weekly raid you pick this week's raid only or the whole weekly raid.
-- An open raid is seen by everyone and anyone can sign up. The teams decide who gets the reminder and who is listed
-  under "No response".
-- **Locked** (a checkbox in the New raid / Edit window): only the members of the raid's teams and the invited players
-  can sign up, and only they (plus the Guild Master, the guild council and the raid leaders) see the raid.
-- **Invite** (the button next to Edit, or the Invite box in the raid window) adds players outside the teams to a raid.
-  From the button, a weekly raid changes for this week only.
+### Groups and Invite & sort
+- A team's groups: drag names into groups, or **Auto-fill**. The icons under each group show the buffs it gets; greyed
+  icons mean nobody on the team brings it.
+- A raid's **Groups** tab starts from its team's groups and fills empty seats from the sign-ups.
+- As raid leader or assistant, **Invite & sort** invites everyone placed in a group, turns the party into a raid and
+  moves each player into their group as they join. **Re-sort** moves everyone back. Nothing moves during combat.
 
-### Strategy boards (everyone)
-- **Raids > Strategies** lists every strategy. Click a raid or a boss on the left to narrow the list, type in the
-  search box (strategy, boss, raid, builder or table name), or pick a guild member under **By**.
-- **New strategy** builds one for a boss. It is yours: only you change it.
-- **Share** invites guild members to change your strategy with you, and takes them off again.
-- Editors who open the same strategy work on one live board: changes show for the others within a second or two,
-  and one Save saves it for everyone on it.
-- **Copy** makes any strategy yours. The Guild Master and the guild council can edit and delete any strategy.
-- Who does what in a raid (the Assignments tab of a raid) is filled in by the Guild Master, the guild council and the
-  raid leaders.
+### Guests and the blacklist
+For the Guild Master, officers, the guild council and raid leaders:
 
-### Team groups (Guild Master and guild council)
-- In **Teams**, pick the team's size (10 / 25) and place members in groups: drag a name into a group, or click it and
-  then click a group. Drop onto someone to swap places. **Auto-fill** makes a starting layout (tanks, melee groups
-  with a shaman each, casters, healers).
-- Each member shows their class and spec icon. The spec comes from their last sign-up or BiS list (dimmed) unless you
-  pick one with right-click.
-- The icons under each group are the buffs that group gets (Bloodlust / Heroism, Windfury, Battle Shout, Trueshot
-  Aura, Leader of the Pack, Moonkin Aura, Vampiric Touch ...). The strip on top shows raid-wide buffs and boss debuffs;
-  greyed icons mean nobody on the team brings it. Hover an icon to see who does.
-- Click **Save** when you're done. Everyone else sees the team's groups read-only.
-
-### A raid's groups and Invite & sort
-- A raid's **Groups** tab (next to Sign-ups) starts from its team's groups: players who accepted keep their team seat,
-  and other players who accepted fill the empty seats with the same role. Tentative and Bench wait under "Not in a
-  group". Until you save, it follows new sign-ups.
-- Adjust it like a team (drag, Auto-fill, **From team** to start over) and **Save**.
-- As raid leader (or assistant), click **Invite & sort**: DisasterZone invites everyone placed in a group who is online,
-  turns the party into a raid and moves each player into their group as they join. The status line shows who is in
-  and who is offline. Players who join later are sorted automatically until you end the raid.
-- **Re-sort** moves everyone in the raid back to their planned group, e.g. after swaps. Players who aren't in the plan
-  go to groups 6-8. Nothing moves during combat; it continues when combat ends.
-
-### Guests, the guest book and the blacklist (Guild Master, officers, guild council, raid leaders)
-- **Guests** are players outside the guild (pugs). Add one with the **Add players** icon at the top right of a raid:
-  the **Guest** tab takes a name, class and spec, and **Known players** adds someone from your group, your target or
-  the guest book in one click. A guest counts as accepted, can be placed in a group and is invited with the raid.
-- A pug who **joins the raid group** of a planned raid becomes its guest by themselves. No started raid is needed:
-  the raid is the one Invite & sort ran for, or the one most of the group signed up for. The raid leader adds them (or,
-  when the leader can't, the first assistant who can) and gets a chat line. Take a guest off with a right-click in the
-  raid's roster: they are not added again.
-- **Guests** (top of the Raids tab) opens the guest book and the blacklist:
-  - **Guest book**: every pug who raided with us, newest first: their raids, boss kills, items received (loot council),
-    no-shows and their next guest seat. Hover a row for the details. Right-click a row to add them to an upcoming raid,
-    mark them as a **Recruit**, write a short note, blacklist them or whisper them. Notes and Recruit marks are shared
-    between the organizers. A pug who hasn't raided with us yet: type the name, click **Note**.
-  - **Blacklist**: players who can't sign up for any raid, can't be added as a guest and are not invited. For a guild
-    member it covers all their characters. The reason is only shown to the organizers.
-- **Wherever you meet a player**:
-  - Their tooltip says when they are on the raid blacklist (a guild member's only for the organizers), and what the
-    guest book knows about a pug (organizers).
-  - Right-click a player (unit frames, raid frames, chat names): **Blacklist...** and **Guest book...** (organizers).
-  - Inviting a blacklisted player warns you at once. If one joins anyway, the raid leader gets a popup:
-    **Remove from group** or **Keep**.
-  - When a pug the guest book knows joins, the organizers get a chat line: their raids with us, Recruit, the note.
-- The Raid log's **Players** list leaves pugs out; **Guests hidden / shown** switches it.
+- **Guests** are players outside the guild. Add one with **Add players** at the top right of a raid. A pug who joins
+  the raid group of a planned raid becomes its guest by themselves.
+- **Raids > Guests** opens the **guest book** (every pug who raided with us: raids, kills, items, no-shows, notes, a
+  Recruit mark) and the **blacklist** (players who can't sign up, be added or be invited).
+- Tooltips and the right-click menu on players show what the guest book and blacklist know.
 
 ### Starting the raid (raid leader)
-In a raid, DisasterZone leaves the loot council and rolls alone until the raid leader starts the raid. The loot
-handed out is always recorded in the Loot Log (loot council members' clients record it), started or not.
+In a raid, the loot council and rolls stay off until the raid leader starts the raid.
 
 - **Start raid** is on the bar that appears when the leader enters a raid instance, and on the Raids tab.
-- It opens a small window asking what to run for this raid: **Loot council** (the council sees who has each drop on
-  their BiS list, votes, and rolls rank BiS lists first), **Rolls** (the drop panel and Roll / Pass popups) and **Lock
-  everyone's BiS lists** (only with the loot council). Untick what you don't want. Attendance, boss kills and the loot
-  handed out are always logged.
-- **Rolls without the loot council** (a raid with pugs, loot managed outside the addon): the drop panel still opens for
-  the raid leader and the council, as a plain roll panel: the items, **Roll**, the rolls and **Award**, without BiS
-  candidates, badges or votes. The highest roll is suggested and the winner gets no BiS reason.
-- **Options** on the bar changes it during the raid. **End raid** switches everything off again.
-- `/dz raid start` starts with your last choices without asking; `/dz raid options` opens the window.
-- To look at the window without a raid: `/dz demo on`, then `/dz raid options`. `/dz test` and 5-man dungeon mode
-  don't need a raid session.
-- A raid leader still on 1.1 starts raids the old way: everything runs.
+- Choose what to run: **Loot council**, **Rolls**, and **Lock everyone's BiS lists**. Attendance, boss kills and the
+  loot handed out are always logged.
+- **Rolls without the loot council** (pugs, loot handled outside the addon): a plain roll panel, highest roll suggested.
+- **Options** changes it during the raid. **End raid** switches everything off.
+- `/dz raid start` starts with your last choices; `/dz raid options` opens the window.
 
-### Raid log and planned raids
-- When the raid leader clicks **Start raid**, DisasterZone links the raid log to the planned raid automatically: the one you
-  ran Invite & sort for, or the one most of the raid signed up for (it waits until that is clear, e.g. when two teams
-  raid at the same time). The leader gets a chat line saying which raid it linked.
-- At **End raid**, the sign-ups are saved with the raid log: players who signed up as Bench count as bench, and the
-  council sees who accepted but didn't come ("no-show") in the Raid log, the Players view and the sign-up tooltips.
-- Wrong link? Council: in the Raid log, right-click the "Planned raid" line and pick the right raid (or "Not linked").
+### Raid log and attendance
+- **Start raid** links the raid log to the planned raid (the one you ran Invite & sort for, or the one most of the raid
+  signed up for). At **End raid** the sign-ups are saved with it: bench counts as bench, and accepted players who
+  didn't come show as no-shows.
+- The council, the Guild Master and raid leaders see the **Raid log** and the players' attendance. Members see their
+  own on their Members card. `/dz attendance` opens the right view.
+
+### Soft reserves
+`/dz reserves` opens the reserves window: each player reserves items from the raid's loot, the host sees every reserve,
+and the wrap-up lists the night's reserve rolls. The host can import from softres.it, Gargul or LootReserve.
+`/dz reserves demo` shows it with made-up data.
 
 ---
 
-## Members tab
+## Groups, Members and the other guild pages
 
-Everyone has it. It shows what each member's DisasterZone shares with the guild; nothing needs to be filled in.
+### Groups (`/dz lfg`)
+The guild's groups as cards: **dungeons** by level band, **raids**, **PvP** (the four battlegrounds) and **other**
+(world bosses, farming, reputation, anything else). Switch on **I'm up for a run** with your roles, or **List a run**:
+pick the dungeon (long names are shortened on the tiles, e.g. LBRS; hover for the full name), when, a note and
+your role. **Join** asks the leader. Your run can also be listed in Blizzard's
+Group Finder.
 
-### Roster
-- Every guild member with a dot for online (green), away (yellow) or offline (red), their level, main and off spec, and
-  their professions with skill. Members who have not logged in with this version yet are listed in grey at the bottom.
-- Click a member for the detail: their characters, each profession with its specialisation, and their recipes (click a
-  profession to unfold them).
-- The profession icons on top filter the list and show how many members have each profession.
-- **Main and off spec** come from My BiS (the spec of your list and of your off-spec list). Without a pick there, your
-  primary talents count as main spec and your secondary talents as off spec.
+### Members (`/dz members`)
+- **Roster**: every guild member with online status, level, main and off spec, and professions with skill. Click a
+  member for their characters and recipes.
+- **Your recipes**: recipes are read only while a profession window is open, so **open each of your profession windows
+  once** (and again after learning new ones).
+- **Recipes**: type a name to see who can craft it, online first. **Whisper** opens a message with the item linked.
+- **Alts**: log in once on each character, then pick your main with **Change** on your own entry.
+- **Officer notes** (Guild Master and the rank below): a private note per member, sent only between officers.
 
-### Your recipes
-- Your professions and skill are read by themselves.
-- Recipes can only be read while the profession window is open: **open each of your profession windows once** (and again
-  after learning new recipes). The tab reminds you which ones are missing. A filter in the window (for example "have
-  materials") hides recipes from the scan; open it once without a filter.
-
-### Recipes: who can craft what
-- Switch to **Recipes** and type a name ("mongoose", "flask"). Each recipe lists its crafters, online first.
-- **Whisper** opens a message to the crafter with the item or recipe linked. A crafter who is offline but playing
-  another of their characters is shown as "on X now"; the whisper goes there.
-- A recipe only one member knows is marked gold.
-- Item tooltips everywhere say who in the guild can make the item.
-
-### Alts
-- Log in once on each of your characters in the guild. Then open your own entry in the roster and use **Change** to
-  pick your main. Your alts then sit under your main for everyone.
-
-### Officer notes (Guild Master and the rank below)
-- A note of up to 600 letters per member, shown under the member's detail and in the roster tooltip. It is separate
-  from the officer note of the game's guild window.
-- Notes are sent only as whispers between officers, and an addon takes a note only from an officer. Members never
-  receive them. They are stored in plain text on each officer's computer.
+### Other pages
+- **Loot rules** (`/dz lootrules`): how the council's suggestion is made, and the prized items. For everyone.
+- **Polls** (`/dz polls`): questions from the officers. Answer and see the results.
+- **Events** (beta): guild events and cups.
+- **Recruitment** (`/dz recruit`): the people you talk to about joining, and the team each one fits.
+  Officers also build the guild's **recruitment message** here (**Message** tab: **+ Add a part** for your own words,
+  the guild name, raid icons, and once raid teams exist the classes they need and their nights; one chat line, 255
+  characters at most) and pick where it goes (**Posting** tab: Trade, GuildRecruitment or any channel, Say or Yell,
+  each with its own interval and "cities only"). Raid icons show in Say and Yell only: the game doesn't draw them in
+  Trade or other channels, so those get the message without them. GuildRecruitment starts off: a character in a guild
+  has to `/join GuildRecruitment` first. The game only lets addons post from a click: **Post now**, the reminder toast, or a
+  key bound under Key Bindings > AddOns. Officers share one timer per channel, so nobody posts twice.
+- **Audit log** (`/dz audit`, guild council and GM): every change in the addon, who made it, before and after.
+- **Map** (`/dz map`): where guildmates who share their position are.
+- **Games** (`/dz play`): Council Bingo, Karazhan Chess, Azeromon and Hold the Line, each an optional addon folder.
+- **Consumables**: the flask, elixirs, food and potions for your spec at level 60, with a budget pick for farm nights.
+- **Wardrobe** (`/dz wardrobe`): outfits you swap with one click, or by a rule.
 
 ---
 
-## Quick start: Loot Council
+## Loot Council
 
-You are on the council if any of these apply:
-
-- The Guild Master put you on the guild council.
-- You are the Guild Master.
-- You lead the raid you're in.
-- The raid leader put you on this raid's council. This only counts while you are in that raid.
-
-Settings → **Loot Council** tells you whether you are on the council, and why.
+You are on the council if the Guild Master put you on the guild council, you are the Guild Master, you lead the raid
+you're in, or the raid leader put you on this raid's council (only inside that raid). **Settings > Guild > Council**
+tells you whether you are on it, and why.
 
 ### Council tab
+Views: **Roster**, **Items**, **Loot log**, **Loot council** and **Rules**. The toolbar has **Drops** (the drop
+panel), a name search, class and role filters, **In my raid only**, **Hide obtained** and **Off-spec lists**.
 
-Toolbar controls:
+- **Roster**: one row per member: presence dot, name, spec, **Need** count, a cell per slot (check = obtained, star =
+  awarded, "-" = disabled) and the list's **Age** (orange after 7 days). Click a cell to see that item's boss; click the
+  name for the member's list.
+- **Items**: the raids and bosses with demand counts, and each item with its wanters (main picks first). Click an item
+  for **Announce to raid** and **Record award to**.
+- The footer's **Request sync** asks online members for newer lists and awards.
 
-- **Phase**
-- View buttons: **Roster**, **Items**, **Member**, **Loot Log** and **Loot Council**
-- **Drops**: opens the [boss drop panel](#drop-panel-boss-drop) with tonight's drops
-- A name search box
-- **All classes** and **All roles** dropdowns
-- **In my raid only** and **Hide obtained** checkboxes (Hide obtained is on by default)
-- **Off-spec lists**: the Roster, Items and Member views show the players' off-spec lists instead. Only players who have one are listed, with their off spec.
+### Drop panel
+The drop panel opens on its own when someone in the raid who runs DisasterZone loots a boss. Reopen it with **Drops**,
+Shift-click on the minimap button, or `/dz drops`.
 
-#### Roster
+- It lists epic items by default (the group's minimum quality). Disenchanting, lockboxes, fishing and trade goods are
+  ignored.
+- Each item shows how many want it and its candidates: **[BiS]** or **[Alt]**, "can't use", "won N" tonight, what they
+  wear in that slot, "not in raid", and a warning when their list changed during a lock.
+- **Announce** posts one line to raid chat. **Award...** records the award (BiS, Alt, Offspec, another raid member,
+  someone not in the raid, the disenchanter or the guild bank). It doesn't hand the item out.
+- **Roll** starts a roll. **DE** and **Bank** give the item to the disenchanter or guild bank character in one click.
+- In roll mode each row shows the roll and the suggested winner. **Votes**: every council member in the raid has one
+  vote per item; click the vote column of a row. **End roll & award to**, **Award to**, **Re-roll** and **Cancel roll**
+  finish it.
 
-One row per member. Each row has:
+During a boss pull Forever holds addon messages, so drops, rolls and votes sent in the pull arrive when it ends.
 
-- A presence dot: green = in your raid, yellow = online, grey = offline.
-- The member's name, spec and **Need** count.
-- 17 slot cells, one per slot.
-- **Age**: how old their list is. It turns orange after 7 days.
+### Loot log
+**Council > Loot log** or `/dz log`.
 
-What the slot cells show:
-
-- A check mark means obtained. A star means awarded.
-- A dark "–" means the player disabled that slot.
-- A warning icon next to a name means the player changed their list while lists were locked.
-
-Clicking:
-
-- **Click a cell** to open the Items view at the boss that drops that item.
-- **Right-click a cell**, or click the name, to open the Member view.
-- **Click a column header** (Name, Need, Age) to sort.
-
-#### Items
-
-- The left side lists the phase's raids and bosses, with demand counts. 5-man, crafted and other non-raid items are under "Other / no raid source".
-- The right side lists each item with its wanters. Main picks come first and alts are marked "(alt)".
-- Click an item row for a menu: **Link item in chat**, **Announce to raid**, **Show member ▸** and **Record award to ▸**. The award submenu lists the wanters, plus **Someone else...**.
-- While the item has a roll running or waiting for its award, the entry reads **Record award to (closes the open roll)**. The award then goes through the roll and closes it for everyone.
-
-#### Member
-
-One player's list as a read-only paper doll, with what they are wearing and their recent awards. The arrow buttons step through the filtered roster.
-
-#### Footer
-
-The footer shows how many members have lists, how many are in your raid, and how many lists are older than 7 days. **Request sync** asks online members for newer lists and awards.
-
-### Drop panel (Boss drop)
-
-The drop panel opens on its own when someone in the raid who runs DisasterZone loots a boss.
-
-- It lists epic items by default. Tier tokens always count, whatever their quality.
-- Loot from disenchanting, prospecting, lockboxes and other containers, and from fishing, is ignored. So are trade goods and gems that no boss drops (such as Void Crystals). Trash loot is never filed under the last boss killed.
-- When Blizzard's loot window is open, the panel sits beside it: on the right, or on the left when there is no room (for example with Loot Under Mouse near the screen edge). Otherwise it floats where you last dragged it. See Settings → **Drop panel position**.
-- Reopen it with the **Drops** button in the Council toolbar, by Shift-clicking the minimap button, or with `/dz drops`. The arrows page through the last 24 hours of drops.
-- While the panel shows an item that is still being decided (a roll is running, or closed less than 5 minutes ago and waiting for its award), a new drop doesn't replace it. The pager then turns orange and reads, for example, "3/4 new". Page forward to see the new drop.
-
-Each item shows how many want it ("3 want") and its candidates. A candidate row contains:
-
-- A presence dot and the player's name and spec.
-- **[BiS]** or **[Alt]**, plus the phase when it isn't the one you're viewing.
-- "can't use" (in red) when their class can't use the item. This covers class-restricted items (T5 class trinkets, Warglaives, PvP set pieces, Ashtongue talismans) and other classes' tokens.
-- "won N" when they already won items tonight. Offspec, disenchant and guild bank awards don't count.
-- The items they wear in that slot.
-- "not in raid" when they aren't in your raid.
-- A warning icon when their list changed while lists were locked.
-
-Buttons for each item:
-
-- **Announce** posts one line to raid chat, for example `DisasterZone: [item] - BiS: A, B; Alt: C`.
-- **Award...** opens a menu with:
-  - **Disenchant: Name** and **Guild bank: Name**, when those characters are set (see [Disenchanter and guild bank](#disenchanter-and-guild-bank));
-  - the candidates who are in the raid, marked "can't use" when it applies. A main pick is recorded as **BiS**, an alt pick as **Alt**;
-  - **Other raid member ▸**;
-  - **Award as offspec ▸**: the same players, recorded as **Offspec**;
-  - **Not in raid (n) ▸**: wanters who aren't in the raid, each marked "online" or "offline";
-  - **Someone else...** (the dialog has a **Reason** choice);
-  - once the item is awarded: **Reason: X ▸** to change the award's reason, and **Void the award to X**.
-
-  It records the award in the Loot Log. It doesn't trade the item or give it via master loot, so hand the item out yourself.
-- **Roll** starts a roll for this item. See [How rolls pick a suggested winner](#how-rolls-pick-a-suggested-winner).
-- **DE** and **Bank** give the item to the disenchanter or the guild bank character in one click. They are shown while nobody has been picked for the item, and only when that character is set. As master looter with the loot window open, DisasterZone asks "Give [item] to Name (Disenchant)?" and hands it over. Otherwise the award is only recorded.
-
-Footer buttons: **Announce all**, **Roll all**, **Lock lists** / **Unlock lists** (shown only to the raid's loot leader) and **Close**.
-
-Once an item has a roll, its block switches to roll mode:
-
-- The header shows "Rolling - 0:18 left", "Queued", "Rolls closed" or "Awarded to X".
-- Each row shows the player's roll. The suggested winner is highlighted. Other tags: "tie", "can't use", "won a copy", "won N" and "changed".
-- **Votes:** every council member in the raid has one vote per item. Click the vote column of a row (it reads "vote") to vote for that player. The column then shows a check mark and the number of votes, in gold when your vote is among them. Click again to take your vote back, or vote for someone else to move it. Hover a row to see who voted. Votes can change until the item is awarded. See [How rolls pick a suggested winner](#how-rolls-pick-a-suggested-winner).
-- While the roll is open: **End roll**, and **End roll & award to** *suggested player*. The second one ends the roll for everyone at once, and cancelling the next popup doesn't reopen it.
-- After the roll has closed: **Award to** *suggested player*, **Award...** (for anyone else) and **Re-roll**. If anyone rolled, Re-roll asks first: "Start a new roll for [item]? (N rolls so far are discarded)".
-- When nobody is suggested (nobody rolled and nobody voted), **DE** and **Bank** are shown as well.
-- **Cancel roll** removes a queued item from the queue.
-- Click or right-click a row for **Vote for Name** / **Remove my vote**, **Award to Name** (**End roll & award to Name** while the roll is open), **Award to Name as ▸** a reason, or **Link item**.
-- An award from a roll is recorded with the winner's BiS status as its reason (**BiS**, **Alt**, or **Upgrade** when the item isn't on their list), unless you picked a reason with **Award to Name as ▸**.
-- A long list ends in a "+N more" row. Click it to award one of the hidden players.
-
-If you award an item that has a roll, the roll closes for everyone and the popups fade.
-
-**When the loot message disagrees.** Sometimes the loot message for a rolled item names someone other than the recorded winner, and no other copy of the item explains it. DisasterZone then warns the council and the master looter in chat, and the item's line reads "Awarded to X · loot: Y". Council members can fix the log in one click from that item's **Award...** menu:
-
-- **Y passes it to X** keeps the award and voids Y's automatic log entry.
-- **Y keeps it (void the award to X)** voids the award to X and shows Y as the winner.
-
-### Loot Log (Council tab)
-
-Council tab → **Loot Log**, or `/dz log`.
-
-
-- **Automatic entries:** when your client sees "X receives loot: [item]" inside a raid instance (or a 5-man dungeon in dungeon mode), DisasterZone records it. This covers boss loot at or above the minimum quality, plus tier tokens.
-- **Manual entries:** awards from the drop panel, or **Add award...**. The dialog has an **Item** field (shift-click a link, drag an item, or type the item ID), a **Winner** field (type a name or use **Choose**), a **Note**, a **Reason**, and **Save**.
-- **Reason column:** why the item was given. Automatic entries have none until someone sets one.
+- **Automatic entries** come from "X receives loot: [item]" inside a raid (or a dungeon in dungeon mode).
+- **Manual entries**: awards from the drop panel, or **Add award...**.
+- **Reasons**:
 
   | Reason | Counts as loot received ("won N") | Marks the item as awarded on the winner's list |
   |---|---|---|
-  | **BiS** | yes | yes |
-  | **Alt** | yes | yes |
-  | **Upgrade** (not on their list) | yes | yes |
+  | **BiS**, **Alt**, **Upgrade** | yes | yes |
   | **Offspec** | no | yes |
-  | **Disenchant** | no | no |
-  | **Guild bank** | no | no |
+  | **Disenchant**, **Guild bank** | no | no |
 
-  Reasons that don't count are shown in grey.
-- **Duplicates:** when a manual award and the later loot message are for the same item and player, only the manual entry is shown.
-- **Filters:** a search box (player, item or reason), **Show voided**, and **Show dungeon loot** (dungeon entries are tagged "(dungeon)").
-- **Right-click an entry** for **Reason: X ▸**, **Void entry** / **Restore entry**, **Link item in chat** and **Show member**. Changing the reason, voiding or restoring an automatic entry also covers the copies of that loot line that other council members recorded.
-- The log is shared automatically between council members.
+- Right-click an entry to change the reason, void or restore it. The log is shared between council members.
 
-### Tooltips (council)
-
-Item tooltips add "DisasterZone: wanted by N (M in raid)" and a list of names. When some of the picks are alts, " · K BiS" follows with the number of main picks.
-
-- Each name is marked "(alt)" for an alt pick, or with the phase when it isn't the one you're viewing. The right side shows "in raid", "obtained", "awarded" or "can't use".
-- Hold **Shift** to see every name, plus "Wearing:" lines with what each player still needing the item has equipped in that slot. The "Wearing:" lines only appear while Shift is held.
-- Settings → **Names shown** sets how many names appear.
+### Council tooltips
+Item tooltips add "wanted by N (M in raid)" and the names. Hold **Shift** for every name and what each one wears in
+that slot.
 
 ---
 
-## Quick start: Raid leader
+## Raid leader
 
-While you lead a raid you are on the council for that raid, so you see the Council tab.
+While you lead a raid you are on the council for that raid.
 
 ### Group loot rules
-
-Set these in Settings → **Group loot rules**. They are sent to everyone in the group:
+**Settings > Loot > Group rules**. They are sent to everyone in the group:
 
 | Setting | Values |
 |---|---|
-| **Roll duration** | 15 / 20 / 30 / 45 / 60 seconds (default 30) |
-| **Minimum quality** | Epic (default) / Rare: the lowest quality that counts as a drop in raids. Tier tokens always count. |
-| **Raid phase** | "Use guild phase (Pn)" or P1–P5. Council views, tooltips, alerts and roll suggestions in your raid follow it. |
-| **Enable dungeon mode (5-man parties)** / **Dungeon min. quality** | See [Dungeon mode](#dungeon-mode-5-man-parties) |
+| Roll duration | 15 / 20 / 30 / 45 / 60 seconds (default 30) |
+| Minimum quality | Epic (default) or Rare |
+| Raid season | Follow the guild, or a season |
+| Dungeon mode (5-man parties) and its minimum quality | See [Dungeon mode](#dungeon-mode) |
 
-- The status line reads "You set these for your group".
-- Everyone else sees "Set by *your name* for this group", and their controls are greyed out.
-- `/dz rules` prints the rules in effect and who set them.
-
-**Who is the group's loot leader:**
-
-- In a raid, the raid leader. If the leader doesn't run DisasterZone, the master looter.
-- In a party, the party leader if they are on the council or turned dungeon mode on. Otherwise, a council member in the party.
-
-Without a loot leader who runs DisasterZone, everyone uses their own settings.
+Others see "Set by *your name* for this group". `/dz rules` prints the rules in effect. The group's loot leader is the
+raid leader (or the master looter when the leader doesn't run DisasterZone); in a party, the party leader if they are
+on the council or turned dungeon mode on.
 
 ### Raid council
-
-Pick extra council members for your raid:
-
-1. Open Council tab → **Loot Council** → **This raid's council**.
-2. Type in **Add raid or guild members...**. Raid members are listed first. Click a name, or press Enter, to add or remove them.
-3. Click **Save & share**. **Revert** discards unsaved changes, and **Clear list** empties the list after asking.
-
-How the raid council works:
-
-- These players count as council only inside your raid, and only for people in that raid.
-- The list is kept "until changed". It is sent again automatically whenever you lead a raid.
-- You stay council yourself as raid leader.
-- The same section has **Disenchanter** and **Guild bank** buttons. A pick there replaces the Guild Master's pick in the raids you lead, for example when the guild's disenchanter isn't in this raid. Leave them on "none" to use the guild's picks. See [Disenchanter and guild bank](#disenchanter-and-guild-bank).
+**Council > Loot council > This raid's council**: add players who count as council inside your raid only. The same
+section has **Disenchanter** and **Guild bank** buttons; your pick replaces the guild's in your raids.
 
 ### Lock and unlock BiS lists
+`/dz lock` and `/dz unlock`, or the buttons in Settings, the Council toolbar and the drop panel. Only the raid's loot
+leader can lock. A list that changes anyway is flagged "changed during lock" and is never the suggested winner. The
+lock ends on unlock, when the raid disbands, when the lead changes or when the raid turns into a party.
 
-Lock the lists with `/dz lock` and unlock them with `/dz unlock`. The **Lock BiS lists** / **Unlock BiS lists** button in Settings or the Council toolbar does the same, as does **Lock lists** in the drop panel footer.
+### Rolls and master loot
+Council members, the master looter and the raid leader or assistants can start rolls: **Roll** or **Roll all** in the
+drop panel, or `/dz roll [item link]`.
 
-- Only the raid's loot leader can lock, and only in a raid.
-- When you lock, raid chat gets "DisasterZone: BiS lists are locked for this raid." once. This happens only if **Announce rolls and winners in raid chat** is on.
-- Nobody can change picks, spec or disabled slots. That includes you: unlock to edit.
-- Obtained items still update.
-- **Changed during lock:** if a player's list changes anyway, council members see a warning icon next to that player and one chat warning. That player is never the suggested roll winner, but the council can still award to them.
-- Sometimes a changed list claims it was saved before the lock, although DisasterZone can tell it wasn't. That list isn't flagged. Council members get a chat note instead ("...claims an earlier save ...; not flagged, please check."), and the player can still be suggested.
-- The lock ends on unlock, when the raid disbands, when the lead changes, or when the raid turns into a party. It survives your own `/reload`.
+To have DisasterZone hand items out: set the loot method to Master Looter, keep the boss loot window open as master
+looter, and click **Award to** *name*. A popup asks first; the award is recorded once the server has handed the item
+over. If it can't be given (full bags, out of range, loot window closed), DisasterZone says why and offers to record
+the award anyway.
 
-### Rolls and master-loot give
+Forever has master loot. The hand-out has not been tested in a real Forever raid yet: if it fails, hand the item out
+yourself and record it with **Award...**.
 
-Who can start rolls: council members, the master looter, and the raid leader or assistants. Start them with **Roll** or **Roll all** in the drop panel, or with `/dz roll [item link]`.
+### Dungeon mode
+Dungeon mode shares boss drops and rolls in a 5-man party the way they work in a raid.
 
-To have DisasterZone hand items out:
-
-1. Set the loot method to Master Looter.
-2. As master looter, keep the boss loot window open.
-3. In the drop panel's roll mode, click **Award to** *name* (**End roll & award to** *name* while the roll is open), or click a roll row → **Award to Name**.
-4. A popup asks "Give [item] to Name?". Click **Give**. DisasterZone gives the item via master loot.
-5. The award is recorded and announced only once the server has handed the item over.
-
-If the item can't be given, DisasterZone prints "Could not hand [item] to Name: *reason*". This happens when the server refuses (full bags, a unique item, out of range), doesn't answer within 5 seconds, or the loot window is closed. Nothing is recorded or announced yet. DisasterZone then offers to award it anyway: "Award [item] to Name? (hand it out via master loot or trade)". **Award** only records and announces the award.
-
-The plain **Award...** menu never hands the item out. It only records.
-
-### Dungeon mode (5-man parties)
-
-Dungeon mode shares boss drops and DisasterZone rolls in a 5-man party the same way it works in a raid.
-
-- **Turn it on:** type `/dz dungeon on`, or tick **Enable dungeon mode (5-man parties)**.
-  - As party leader, you turn it on for the whole party.
-  - If the party leader isn't on the council and hasn't turned it on, a council member in the party can turn it on for everyone.
-  - A regular party member turning it on only affects their own client, and only when the party has no loot leader.
-- **Minimum quality:** Rare by default. Change it with `/dz dungeon epic` or `/dz dungeon rare`.
-- **What it does:** drops inside 5-man dungeons are shared with the party, rolls run in party chat, and the party leader and council get the drop panel. Awards are tagged "(dungeon)" in the Loot Log and don't count towards "won N tonight".
-- **Turn it off** with `/dz dungeon off`. `/dz dungeon status` shows the current state.
-- Dungeon mode only works in a party. Raids always work as normal.
+- `/dz dungeon on` (as party leader, for the whole party), `/dz dungeon off`, `/dz dungeon status`.
+- Minimum quality is Rare by default: `/dz dungeon epic` or `/dz dungeon rare`.
+- Awards are tagged "(dungeon)" in the loot log and don't count towards "won N".
 
 ---
 
-## Quick start: Guild Master
+## Guild Master
 
 The Guild Master is always on the council.
 
 ### Pick the guild council
+1. **Council > Loot council > Guild council** (or **Settings > Guild > Council**).
+2. Add guild members with the search box. **Show offline members** lists everyone.
+3. Set the **guild season** (Season 1 for now).
+4. Optional: pick the **Disenchanter** and the **Guild bank** character.
+5. Click **Save & share**.
 
-1. Open Council tab → **Loot Council** → **Guild council**. You can also get there from Settings → **Loot Council** → **Edit council…**.
-2. Type in **Add guild members...**.
-   - The list shows online guild members. Tick **Show offline members** to see everyone.
-   - Click a name, or press Enter, to add or remove it. Arrow keys move the selection and Escape closes the list.
-3. Set **Guild phase** (P1 · Karazhan · Gruul · Magtheridon, … P5 · Sunwell Plateau).
-4. Optional: pick the **Disenchanter** and the **Guild bank** character (see below).
-5. Click **Save & share**. The status reads "Shared 2m ago · N members · phase Pn".
+The list reaches online members at once and later log-ins within about a minute. Your client only trusts the list you
+saved yourself, on that PC: if you play the GM on another PC, save it once there too.
 
-How it works:
-
-- A list holds up to 40 names.
-- **Revert** discards unsaved changes. **Clear list** removes everyone after asking. You stay council.
-- The list reaches online members at once. Members who log in later get it within about a minute, either from you or from a council member.
-- To remove someone, take them off the list and click **Save & share** again. They lose council status everywhere: the Council tab closes, and they stop receiving lists.
-- Your own client only trusts the list you saved yourself, and that list is stored on the PC you saved it on. If you play the GM on another PC, DisasterZone may print "Your guild council list is not saved on this PC: open Council > Loot Council and save it again". Save it once on that PC.
-
-### Disenchanter and guild bank
-
-The drop panel's **DE** and **Bank** buttons give an item to these characters in one click. Such awards are recorded as **Disenchant** or **Guild bank**, so they don't count as loot received and don't mark the item as awarded on that character's own BiS list.
-
-- Set them in Council tab → **Loot Council** → **Guild council**, with the **Disenchanter** and **Guild bank** buttons. Each button lists raid members, online guild members and all guild members, plus **None**.
-- **Save & share** sends them to the guild together with the council list.
-- A raid leader can pick different characters for their own raid (see [Raid council](#raid-council)). Their pick wins inside that raid.
-- Everyone else sees both names as a line in the Loot Council view.
-- If the character isn't in the raid, the button is greyed out.
-
-### Phases
-
-| Phase | Set by | Applies to |
+### Seasons
+| Season | Set by | Applies to |
 |---|---|---|
-| Guild phase | the GM, in the picker | everyone: the default My BiS phase, council views, tooltips and alerts |
-| Raid phase | the raid leader, in Group loot rules | that raid only |
-| View phase | each player, in Settings | only that player's own views |
+| Guild season | the GM, with the guild council | everyone: the default My BiS list, council views, tooltips and alerts |
+| Raid season | the raid leader, in Group rules | that raid only |
+| View season | each player, in Settings | only that player's own views |
 
-DisasterZone no longer uses the Guild Information text. If an old `CDL{...}` line is still there, you can delete it.
+With one season so far, all three are Season 1.
 
 ---
 
 ## How rolls pick a suggested winner
 
-In a raid started without the **Loot council**, rolls are plain: the highest valid roll is suggested, and BiS lists,
-votes and the BiS lock don't count. The rest of this section is about raids with the loot council.
+In a raid started without the **Loot council**, rolls are plain: the highest valid roll is suggested.
 
-**Council votes come first.** As soon as any council member has voted on an item, the player with the most votes is suggested:
+With the loot council:
 
-- Only votes for players who are still in the raid and didn't pass count.
-- Equal votes are decided by the groups below (BiS main, then BiS alt, then off-spec list, then everyone else), then by a valid roll (a player who rolled beats one who didn't), then by the higher roll. If that still doesn't separate them, the rows are marked "tie".
-- The council chose deliberately, so a voted player can be suggested even when they are marked "changed", "can't use" or "won a copy".
-- Only council members' votes count. A vote from someone who has since left the council is ignored.
+**Council votes come first.** Once any council member has voted on an item, the player with the most votes is
+suggested. Ties are decided by the groups below, then by the roll.
 
-**Without votes**, DisasterZone sorts everyone who rolled into four groups:
+**Without votes**, everyone who rolled is sorted into four groups:
 
 1. **BiS main**, not obtained yet
 2. **BiS alt**, not obtained yet
-3. **Off-spec list** (main or alt pick), not obtained yet
-4. **Everyone else**: not on their list, already obtained, the slot is disabled, their class can't use the item ("can't use"), or they already won another copy of it from this drop ("won a copy")
+3. **Off-spec list**, not obtained yet
+4. **Everyone else**: not on their list, already obtained, slot disabled, "can't use", or "won a copy" of this drop
 
-The highest roll in the best group is **suggested**. Some rules apply:
+The highest roll in the best group is suggested. A roll outside 1-100, a second roll, or a roll more than 2 seconds
+late doesn't count. Players flagged "changed during lock", "can't use", "won a copy" or who left the group are never
+suggested, but the council can still award them. Ties are marked "tie": pick one or **Re-roll**.
 
-- The groups follow the raid's phase: the **Raid phase** from Group loot rules, otherwise the guild phase. A council member's own **View phase** doesn't change them, so every council member sees the same suggestion.
-- A master looter who isn't on the council, even one from another guild, gets the same ranking from the council members in the raid.
-- A roll outside 1-100 is shown but never suggested.
-- A second roll is ignored and shown as "×2".
-- A roll that arrives more than 2 seconds after the timer ends doesn't count.
-- These players are never suggested, even if they are the only ones who rolled (they stay listed, and the council can still award them by clicking the row):
-  - anyone flagged "changed during lock";
-  - anyone marked "can't use";
-  - anyone marked "won a copy";
-  - anyone who has left the group.
+The council always confirms the award. Nothing is given away without a click and a confirmation.
 
-  If only such players rolled, there is no suggestion.
-- When rolls tie, every tied row is marked "tie". Pick a winner by clicking their row, or click **Re-roll**.
-- "won N" (items won tonight) is shown for your information only. It doesn't change the suggestion.
+---
 
-The council always confirms the award. Nothing is given away without a click and a confirmation popup.
+## Settings
+
+Open **Settings** (`/dz settings`, or right-click the minimap button). The groups on the left:
+
+| Group | What is in it |
+|---|---|
+| General | The window, item tooltip lines, the season you look at |
+| Alerts | When to stay quiet, and what reaches you (popup, sound, chat) |
+| Loot | Raid session, drop panel, rolls, group rules |
+| Combat | Class tools (see below) |
+| Interface | Looks and layout |
+| Guild | The council, attendance, Discord, recruitment, guild setup (most are the Guild Master's) |
+| Help | Tutorials, demo mode, version and about |
+
+**Class tools** are per class: for example the paladin blessing planner (Forever's blessings, an hour each) and the
+shaman totem planner. They start off. Forever hides health, power and some other values from addons during combat,
+so tools that read them show less than they would on other clients.
+
+---
+
+## Demo mode
+
+Try the addon solo with made-up data: `/dz demo` opens the Demo page, `/dz demo on` and `/dz demo off` switch it.
+Demo mode adds fake guild members with lists, a pretend raid, and the Council tab. **Simulate a boss drop** (or
+`/dz test`) opens the drop panel; **Demo a roll** gives you a roll popup with fake raiders. Nothing is saved or sent:
+announces print only in your own chat as "[demo, not sent]".
+
+---
+
+## What is not on Forever (yet)
+
+Forever gives addons no combat log, and some content has no Forever data yet. These parts of the original are hidden
+or gone:
+
+| Part | State |
+|---|---|
+| Gear sim | Hidden. It simulated TBC fights. |
+| My Log (your own boss pulls) | Hidden. It needs the combat log. |
+| Raids > Strategies (strategy boards) | Hidden. It has only TBC raid maps and rooms. |
+| Meters and boss mods | Hidden. They need the combat log; Forever's own replacements are being looked at. |
+| My BiS > Suggest | Empty until there are reliable Forever BiS lists. |
+| Raid loot | Fills in after the raids open on 9 December 2026. |
+| Raid Trainer, The Binding of Illidan | Removed (TBC bosses and rooms). |
+| Arena, badges, gems, Jewelcrafting, heroics, Outland | Not in Forever. |
+
+A few labels and pictures still come from the TBC addon (for example "P1" in places where Forever means Season 1, or
+TBC loading-screen art). They are being replaced.
 
 ---
 
 ## Slash commands
 
-`/dz` and `/disasterzone` work the same way.
+`/dz` and `/disasterzone` work the same way. `/dz help` lists every command.
 
 | Command | What it does | Who |
 |---|---|---|
-| `/dz members` | Open the Members tab: professions, recipes, specs, alts | Everyone |
-| `/dz professions` | How many characters and recipes the guild shares, and which of your windows to open | Everyone |
 | `/dz` | Opens or closes the window | everyone |
-| `/dz help` (or `/dz ?`) | Lists all commands | everyone |
-| `/dz home` | Opens the Home tab | everyone |
-| `/dz bis` | Opens the My BiS tab | everyone |
-| `/dz changelog` | Opens the Changelog tab | everyone |
-| `/dz council` | Opens the Council tab (My BiS if you aren't council) | council |
-| `/dz log` | Opens the Council tab's Loot Log | council |
-| `/dz raids` | Opens the Raids tab: upcoming raids and sign-ups | everyone |
+| `/dz home`, `/dz bis`, `/dz raids`, `/dz members`, `/dz polls`, `/dz map`, `/dz changelog` | Opens that page | everyone |
+| `/dz lfg` | Opens Groups | everyone |
+| `/dz settings` | Opens Settings | everyone |
 | `/dz plan` | Lists the planned raids and your answers in chat | everyone |
-| `/dz settings` or `/dz config` | Opens Settings | everyone |
-| `/dz sync` | Asks the guild and council to sync lists now (at most once per 30 s) | everyone |
 | `/dz version` | Your version and the versions seen in the guild | everyone |
-| `/dz demo [on\|off]` | Turns demo mode on or off, or toggles it | everyone |
-| `/dz test` | Simulates a boss drop on your own screen only. Nothing is sent. | everyone |
-| `/dz drops` | Shows the drop panel with the last 24 h of drops | mainly council / ML |
-| `/dz drop <item links>` | Announces a drop to the raid by hand (shift-click the items into the command) | council, raid leader / assistants |
-| `/dz roll <item link>` | Starts a roll for an item. Several links are queued. An item ID also works. | council, master looter, raid leader / assistants |
-| `/dz roll end` | Ends the running roll | the starter or council |
-| `/dz rules` | Shows the group loot rules in effect and who set them | everyone |
+| `/dz sync` | Asks the guild and council to sync lists now | everyone |
+| `/dz demo [on\|off]` | The Demo page, or demo mode on / off | everyone |
+| `/dz test` | Simulates a boss drop on your own screen. Nothing is sent. | everyone |
+| `/dz bug`, `/dz idea`, `/dz feedback` | Report a bug (the last Lua error goes with it), an idea, or other feedback | everyone |
+| `/dz council`, `/dz log` | Opens the Council tab or its loot log | council |
+| `/dz drops` | The drop panel with tonight's drops | council, master looter |
+| `/dz drop <item links>` | Announces a drop to the raid by hand | council, master looter |
+| `/dz roll <item link>` / `/dz roll end` | Starts a roll / ends the running roll | council, master looter, raid leader / assistants |
+| `/dz rules` | The group loot rules in effect and who set them | everyone |
 | `/dz lock` / `/dz unlock` | Locks or unlocks every BiS list in the raid | raid loot leader |
-| `/dz dungeon [on\|off\|rare\|epic\|status]` | Dungeon mode for 5-man parties (no argument toggles it) | everyone (party leader / council for the whole party) |
-| `/dz debug` | Turns debug messages in chat on or off | only when asked to |
-
----
-
-## Settings reference
-
-All settings are in the **Settings** tab. The ones marked *group rule* come from your group's loot leader while you are in a group.
-
-| Section | Setting | Default |
-|---|---|---|
-| Alerts | Boss drop panel (Loot Council) | on |
-| | "On your BiS list!" toast | on |
-| | Play a sound with drop alerts | on |
-| | Glow loot buttons for your BiS items | on |
-| | Chat message when your BiS item drops | on |
-| | BiS badges on the loot window | on |
-| | Alerts for off-spec list items (toast and chat line) | on |
-| | Drop panel position: Attach to loot window when open / Always floating | Attach |
-| | Announce channel: Raid / Raid Warning (Raid Warning needs lead or assist; otherwise Raid is used) | Raid |
-| Group loot rules | Roll duration *(group rule)* | 30 seconds |
-| | Minimum quality *(group rule)* | Epic |
-| | Enable dungeon mode (5-man parties) *(group rule)* | off |
-| | Dungeon min. quality *(group rule)* | Rare |
-| | Raid phase *(group rule)* | Use guild phase |
-| | Lock BiS lists / Unlock BiS lists | — |
-| Rolls | Announce rolls and winners in raid chat | on |
-| | Show the Roll / Pass popup | on |
-| Tooltips | Show DisasterZone lines on item tooltips | on |
-| | Council: list who wants the item | on |
-| | Names shown: 3 / 5 / 8 / 12 | 5 |
-| Minimap button | Show the minimap button | on |
-| View phase | Phase: Follow guild (Pn) / P1–P5 | Follow guild |
-| Demo mode | Demo data (fake guild members & raid), plus the **Simulate a boss drop**, **Recent drops** and **Demo a roll** buttons | off |
-| About | Version, peers seen, sharing status, **Request sync**, Debug messages in chat | — |
-| Loot Council | Read-only summary of the guild council and this raid's council, plus **Edit council…** for the GM or raid leader | — |
-
----
-
-## Demo mode (try it solo)
-
-Turn demo mode on with `/dz demo`, or tick **Demo data (fake guild members & raid)** in Settings.
-
-What it adds:
-
-- Fake guild members with BiS lists, some of them in a pretend raid.
-- The Council tab (with the Loot Log), even if you aren't council.
-- Your own My BiS list stays real.
-
-Things to try:
-
-- **Simulate a boss drop** (or `/dz test`) opens the drop panel, plus your own toast if a dropped item is on your list.
-- **Demo a roll** starts a roll on a simulated drop. You get the Roll / Pass popup, and fake raiders roll in the drop panel.
-- You can also click **Roll** on any item in the drop panel.
-
-Demo data is never saved or sent:
-
-- Announces print only in your own chat, as "[demo, not sent] ...".
-- Awards go into a temporary log that is thrown away when demo mode is turned off.
-
-`/dz demo` again turns it off.
-
-`/dz test` also works without demo mode. It uses real guild lists but still sends nothing. Rolls on a simulated drop need demo mode.
+| `/dz raid start\|options\|end\|status` | The raid session | raid leader |
+| `/dz reserves` | The soft reserves window | everyone (host: raid leader) |
+| `/dz attendance` | Attendance: the raid log, or your own | everyone |
+| `/dz dungeon [on\|off\|rare\|epic\|status]` | Dungeon mode for 5-man parties | party leader / council |
+| `/dz raiddata` | Prints what DisasterZone learned about the raids you entered (for whoever maintains the addon) | anyone asked to |
+| `/dz debug` | Debug messages in chat | only when asked to |
 
 ---
 
@@ -914,117 +580,66 @@ Demo data is never saved or sent:
 
 ### What does the sync status mean?
 
-The status appears at the top-right of the window, on the My BiS card under **Sharing**, and in the minimap tooltip.
-
 | Status | Meaning | What to do |
 |---|---|---|
-| **Shared with council ✓ 5m ago** | A council member has your current list. | Nothing |
-| **Changes pending…** | You edited your list recently. It is sent about 8 s after the last edit, or when you close the window. | Wait, or close the window |
-| **Sharing with council…** | A council member is online but hasn't confirmed your current version yet. | Wait a minute |
-| **Not shared yet — no council member online** | Nobody who may receive lists is online. Your list is sent automatically when a council member logs in. | Nothing, or `/dz sync` later |
-| **Waiting for guild roster…** | The guild roster hasn't loaded yet. | Wait a moment, or open the guild window |
-| **Not in a guild** | Sharing is off. My BiS, tooltips and your own alerts still work. | — |
+| **Shared with council** | A council member has your current list. | Nothing |
+| **Changes pending** | You edited your list recently. It is sent about 8 s after the last edit. | Wait, or close the window |
+| **Sharing with council** | A council member is online but hasn't confirmed your version yet. | Wait a minute |
+| **Not shared yet: no council member online** | Your list is sent when a council member logs in. | Nothing, or `/dz sync` later |
+| **Waiting for guild roster** | The guild roster hasn't loaded yet. | Wait a moment |
+| **Not in a guild** | Sharing is off. My BiS, tooltips and your own alerts still work. | - |
 
-A list with no picks at all is never sent. Choose at least one item.
-
-### "Not shared yet" won't go away
-- Check that someone on the council is actually online. `/dz version` lists players who have DisasterZone and marks council members.
-- Type `/dz sync`, wait 30 seconds, and look again.
-- If a council member is online and nothing changes, check that you both run the same version.
+A list with no picks at all is never sent.
 
 ### The Council tab is missing
-Only council members see it. Ask the Guild Master to add you, or check Settings → **Loot Council**. To look around anyway, use [demo mode](#demo-mode-try-it-solo).
-
-### As council, I don't see someone's list
-- Lists arrive when that player is online at the same time as a council member. Click **Request sync** in the Council footer.
-- Lists of players who left the guild are removed after 30 days.
+Only council members see it. Ask the Guild Master to add you. To look around anyway, use [demo mode](#demo-mode).
 
 ### The drop panel didn't open
-The drop panel needs all of these:
+It needs all of these: you are on the council (or lead a party in dungeon mode); the drop panel is on in Settings;
+someone in the raid who runs DisasterZone opened the boss loot window (under master loot: the master looter, the raid
+leader, an assistant or a council member); an item met the minimum quality. Reopen it with **Drops** or `/dz drops`,
+or announce a drop by hand with `/dz drop [item]`.
 
-- You are on the council, or you lead a party in dungeon mode.
-- **Boss drop panel (Loot Council)** is on.
-- Someone in the raid who runs DisasterZone opened the boss loot window. Under master loot, that must be the master looter, the raid leader, an assistant or a council member; other raiders' loot windows are ignored.
-- An item met the minimum quality (Epic by default). Tokens always count.
-- It was a real drop. Disenchanting, prospecting, lockboxes and fishing never open it.
-- The panel wasn't already busy. If it shows an item that is still being decided, it stays on that item and the pager reads "new". Page forward.
-
-If it still didn't open:
-
-- Reopen the panel with the **Drops** button in the Council toolbar, Shift-click on the minimap button, or `/dz drops`.
-- Announce a drop by hand with `/dz drop [item] [item]`.
+If it was during a pull, wait for the pull to end: Forever holds addon messages until then.
 
 ### My roll wasn't counted
-- Only `/roll` 1-100 counts, and only your first roll counts.
-- The roll must land before the timer ends, or up to 2 seconds after.
-- Rolls typed while no DisasterZone roll is open are ignored.
+Only `/roll` 1-100 counts, only your first roll, and only before the timer ends (or up to 2 seconds after).
 
 ### A council member has a newer copy of my list
-DisasterZone shows the popup "A council member (X) has a newer copy of your BiS list… Restore it?".
-
-- **Restore** takes their copy. Use it after reinstalling, or after losing your SavedVariables.
-- **Keep mine** keeps your local list and sends it out as the newest version.
-- Escape only closes the popup. Nothing is restored or sent.
-
-A fresh install with an empty list is restored automatically.
-
-### "X doesn't fit the Head slot" / "is a token / quest item"
-- Pick an item that fits the slot you clicked.
-- For tier sets, pick the tier piece, not the token. The picker lists the pieces under the boss.
+DisasterZone asks whether to restore it. **Restore** takes their copy (after a reinstall or lost SavedVariables).
+**Keep mine** keeps yours and sends it as the newest.
 
 ### Mixed versions
-- Everyone, and above all council members, the raid leader and the master looter, should run the **same** version. `/dz version` shows who runs what.
-- If a newer version shows up, DisasterZone prints "A newer DisasterZone version (x) is in use by Y. Please update."
-- **Off-spec lists** need 0.6 on the council's side: 0.5 council members keep receiving your list but ignore the off-spec part.
-- **0.5 and older** don't know votes, award reasons or the disenchanter / guild bank:
-  - A 0.5 council member can't vote and doesn't see votes. Its awards have no reason.
-  - A master looter on 0.5 gets no suggestion from votes.
-  - A client that first gets the council list from a 0.5 member may miss the disenchanter / guild bank until the Guild Master saves the list again.
-- **0.4 and older** still send disenchant and lockbox loot as drops (0.5 ignores them). A master looter on 0.4 also records a master-loot give before the server has handed the item over. Update the master looter first.
-- **0.3 and older** ignore disabled slots and the raid lock. A 0.3 council member still counts a disabled slot as wanted.
-- **0.2 and older** use the old Guild Information council and don't know the picked council. Their lists may not reach the new council.
-- If DisasterZone prints "X uses an incompatible DisasterZone version (protocol …)", messages between you and X are dropped until one of you updates.
+Everyone, and above all council members, the raid leader and the master looter, should run the **same** version.
+`/dz version` shows who runs what. If DisasterZone prints "X uses an incompatible DisasterZone version", messages
+between you and X are dropped until one of you updates.
 
 ### Something looks stuck
-- `/reload` rebuilds the windows.
-- Rolls in progress are kept in memory only. Avoid `/reload` on the client that started a roll until the roll is awarded.
-- If DisasterZone fails mid-raid, hand the item out the normal way (master loot or trade). Record it afterwards with Council → **Loot Log** → **Add award...**.
+`/reload` rebuilds the windows. Rolls in progress live in memory only: avoid `/reload` on the client that started a
+roll until it is awarded. If DisasterZone fails mid-raid, hand the item out the normal way and record it afterwards
+with **Council > Loot log > Add award...**.
 
 ### Reporting a Lua error
-1. Install **BugSack** from CurseForge. It needs **!BugGrabber**; the CurseForge app installs both.
-   Without BugSack, type `/console scriptErrors 1` to get the game's own error window.
-2. When an error happens, open BugSack from its minimap icon or with `/bugsack`. Copy the **whole** error text, including the stack lines under it.
-3. Send it to whoever maintains DisasterZone for the guild, together with:
-   - your version (the first line of `/dz version`);
-   - what you were doing (for example "clicked Award to X in the drop panel");
-   - whether you were solo, in a party or in a raid, and your role there (raider, council, raid leader, master looter);
-   - whether demo mode was on.
-4. Only turn on `/dz debug` if you are asked to. It prints extra messages to chat.
+1. Type `/console scriptErrors 1` to see the game's own error window, or use an error-catching addon if you have one.
+2. `/dz bug` opens the bug form with the last error attached. **Feedback** shows what you sent.
+3. Say what you were doing, whether you were solo, in a party or in a raid, your role there, and whether demo mode
+   was on.
 
 ---
 
 ## How it syncs, and privacy
 
-- **Your BiS list goes only to the council, by whisper.**
-  - It includes your picks, disabled slots, class, spec, which listed items you own, and what you wear in each slot.
-  - It goes to online guild council members and the GM. The raid leader and raid council members get it only while you are in their raid.
-  - Guild council members pass lists on to each other by whisper. Raid-only council members never pass lists on.
-  - Regular raiders never receive other players' lists.
-- **The guild channel carries only small status messages:**
-  - your list's revision number and your addon version;
-  - from council members: which lists they hold (names, revision numbers and checksums) and a checksum of the award log per day;
-  - the guild council list (names, phase, disenchanter and guild bank character) from the GM.
-  So the guild can see who has a list and how often it changes, but not what is on it.
-- **The raid or party channel carries loot events:** drops (item IDs), roll starts, rolls and results, council votes (who voted for whom), group loot rules, the raid council names with the raid's disenchanter / guild bank pick, and the lock. The raid UI only shows votes to council members and the master looter, but a modified client in the raid could read them.
-- **The loot log is council only.** It is shared between council members by whisper. Full history is exchanged only between guild council members. Raid-only council members receive the awards made while they are in the raid. They can only add awards they record themselves, and only void or restore awards from the last 12 hours.
-- **Where it's stored:** everything stays inside the game. Council members keep copies of other players' lists in their own SavedVariables file.
-- **It is not cryptographic.**
-  - The checksums catch damaged or out-of-date data, not forgery.
-  - Who sent a message comes from the game's addon channel, and council status comes from the live guild and raid rosters.
-  - DisasterZone refuses the known ways a modified client could interfere with others: overwriting lists, injecting or voiding awards, taking over the guild council list, cancelling running rolls, overriding awards, claiming boss drops, or freezing clients with oversized messages.
-  - A player with a modified client can still send whatever they like about their own list. The "changed during lock" warning is a detection aid, not a guarantee.
-  - Treat DisasterZone as a helper for an honest guild, not as a security system.
+- **Your BiS list goes only to the council, by whisper**: your picks, disabled slots, class, spec, which listed items
+  you own and what you wear. Guild council members and the GM get it; the raid leader and raid council only while you
+  are in their raid. Regular raiders never receive other players' lists.
+- **The guild channel carries small status messages**: list revision numbers and versions, which lists council members
+  hold, and the guild council list from the GM. The guild can see who has a list, not what is on it.
+- **The raid or party channel carries loot events**: drops, rolls, votes, group rules, the raid council and the lock.
+- **The loot log is council only**, shared by whisper.
+- **Everything stays inside the game.** Council members keep copies of other players' lists in their SavedVariables.
+- **It is not cryptographic.** Checksums catch damaged or old data, not forgery. DisasterZone refuses the known ways a
+  modified client could interfere with others, but treat it as a helper for an honest guild, not a security system.
 
 ---
 
-Third-party libraries and data sources: see [NOTICE.md](NOTICE.md).
+Third-party libraries, data sources and credits: see [NOTICE.md](NOTICE.md).

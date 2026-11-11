@@ -285,7 +285,7 @@ def malformed_pre_raid_fields_are_rejected():
         "pr = { [18] = { %d, 0 } }": "pre-raid: bad slot",
         "pr = { [1] = { %d, 0, 5 } }": "pre-raid: bad slot item",
         "pr = { [1] = { 'x' } }": "pre-raid: bad slot item",
-        "pr = { [1] = { 300000 } }": "pre-raid: bad slot item",
+        "pr = { [1] = { 2000000 } }": "pre-raid: bad slot item",
         "pr = { [1] = { { %d } } }": None,       # too deep for the shape check or a bad item: rejected either way
         "px = { [1] = 1 }": "pre-raid: bad disabled slot",
         "px = { [0] = true }": "pre-raid: bad disabled slot",

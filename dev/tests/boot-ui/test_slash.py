@@ -9,8 +9,8 @@ from _common import (case, run_all, toc_version, solo, no_errors, World, Client,
 # Addendum E removed "/dz guildinfo"; Addendum D added "/dz rules".
 # Addendum F §38 added "lock" / "unlock" (raid BiS list lock); the Raid Trainer's renderer v2 added "trainer" (render
 # switches).
-SUBCOMMANDS = ["3d", "account", "attendance", "audit", "azeromon", "bingo", "bis", "bless", "board", "break", "bridge", "bug", "changelog", "chess", "config", "council", "debug", "demo", "drop", "drops", "dungeon", "edit", "errortest", "event", "feedback", "home", "htl", "idea", "illidan", "keys", "lfg", "lock", "log", "lootrules", "map", "maps", "members", "meter", "mylog", "perf", "plan", "play", "polls", "professions", "publish", "pull", "raid", "raids", "recruit", "reserves", "roll", "rules",
-               "settings", "share", "shot", "strat", "swing", "sync", "test", "threat", "totems", "tour", "trainer", "unlock", "update", "version", "war", "wardrobe"]
+SUBCOMMANDS = ["3d", "account", "attendance", "audit", "azeromon", "bingo", "bis", "bless", "board", "break", "bridge", "bug", "changelog", "chess", "config", "council", "debug", "demo", "drop", "drops", "dungeon", "edit", "errortest", "event", "feedback", "home", "htl", "idea", "keys", "lfg", "lock", "log", "lootrules", "map", "maps", "members", "meter", "mylog", "perf", "plan", "play", "polls", "professions", "publish", "pull", "raid", "raiddata", "raids", "recruit", "reserves", "roll", "rules",
+               "settings", "share", "shot", "strat", "swing", "sync", "test", "threat", "totems", "tour", "unlock", "update", "version", "war", "wardrobe"]
 
 
 def said(c, n0):
@@ -46,7 +46,10 @@ def help_lists_every_subcommand_and_unknown_prints_help():
         assert lines[0] == "DisasterZone: commands (/dz or /disasterzone):", lines
         assert lines[1].startswith("  /dz - open or close"), lines
         listed = [l.split()[1] for l in lines[2:]]
-        assert listed == SUBCOMMANDS, listed
+        # (publish / update exist only with an in-game update key: Core/PatchKey.lua has none until we make ours)
+        want = SUBCOMMANDS if c.eval("return ns.Patch._Key() ~= nil") else \
+            [s for s in SUBCOMMANDS if s not in ("publish", "update")]
+        assert listed == want, listed
         assert all(" - " in l for l in lines[2:]), "a subcommand has no help text: %r" % lines
     n0 = len(c.chat_frame)
     c.slash("/dz frobnicate now")

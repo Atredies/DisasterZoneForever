@@ -50,9 +50,9 @@ def tab_opens_on_the_carousel_and_turns_every_way():
     c.world = w
     hub(c)
     assert c.eval("return ns.GamesUI:GetSelected()") is None
-    assert c.eval("return #%s" % POSTERS) == 6
+    assert c.eval("return #%s" % POSTERS) == 4
     order = c.eval_py("local o = {} for i, p in ipairs(%s) do o[i] = p.id end return o" % POSTERS)
-    assert order == ["bingo", "trainer", "azeromon", "chess", "illidan", "holdtheline"], order
+    assert order == ["bingo", "azeromon", "chess", "holdtheline"], order
     n = len(order)
     start = front(c)
     i0 = order.index(start)
@@ -87,13 +87,13 @@ def front_poster_grows_into_the_game_and_back_returns():
     w, c = solo()
     c.world = w
     hub(c)
-    c.eval("ns.GamesUI:ShowFront('trainer')")
+    c.eval("ns.GamesUI:ShowFront('chess')")
     c.eval("for _, p in ipairs(%s) do if p.off == 0 then p:Click() end end" % POSTERS)
     assert c.eval("return ns.GamesUI:IsAnimating()") is True
     assert c.eval("return ns.GamesUI:GetSelected()") is None       # (still growing)
     settle(c)
-    assert c.eval("return ns.GamesUI:GetSelected()") == "trainer"
-    assert c.eval("return ns.Share:CurrentRef()") == "game:trainer"
+    assert c.eval("return ns.GamesUI:GetSelected()") == "chess"
+    assert c.eval("return ns.Share:CurrentRef()") == "game:chess"
     shown = c.eval_py("return { strip = ns.GamesUI.__posters[1]:GetParent():IsVisible() }")
     assert shown["strip"] is False                                  # the carousel is gone
     # the strip's "< GAMES" back to the carousel, the same game in front
@@ -104,7 +104,7 @@ def front_poster_grows_into_the_game_and_back_returns():
            "find(f):Click()")
     settle(c)
     assert c.eval("return ns.GamesUI:GetSelected()") is None
-    assert front(c) == "trainer"
+    assert front(c) == "chess"
     assert c.eval("return ns.Share:CurrentRef()") == "games"
     no_errors(w)
 
@@ -233,19 +233,10 @@ def a_running_bingo_game_comes_first_and_says_how_close_you_are():
 def poster_stats_come_from_each_games_saved_data():
     w, c = solo()
     c.world = w
-    c.eval("local d = ns.Games:GetData('trainer') "
-           "d.enc = { vashj = { looter = { tries = 3, clears = 1, bestTime = 271.4 } }, "
-           "          teron = { quick = { tries = 2, clears = 0 } } } d.last = 'vashj'")
     c.eval("local s = { flags = {}, caught = { a = true, b = true }, seen = {} } "
            "local n = 0 for id in pairs(ns.AzeroData.badges) do n = n + 1 if n <= 2 then s.flags['badge_' .. id] = true end end "
            "ns.Games:GetData('azeromon').save = s")
     hub(c)
-    assert summary(c, "trainer") == "1 clear  ·  5 tries  ·  20% clear rate", summary(c, "trainer")
-    chips = c.eval_py("for _, p in ipairs(%s) do if p.id == 'trainer' then local o = {} "
-                      "for i, ch in ipairs(p.cover.shown) do o[i] = { ch.name:GetText(), ch.time:GetText() } end "
-                      "return o end end" % POSTERS)
-    assert [ch[0] for ch in chips] == ["Lady Vashj", "Teron Gorefiend"], chips
-    assert chips[0][1] == "4:31" and strip_codes(chips[1][1]) == "not cleared", chips
     total = c.eval("local n = 0 for _ in pairs(ns.AzeroData.badges) do n = n + 1 end return n")
     assert summary(c, "azeromon") == "2/%d badges  ·  2 tamed" % total, summary(c, "azeromon")
     no_errors(w)
@@ -331,11 +322,11 @@ def the_runner_glides_to_the_new_dot_front_end_first_and_takes_its_colour():
     # the row lies above the posters (no shadow over it) and goes with the side posters when a game opens
     top = c.eval("local m = 0 for _, p in ipairs(%s) do m = math.max(m, p:GetFrameLevel()) end return m" % POSTERS)
     assert c.eval_py(RUNNER)[6] > top
-    c.eval("ns.GamesUI:ShowFront('trainer') for _, p in ipairs(%s) do if p.off == 0 then p:Click() end end "
+    c.eval("ns.GamesUI:ShowFront('chess') for _, p in ipairs(%s) do if p.off == 0 then p:Click() end end "
            "ns.GamesUI:StepAnim(0.2)" % POSTERS)
     assert c.eval_py(RUNNER)[7] < 0.5
     c.eval("ns.GamesUI:StepAnim(0.6) ns.GamesUI:PauseAnim(false)")
-    assert c.eval("return ns.GamesUI:GetSelected()") == "trainer"
+    assert c.eval("return ns.GamesUI:GetSelected()") == "chess"
     no_errors(w)
 
 

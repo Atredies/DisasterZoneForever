@@ -66,6 +66,17 @@ local INFO = {
     games   = { art = 131849, cx = 0.70, icon = "games", accent = { 0.31, 0.83, 0.88 } },
 }
 local DEFAULT_INFO = { art = LS .. "Outland", cx = 0.5, icon = "notes", accent = S.C.GOLD }
+-- WoW Forever: the old world's loading screens, all by FileDataID (Data/Raids.lua's raids, the dungeons' of
+-- Core/DungeonRuns.lua, the battlegrounds' of Data/GroupKinds.lua; 131839 Eastern Kingdoms is new here)
+if ns.Compat and ns.Compat.isForever then
+    local ART = { raids = 131847, council = 131824, lootrules = 131847, mylog = 131825, mybis = 131868,
+                  gearsim = 131871, consumables = 131835, wardrobe = 131871, atlas = 131848, members = 131839,
+                  map = 131848, events = 131861, polls = 131883, recruit = 131833, audit = 131866, games = 131885 }
+    for key, info in pairs(INFO) do
+        if ART[key] then info.art, info.cx = ART[key], 0.5 end
+    end
+    DEFAULT_INFO.art = 131839
+end
 NavMenu.INFO = INFO
 
 local function IconIndex(name)
@@ -85,8 +96,10 @@ local VIEWS = {
     raids = function()
         local R, RP, G = ns.RaidsUI, ns.RaidPlan, ns.Guild
         local cur = R and R.GetView and R:GetView()
-        local out = { { key = "upcoming", label = "Upcoming" }, { key = "teams", label = "Teams" },
-                      { key = "strategies", label = "Strategies" } }
+        local out = { { key = "upcoming", label = "Upcoming" }, { key = "teams", label = "Teams" } }
+        if not (ns.FOREVER_HIDDEN and ns.FOREVER_HIDDEN.strategies) then
+            out[#out + 1] = { key = "strategies", label = "Strategies" }
+        end
         if RP and RP.CanManageRoster and RP:CanManageRoster() then out[#out + 1] = { key = "guests", label = "Guests" } end
         local demo = ns.Demo and ns.Demo.IsEnabled and ns.Demo:IsEnabled()
         if demo or (G and G.AmIRaidLogMember and G:AmIRaidLogMember()) then
@@ -557,7 +570,7 @@ local function Build(parent)
         end
         if not InCombatLockdown() then
             self:EnableKeyboard(true)
-            self:SetPropagateKeyboardInput(true)
+            ns.Util.SetPropagateKeys(self, true)
         end
     end)
     p:SetScript("OnHide", function(self)
@@ -567,7 +580,7 @@ local function Build(parent)
     end)
     p:SetScript("OnKeyDown", function(self, key)
         if key ~= "ESCAPE" then return end
-        if not InCombatLockdown() then self:SetPropagateKeyboardInput(false) end
+        if not InCombatLockdown() then ns.Util.SetPropagateKeys(self, false) end
         NavMenu:Close()
     end)
     p:SetScript("OnEvent", function(self, event)

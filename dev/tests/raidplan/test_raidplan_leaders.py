@@ -20,7 +20,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 from rp_common import World, Client, gm_pick, K, DAY, now, raids, set_raid_leaders  # noqa: E402
-from _common import case, run_all, printed_since, strip_codes  # noqa: E402
+from _common import case, run_all, printed_since, strip_codes, DEV_NAME, DEV_REALM, DEV_KEY  # noqa: E402
 import lr_common as lr  # noqa: E402
 
 # name, rank, class
@@ -482,7 +482,7 @@ def raid_leaders_manage_raids_and_their_groups_the_council_teams_and_groups():
 @case
 def tsumil_can_pretend_roles_on_their_own_screen_only():
     w, c = world()
-    t = Client(w, "Tsumil", guild_rank=3, class_file="DRUID")
+    t = Client(w, DEV_NAME, realm=DEV_REALM, guild_rank=3, class_file="DRUID")     # the developer
     t.load_addon()
     w.tick(5)
     state = lambda: t.eval_py("""
@@ -508,7 +508,7 @@ def tsumil_can_pretend_roles_on_their_own_screen_only():
     assert "council" in tabs(t)
     # other clients still see Tsumil's real role
     for n, x in c.items():
-        assert x.eval("return ns.Guild:IsCouncil(...)", K("Tsumil")) is False, n
+        assert x.eval("return ns.Guild:IsCouncil(...)", DEV_KEY) is False, n
     # it survives a /reload; off restores the real role
     t.relog()
     w.tick(10)

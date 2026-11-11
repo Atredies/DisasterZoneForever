@@ -238,8 +238,14 @@ def a_returning_member_who_answers_gets_the_deletion():
     assert got == {"EVD": {K("Uma")}}, got
     wants = [m for m in lr.msgs_of_type(w, "EVW", mark) if m["_sender"] == K("Lee")]
     assert not wants, wants                                             # Lee didn't ask for the live copy
-    assert holds(uma, ids)["D"] == "del", holds(uma, ids)
     assert holds(lee, ids)["D"] == "del", holds(lee, ids)
+    # 2026-11-09 (authority holes, round 3): Lee is a plain member and not the deletion's writer: his copy of the
+    # deletion is held back on Uma's client until its writer (Gina) or a reviewer is online to vouch for it
+    # (tests/forever/test_forever_authority3.py); before, it was taken at its word.
+    assert holds(uma, ids)["D"] == "live", holds(uma, ids)
+    gina.login()
+    w.tick(60)
+    assert holds(uma, ids)["D"] == "del", holds(uma, ids)
     for x in (lee, uma):
         assert x.eval("return ns.Events:GetDigestHash()") == "0", x.name
     w.assert_no_errors()
@@ -295,11 +301,13 @@ def records_past_their_keep_are_not_taken_back():
     out = lee.eval_py("""
         local def, gk = ...
         local now = GetServerTime()
-        local d = ns.EventBlocks:Starter(); d.id = 'eold'; d.by = 'Gina-Thunderstrike'; d.rev = now - 70 * 86400
+        -- (the calendar events are Lee's own: since 2026-11-09 a relayed record is taken only from its writer or a
+        -- reviewer, so one "by" Gina from Lee would be held back whatever its age)
+        local d = ns.EventBlocks:Starter(); d.id = 'eold'; d.by = 'Lee-Thunderstrike'; d.rev = now - 70 * 86400
         local function give(t, k, r) ns.Comm:Send({ t = t, k = k, r = r }, 'WHISPER', 'Gina-Thunderstrike', 'data') end
-        give('EVG', 'O', { id = 'oold', by = 'Gina-Thunderstrike', h = 'Gina-Thunderstrike', rev = now - 70 * 86400,
+        give('EVG', 'O', { id = 'oold', by = 'Lee-Thunderstrike', h = 'Lee-Thunderstrike', rev = now - 70 * 86400,
                            def = d, at = now - 61 * 86400 })
-        give('EVG', 'O', { id = 'orecent', by = 'Gina-Thunderstrike', h = 'Gina-Thunderstrike', rev = now - 50 * 86400,
+        give('EVG', 'O', { id = 'orecent', by = 'Lee-Thunderstrike', h = 'Lee-Thunderstrike', rev = now - 50 * 86400,
                            def = d, at = now - 59 * 86400 })
         give('PLG', 'P', { id = 'pold', by = 'Gina-Thunderstrike', rev = now - 130 * 86400, q = 'Old?', k = 'one',
                            o = { 'a', 'b' }, mx = 0, at = now - 130 * 86400, cl = now - 61 * 86400, rv = 'live',

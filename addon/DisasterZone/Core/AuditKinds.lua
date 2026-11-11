@@ -835,8 +835,8 @@ Def("bis.L", { describe = function(old, new, ctx)
             end
         end
     end
-    walk("ph", function(p) return "Phase " .. tostring(p) end)
-    walk("op", function(p) return "Off spec, phase " .. tostring(p) end)
+    walk("ph", function(p) return ns.PHASE_WORD .. " " .. tostring(p) end)
+    walk("op", function(p) return "Off spec, " .. ns.PHASE_WORD:lower() .. " " .. tostring(p) end)
     if #f == 0 then return nil end
     return { a = "loot", o = "bis:" .. ctx.key, n = "their BiS list", k = "bis.L", x = "who:" .. ctx.key, w = ctx.key,
              t = (tonumber(new.ts) or 0) > 0 and new.ts or Util.Now(), v = "chg", f = f,
@@ -882,7 +882,7 @@ local function RuleText(spec, v)
     if v == nil then return "None" end
     if spec[3][v] then return spec[3][v] end
     if spec[4] == "%" then return tostring(v) .. "%" end
-    if spec[4] == "P" then return "P" .. tostring(v) end
+    if spec[4] == "P" then return ns.PHASE_LETTER .. tostring(v) end
     return tostring(v)
 end
 
