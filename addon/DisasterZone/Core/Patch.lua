@@ -817,7 +817,7 @@ local function FinishIfComplete(mine)
     dl = nil
     Stage(mine.m, mine.z0, zs, srcs)
     if Patch.ready then
-        ns:Print("update %s is downloaded. Reload the interface (/reload) to use it.", tostring(mine.m.version))
+        ns:Print("update %s is downloaded. Type /dz update (or /reload) to use it.", tostring(mine.m.version))
     end
     ScheduleAnnounce(1, 5)
 end
@@ -1338,7 +1338,7 @@ function Patch:PrintStatus()
     for _, line in ipairs(Boot.StatusLines()) do ns:Print("%s", line) end
     local s = self:GetStatus()
     if s.ready then
-        ns:Print("update %s is downloaded: reload the interface (/reload) to use it.", tostring(s.ready.version))
+        ns:Print("update %s is downloaded: type /dz update (or /reload) to use it.", tostring(s.ready.version))
     end
     if s.downloading then
         local d = s.downloading
@@ -1351,6 +1351,26 @@ function Patch:PrintStatus()
     if s.newArt then
         ns:Print("this update has new art you do not have yet. Download the full DisasterZone %s to see it.", tostring(ns.version))
     end
+end
+
+-- /dz update: what a member types when told there is an update. A downloaded one is installed at once (the interface
+-- reloads: typing a slash command is the key press ReloadUI needs); otherwise the guild is asked now instead of at the
+-- next half-hourly "this is what I have", and a newer update anybody holds starts downloading in the background.
+function Patch:Update()
+    local s = self:GetStatus()
+    if s.ready then
+        ns:Print("installing update %s: reloading the interface.", tostring(s.ready.version))
+        ReloadUI()
+        return
+    end
+    self:PrintStatus()
+    if s.downloading then
+        ns:Print("type /dz update again when it says the update is downloaded.")
+        return
+    end
+    SendAnnounce()
+    ns:Print("asked the guild for a newer update. If somebody online has one, it downloads in the background and "
+        .. "you are told; then type /dz update again.")
 end
 
 ---------------------------------------------------------------------------
@@ -1366,7 +1386,7 @@ function Patch:OnInit()
     ns:RegisterEvent("ENCOUNTER_START", function() inEncounter = true end)
     ns:RegisterEvent("ENCOUNTER_END", function() inEncounter = false end)
     ns:RegisterSlash("publish", function() Patch:Publish() end, "send the in-game update in the outbox to the guild")
-    ns:RegisterSlash("update", function() Patch:PrintStatus() end, "in-game update status")
+    ns:RegisterSlash("update", function() Patch:Update() end, "get the newest in-game update (installs a downloaded one: the interface reloads)")
 end
 
 function Patch:OnLogin()

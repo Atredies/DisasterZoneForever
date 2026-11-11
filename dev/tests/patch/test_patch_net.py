@@ -112,6 +112,33 @@ def late_login_is_served_by_a_member():
 
 
 @case
+def dz_update_asks_the_guild_and_installs_what_arrived():
+    """/dz update: without an update it asks the guild at once (no wait for the half-hourly announce); once one is
+    downloaded it installs it (the interface reloads)."""
+    w, base_dir, record, new_dir, bundle, (a,) = setup(1)
+    a.eval("DZTEST_RELOADS = 0; ReloadUI = function() DZTEST_RELOADS = DZTEST_RELOADS + 1 end")
+    w.tick(30)                                                    # (everybody's after-login announce is out)
+    n0 = len(a.chat_frame)
+    sent0 = len(patch_msgs(w, "A"))
+    a.slash("/dz update")
+    w.tick(1)
+    assert any("asked the guild" in l for l in a.chat_frame[n0:]), a.chat_frame[n0:]
+    assert len(patch_msgs(w, "A")) > sent0, "the ask went out at once"
+    assert a.eval_py("return DZTEST_RELOADS") == 0
+    p = publisher(w, new_dir, bundle)
+    w.tick(2)
+    p.slash("/dz publish")
+    wait_ready(w, [a])
+    assert any("/dz update" in l for l in a.chat_frame), "the downloaded line says what to type"
+    a.slash("/dz update")
+    assert a.eval_py("return DZTEST_RELOADS") == 1
+    a.relog()
+    w.tick(3)
+    assert boot_state(a)["state"] == "applied"
+    w.assert_no_errors()
+
+
+@case
 def many_downloaders_one_stream():
     w, base_dir, record, new_dir, bundle, members = setup(6, new_mods=big_mods(40000))
     p = publisher(w, new_dir, bundle)

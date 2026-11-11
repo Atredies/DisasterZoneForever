@@ -15,7 +15,7 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant, SystemTime};
 use tauri::{AppHandle, Emitter};
 
-const KEY_SERVICE: &str = "DisasterZoneLauncher";
+const KEY_SERVICE: &str = crate::core::state::APP_DIR;
 const KEY_USER: &str = "discord-sync-key";
 /// The guild's bot server (a setting can point elsewhere, e.g. http://127.0.0.1:8787 while testing at home).
 pub const DEFAULT_SERVER: &str = include_str!("../../server.txt");
@@ -86,7 +86,7 @@ fn now() -> u64 {
 
 fn client() -> Result<reqwest::Client> {
     reqwest::Client::builder()
-        .user_agent(concat!("DisasterZoneLauncher/", env!("CARGO_PKG_VERSION")))
+        .user_agent(concat!("DisasterZoneForeverLauncher/", env!("CARGO_PKG_VERSION")))
         .timeout(Duration::from_secs(30))
         .build()
         .map_err(|e| crate::core::Error::Net(e.to_string()))
