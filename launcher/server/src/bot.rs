@@ -562,48 +562,66 @@ async fn send(http: &Client, app_id: Id<ApplicationMarker>, i: &Interaction, res
     let d = resp.data.clone().unwrap_or_default();
     let files = d.attachments.clone().unwrap_or_default();
     let from_component = matches!(i.kind, InteractionType::MessageComponent | InteractionType::ModalSubmit);
-    match resp.kind {
-        // the message the button is on (a component's deferral), or the command's "thinking" reply
-        InteractionResponseType::UpdateMessage | InteractionResponseType::ChannelMessageWithSource
-            if resp.kind == InteractionResponseType::UpdateMessage || !from_component =>
-        {
-            // (only what the answer sets is changed, as with the callback)
-            let mut u = ic.update_response(&i.token);
-            if d.content.is_some() {
-                u = u.content(d.content.as_deref());
+    // The worker can be quicker than Discord: the deferral this answer edits may not exist yet for a moment, and
+    // Discord says "Unknown Webhook" (10015). Try again a few times (about 4 s in all) before giving up.
+    let mut wait = 250u64;
+    loop {
+        let sent: std::result::Result<(), twilight_http::Error> = match resp.kind {
+            // the message the button is on (a component's deferral), or the command's "thinking" reply
+            InteractionResponseType::UpdateMessage | InteractionResponseType::ChannelMessageWithSource
+                if resp.kind == InteractionResponseType::UpdateMessage || !from_component =>
+            {
+                // (only what the answer sets is changed, as with the callback)
+                let mut u = ic.update_response(&i.token);
+                if d.content.is_some() {
+                    u = u.content(d.content.as_deref());
+                }
+                if d.embeds.is_some() {
+                    u = u.embeds(d.embeds.as_deref());
+                }
+                if d.components.is_some() {
+                    u = u.components(d.components.as_deref());
+                }
+                if !files.is_empty() {
+                    u = u.attachments(&files);
+                }
+                u.await.map(|_| ())
             }
-            if d.embeds.is_some() {
-                u = u.embeds(d.embeds.as_deref());
+            // a new private message after a button
+            InteractionResponseType::ChannelMessageWithSource => {
+                let mut f = ic.create_followup(&i.token);
+                if let Some(c) = d.content.as_deref().filter(|c| !c.is_empty()) {
+                    f = f.content(c);
+                }
+                if let Some(e) = d.embeds.as_deref() {
+                    f = f.embeds(e);
+                }
+                if let Some(c) = d.components.as_deref() {
+                    f = f.components(c);
+                }
+                if !files.is_empty() {
+                    f = f.attachments(&files);
+                }
+                f = f.flags(d.flags.unwrap_or(MessageFlags::EPHEMERAL));
+                f.await.map(|_| ())
             }
-            if d.components.is_some() {
-                u = u.components(d.components.as_deref());
+            other => return Err(crate::core::Error::Msg(format!("a {other:?} answer can't follow a deferral (see bot::immediate)"))),
+        };
+        match sent {
+            Ok(()) => break,
+            Err(e) if wait <= 2000 && is_unknown_webhook(&e.to_string()) => {
+                tokio::time::sleep(std::time::Duration::from_millis(wait)).await;
+                wait *= 2;
             }
-            if !files.is_empty() {
-                u = u.attachments(&files);
-            }
-            u.await.map_err(net)?;
+            Err(e) => return Err(net(e)),
         }
-        // a new private message after a button
-        InteractionResponseType::ChannelMessageWithSource => {
-            let mut f = ic.create_followup(&i.token);
-            if let Some(c) = d.content.as_deref().filter(|c| !c.is_empty()) {
-                f = f.content(c);
-            }
-            if let Some(e) = d.embeds.as_deref() {
-                f = f.embeds(e);
-            }
-            if let Some(c) = d.components.as_deref() {
-                f = f.components(c);
-            }
-            if !files.is_empty() {
-                f = f.attachments(&files);
-            }
-            f = f.flags(d.flags.unwrap_or(MessageFlags::EPHEMERAL));
-            f.await.map_err(net)?;
-        }
-        other => return Err(crate::core::Error::Msg(format!("a {other:?} answer can't follow a deferral (see bot::immediate)"))),
     }
     Ok(())
+}
+
+/// Discord's "Unknown Webhook": the interaction's reply isn't there (yet) to edit or follow.
+fn is_unknown_webhook(err: &str) -> bool {
+    err.contains("\"code\": 10015") || err.contains("\"code\":10015")
 }
 
 /// The acknowledgement Discord gets at once for an interaction answered later: a button's message stays as it is
@@ -724,6 +742,13 @@ mod tests {
 
     fn menu(custom: &str, v: &str) -> Interaction {
         interaction(3, serde_json::json!({ "custom_id": custom, "component_type": 3, "values": [v] }))
+    }
+
+    #[test]
+    fn unknown_webhook_is_recognised_in_discords_answer() {
+        let real = r#"response error: status code 404, error: {"message": "Unknown Webhook", "code": 10015}"#;
+        assert!(is_unknown_webhook(real));
+        assert!(!is_unknown_webhook(r#"response error: status code 404, error: {"message": "Unknown Message", "code": 10008}"#));
     }
 
     #[test]
