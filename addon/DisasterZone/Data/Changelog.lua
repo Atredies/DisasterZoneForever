@@ -8,6 +8,19 @@ if DisasterZoneBoot and DisasterZoneBoot.Run("Data/Changelog.lua", ...) then ret
 local addonName, ns = ...
 
 ns.CHANGELOG = {
+    { version = "0.2.3", date = "12 November 2026", title = "Updates in game, and the guild's Discord",
+      sections = {
+          { heading = "Updates in game", area = "other", kind = "new", hi = true,
+            lead = "This is the last version you install from a zip.", lines = {
+              "New versions now reach you in game from your guildmates.",
+              "Once one is downloaded, type /dz update to install it (the interface reloads).",
+              "/dz update also asks the guild for the newest update at any time.",
+          } },
+          { heading = "Discord", area = "other", kind = "new", lines = {
+              "The guild's Discord bot works with Forever: raids, sign-ups and BiS lists.",
+              "Sign-ups and BiS changes made in Discord reach your game, launcher or not.",
+          } },
+      } },
     { version = "0.2.2", date = "10 November 2026", title = "Sync you can see, cleaner recruitment posts",
       sections = {
           { heading = "Sync", area = "other", kind = "fixed", hi = true,

@@ -574,14 +574,16 @@ def the_tbc_originals_keys_are_never_trusted():
 def a_release_without_our_key_ships_with_updates_off():
     """release.py full: upstream's key in Core/PatchKey.lua is refused; no key builds a zip with in-game updates off
     (its record says so, and 'patch' refuses that base); the zip passes verify_zip (folders, TOCs, no dev files)."""
-    repo_key = read(release.ADDON_DIR, "Core/PatchKey.lua")         # (before the sandbox points ADDON_DIR elsewhere)
+    # (a Core/PatchKey.lua with no key, as the repository shipped before our own key was made in 0.2.3)
+    repo_key = ('if DisasterZoneBoot and DisasterZoneBoot.Run("Core/PatchKey.lua", ...) then return end -- no key\n'
+                "local addonName, ns = ...\n\nns.PatchKey = nil\n")
     sb = Sandbox()
     try:
         set_version(sb.addon, "0.1.0")
         write(sb.addon, "Core/PatchKey.lua", upstream_key_lua())
         sb.run("full", fails=True)                                  # upstream's key: refused
         assert not os.listdir(release.DIST) if os.path.isdir(release.DIST) else True
-        write(sb.addon, "Core/PatchKey.lua", repo_key)                 # the repository's: no key
+        write(sb.addon, "Core/PatchKey.lua", repo_key)                 # no key
         assert release.patch_key_root(sb.addon) is None
         sb.run("full")
         record = json.load(open(os.path.join(release.RELEASES, "0.1.0.json"), encoding="utf-8"))

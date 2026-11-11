@@ -6,7 +6,7 @@ polls, BiS lists, loot council and rolls, the guild roster, and a few small guil
 ## Download
 
 **[Download the latest release](https://github.com/Atredies/DisasterZoneForever/releases/latest)**: under *Assets*,
-click **`DisasterZone-<version>.zip`** (today that is `DisasterZone-0.2.2.zip`).
+click **`DisasterZone-<version>.zip`** (today that is `DisasterZone-0.2.3.zip`).
 
 Older versions are on the [Releases page](https://github.com/Atredies/DisasterZoneForever/releases).
 Don't use GitHub's green "Code > Download ZIP" button: that gives you the source code, not the addon.
@@ -29,18 +29,39 @@ Don't use GitHub's green "Code > Download ZIP" button: that gives you the source
      DisasterZone_Chess\         <- optional game
    ```
 
-   If you end up with `AddOns\DisasterZone-0.2.2\DisasterZone\...` (an extra folder level), move the inner folders up one level.
+   If you end up with `AddOns\DisasterZone-0.2.3\DisasterZone\...` (an extra folder level), move the inner folders up one level.
 4. **Start the game.** On the character screen, click **AddOns** and make sure DisasterZone is ticked.
 5. In game, type `/dz` to open it. `/dz version` shows which version you and your guildmates run.
 
 ## Update to a new version
 
+**From 0.2.3 on, updates come in game.** When a guildmate who has a newer update is online, it downloads in the
+background and DisasterZone tells you. Type **`/dz update`**: it installs it (your interface reloads). You can also
+type `/dz update` any time to ask the guild for the newest one. Updates are signed: your copy only takes the ones
+signed with this project's key.
+
+A new zip is only needed when an update brings new art or new folders (the release notes say so), or to go from
+0.2.2 or older to 0.2.3:
+
 1. Close the game.
 2. Delete the old `DisasterZone*` folders from `AddOns`.
 3. Unzip the new zip there, the same way as above, and start the game.
 
-Your settings and game progress are kept: they live in your saved variables, not in these folders. In-game updates
-are off for now, so every new version is a new zip.
+Your settings and game progress are kept: they live in your saved variables, not in these folders.
+
+## Discord (optional)
+
+The guild's Discord bot shows raids, sign-ups and BiS lists, and lets you sign up or change your list from Discord.
+**You don't need anything for that to reach the guild's game:** what people do in Discord reaches everyone's addon
+through any guildmate who runs the launcher. To link your own game:
+
+1. Install the **DisasterZone Forever Launcher** from the release page (Windows: the `-setup.exe`. Windows warns
+   that the publisher is unknown: **More info > Run anyway**. Linux: the `.AppImage`).
+2. In the launcher's **Settings**, pick your World of Warcraft folder (the one that holds `_forever_`).
+3. In the guild's Discord, type `/launcher` and paste the code it gives you under **Link this launcher**.
+4. Once: `/character` in Discord to add your character (or just press a raid's sign-up button).
+
+The launcher then syncs in the background while you play (every couple of minutes, and after each `/reload`).
 
 ## Something wrong?
 
