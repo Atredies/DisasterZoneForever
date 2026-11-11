@@ -2,7 +2,7 @@
 ## Title: |cffff8000Disaster|rZone 3D rooms
 ## Notes: The 3D room of DisasterZone's chess hall (Karazhan's Gamesman's Hall). Loads only when the chess hall opens.
 ## Author: Casual Disaster
-## Version: 0.2.4
+## Version: 0.2.3
 ## Dependencies: DisasterZone
 ## LoadOnDemand: 1
 ## IconTexture: Interface\AddOns\DisasterZone\Media\Launcher\seal

@@ -1,0 +1,31 @@
+[
+ {
+  "seq": 1,
+  "version": "0.2.4",
+  "base": "0.2.3",
+  "build": "20b0acb6fbbcd27a",
+  "pack": 17,
+  "files": [
+   [
+    "F",
+    "Data/Changelog.lua"
+   ],
+   [
+    "F",
+    "Core/Sync.lua"
+   ],
+   [
+    "F",
+    "UI/Members.lua"
+   ]
+  ],
+  "sha": {
+   "Data/Changelog.lua": "80f23b4054b3db0597a88add65a25c26f09e38ae87e366c047f309f8e823d7a0",
+   "Core/Sync.lua": "71b3796e8b2ce763850beffcd5977f1f76220d91c125d224047ea37e2f1e0502",
+   "UI/Members.lua": "9a541bcfd197ff2ee929fa822828332b00b3d4a8aaccdaaf3992fb07420ac00d"
+  },
+  "time": "2026-11-12 01:14:36",
+  "commit": "504c2f33b72296ef75961b15e2a92a3edd0456b3",
+  "revoke": false
+ }
+]

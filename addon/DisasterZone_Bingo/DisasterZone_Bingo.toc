@@ -2,7 +2,7 @@
 ## Title: |cffff8000Disaster|rZone · Council Bingo
 ## Notes: Squares fill in as the raid happens.
 ## Author: Casual Disaster
-## Version: 0.2.4
+## Version: 0.2.3
 ## Dependencies: DisasterZone
 ## X-DZ-Pack: bingo
 ## X-DZ-Kind: game

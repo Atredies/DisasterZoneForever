@@ -2,7 +2,7 @@
 ## Title: |cffff8000Disaster|rZone · Azeromon
 ## Notes: Tame and battle the beasts of Elwynn.
 ## Author: Casual Disaster
-## Version: 0.2.4
+## Version: 0.2.3
 ## Dependencies: DisasterZone
 ## X-DZ-Pack: azeromon
 ## X-DZ-Kind: game
