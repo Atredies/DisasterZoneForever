@@ -2,7 +2,7 @@
 ## Title: |cffff8000Disaster|rZone · Hold the Line
 ## Notes: Fifteen minutes. One class. The whole Scourge.
 ## Author: Casual Disaster
-## Version: 0.2.3
+## Version: 0.2.4
 ## Dependencies: DisasterZone
 ## X-DZ-Pack: holdtheline
 ## X-DZ-Kind: game

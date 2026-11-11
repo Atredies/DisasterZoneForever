@@ -8,6 +8,14 @@ if DisasterZoneBoot and DisasterZoneBoot.Run("Data/Changelog.lua", ...) then ret
 local addonName, ns = ...
 
 ns.CHANGELOG = {
+    { version = "0.2.4", date = "12 November 2026", title = "Who has DisasterZone, shown right",
+      sections = {
+          { heading = "Guild roster", area = "other", kind = "fixed", hi = true,
+            lead = "Guildmates with DisasterZone no longer show under Without DisasterZone.", lines = {
+              "Their professions and gear arrive a minute or two after they log in; the tooltip says so.",
+              "When you log in, you now learn which version everyone online runs.",
+          } },
+      } },
     { version = "0.2.3", date = "12 November 2026", title = "Updates in game, and the guild's Discord",
       sections = {
           { heading = "Updates in game", area = "other", kind = "new", hi = true,

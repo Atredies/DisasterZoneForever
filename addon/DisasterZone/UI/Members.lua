@@ -510,6 +510,9 @@ local function memberTooltip(owner, d)
             lines[#lines + 1] = { ("%s  %d / %d%s"):format(P():GetName(e.id), e.rank, e.max, spec and ("  ·  " .. spec) or ""), 1, 1, 1 }
         end
         if #d.profs == 0 then lines[#lines + 1] = { "No professions.", 0.6, 0.6, 0.6 } end
+    elseif versionOf(d.key) ~= "none" then
+        lines[#lines + 1] = { "Nothing shared yet: professions and gear arrive a minute or two after they log in.",
+                              0.6, 0.6, 0.6, wrap = true }
     else
         lines[#lines + 1] = { "Nothing shared: this character has not logged in with a DisasterZone that shares it.",
                               0.6, 0.6, 0.6, wrap = true }
@@ -574,7 +577,11 @@ local function rosterRows()
         if needle == "" or ns.Util.ShortName(key):lower():find(needle, 1, true) then
             local d = memberRow(key)
             if not d.profs then
-                if not state.prof then without[#without + 1] = d end
+                -- (heard with DisasterZone but nothing shared yet: their summary arrives a minute or two after they
+                -- log in, so they belong with the others, not under "Without DisasterZone")
+                if not state.prof then
+                    if versionOf(key) ~= "none" then with[#with + 1] = d else without[#without + 1] = d end
+                end
             elseif not state.prof then
                 with[#with + 1] = d
             else

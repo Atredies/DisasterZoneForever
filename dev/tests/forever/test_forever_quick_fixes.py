@@ -219,5 +219,58 @@ def test_a_list_this_client_cannot_read_is_said_once():
     no_errors(w)
 
 
+REALM_Q = "CAMWOW EU4 Realm 4 PvP"
+KEY_Q = "CAMWOWEU4Realm4PvP"
+
+
+def forever_guild(*names):
+    w = World(realm=REALM_Q)
+    cs = [Client(w, n, class_file=c, guild_rank=r, level=60, forever=True) for n, c, r in names]
+    return w, cs
+
+
+@case
+def test_a_late_login_learns_the_versions_of_who_was_already_online():
+    """Versions travel in the login HELLO. Somebody who logs in after me never heard mine, so their roster kept the
+    version it saved earlier (a guildmate saw the GM on 0.2.2 after he had updated). My copy now whispers my version
+    back to a login HELLO it hears."""
+    w, (gm, missy) = forever_guild(("Arakis War", "WARRIOR", 0), ("Missy Badshot", "HUNTER", 1))
+    gm.load_addon()
+    w.tick(30)                                                        # (the GM's own HELLO is long gone)
+    missy.load_addon()
+    gm_key = "Arakis War-" + KEY_Q
+    # what Missy's saved peers said about the GM before she logged in
+    missy.eval("ns.db.peers[...] = { v = '0.2.2', lastSeen = 0 }", gm_key)
+    w.tick(40)
+    assert missy.eval("return ns.Sync:GetPeer(...).v", gm_key) == gm.eval("return ns.version")
+    no_errors(w)
+
+
+@case
+def test_a_member_with_the_addon_is_not_listed_without_it():
+    """The roster grouped by shared professions: a guildmate running DisasterZone whose summary had not arrived yet
+    sat under "Without DisasterZone" (and the tooltip said they had not logged in with it)."""
+    w, (gm, missy) = forever_guild(("Arakis War", "WARRIOR", 0), ("Missy Badshot", "HUNTER", 1))
+    gm.load_addon()
+    missy.load_addon()
+    w.tick(30)
+    m_key = "Missy Badshot-" + KEY_Q
+    assert gm.eval("return ns.Sync:GetPeer(...) ~= nil", m_key) is True
+    # her professions summary not here yet
+    gm.eval("local b = ns.db.prof and ns.db.prof[ns.Guild:GetGuildKey()]; if b then b[...] = nil end", m_key)
+    gm.slash("/dz members")
+    w.tick(1)
+    rows = gm.eval_py("""local out = {}
+      for _, d in ipairs(ns.MembersUI:GetPanel().roster.data or {}) do
+        out[#out + 1] = d.kind == "sep" and ("sep:" .. d.text) or (d.key or "")
+      end
+      return out""")
+    rows = list(rows.values()) if isinstance(rows, dict) else list(rows or [])
+    assert m_key in rows, rows
+    if "sep:Without DisasterZone" in rows:
+        assert rows.index(m_key) < rows.index("sep:Without DisasterZone"), rows
+    no_errors(w)
+
+
 if __name__ == "__main__":
     run_all(globals())
