@@ -45,6 +45,22 @@ Next:
    copy), BugSack on.
 3. Fix, a test for it, and a new signed update.
 
+## Cause found (2026-11-12, reproduced in a stricter mock)
+
+Not the update's code: `UI/GuestBook.lua:1486` (`GuestUI:OnInit`) calls
+`GameTooltip:HookScript("OnTooltipSetUnit", OnTooltipSetUnit)` unguarded; Forever's retail-engine GameTooltip has no
+`OnTooltipSetUnit` script, so the call fails on EVERY login, 0.2.3 too. Startup errors are only counted (and the popup
+shown) while an in-game update is applied (`Core/Init.lua:408`, `Core/Boot.lua:467`); otherwise they are caught
+quietly. Side effect today: `GuestUI:OnInit` stops before `Menu.ModifyMenu`, so the guest-book entries in the player
+right-click menu are likely missing for everyone. The mock missed it: its Forever profile still has
+`OnTooltipSetUnit` / `OnTooltipSetSpell` (`dev/tools/wowmock/forever.lua`). Confirm in game:
+`/dump GameTooltip:HasScript("OnTooltipSetUnit")` -> false.
+
+Fix: the guard `UI/Tooltip.lua:898` already has (`HasScript`, else TooltipDataProcessor's Unit post-call, unit read
+with `Compat.Plain`), shipped as update #2. Tests: the mock's Forever GameTooltip without those scripts (and running
+TooltipDataProcessor's Unit callbacks); a patch test asserting 0 startup errors after an update; a check that a
+Forever login has no caught OnInit/OnLogin error.
+
 ## Done when
 
 A client on the 0.2.3 zip takes the fixed update and starts with no error.
