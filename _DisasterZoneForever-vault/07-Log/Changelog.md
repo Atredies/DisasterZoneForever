@@ -7,6 +7,17 @@ updated: 2026-11-12
 
 Newest first.
 
+## 2026-11-12 - 0.2.4 (first in-game update): the roster knows who has DisasterZone
+Two things seen in the first guild session on 0.2.3. (1) A guildmate saw the GM on 0.2.2 after he had updated:
+versions only travel in the login HELLO, so whoever logs in later keeps the version they saved before. Each client
+now whispers its version ("V", `Core/Sync.lua` `SendVersionTo`) once per session to a login HELLO it hears; only a
+HELLO with a session number and version gets one (forged ones nothing: `test_sync_hostile`); older copies ignore "V".
+(2) The roster grouped by shared professions, so a member with DisasterZone whose summary had not arrived yet (it
+takes a minute or two after login) sat under "Without DisasterZone": now anyone heard with the addon is listed with
+the others, and the tooltip says the data is on its way (`UI/Members.lua`). Tests in `test_forever_quick_fixes.py`
+(both fail without the fix); `test_members` ignores control whispers in its notes check. Version 0.2.4 in the TOCs
+and What's New. Full run: only the failures `main` already had.
+
 ## 2026-11-12 - 0.2.3: in-game updates on, Discord for Forever
 Version 0.2.3 in the six TOCs, What's New, README (updates in game with `/dz update`; Discord with the optional
 launcher), `dev/releases/0.2.3.md` and record. `Core/PatchKey.lua` holds the project's own in-game update key, so

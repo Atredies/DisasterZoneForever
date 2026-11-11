@@ -770,6 +770,18 @@ local function QueueState(sender)
     ScheduleStates()
 end
 
+-- My version, whispered to somebody whose login (or /reload) HELLO I just heard: their copy only learns versions from
+-- HELLOs, and mine went out before they came online, so their roster kept the version it saved earlier. Once per
+-- session of theirs, a few seconds later (a login wave's whispers spread out); older copies ignore the "V".
+local function SendVersionTo(sender, session)
+    if not (RateLimit("Hv:" .. session, 3600) and RateLimit("Hvx:" .. sender, 10)) then return end
+    Util.After(1 + random() * 5, function()
+        local msg = { t = "V", v = ns.version }
+        if ns.Compat and ns.Compat.isForever then msg.iface = Util.FOREVER_IFACE end
+        Send(msg, "WHISPER", sender, "ctrl")
+    end)
+end
+
 ---------------------------------------------------------------------------
 -- Message handlers (sender = transport-verified name key)
 ---------------------------------------------------------------------------
@@ -789,6 +801,10 @@ local function OnHello(sender, msg, dist)
     -- the short per-sender cap bounds what a spammer with changing nonces can trigger.
     local n = msg.n
     local session = sender .. ":" .. ((type(n) == "number" and n == floor(n)) and tostring(n) or "")
+    -- (only to a real client's HELLO: it always carries its session number and version; a forged one gets nothing)
+    if type(n) == "number" and n == floor(n) and type(msg.v) == "string" and #msg.v <= 24 then
+        SendVersionTo(sender, session)
+    end
 
     if amCouncil and RateLimit("Hx:" .. sender, 5) and RateLimit("Hs:" .. session, REPLY_RATE) then
         QueueState(sender)
@@ -814,6 +830,14 @@ local function OnHello(sender, msg, dist)
     if type(msg.rd) == "table" and not (msg.c and FullPair(sender)) and RL and RL.OnPlannerHello then
         RL:OnPlannerHello(sender, type(msg.rd2) == "table" and msg.rd2 or msg.rd)
     end
+end
+
+-- A guild member's version, whispered back after my HELLO (SendVersionTo).
+local function OnVersion(sender, msg, dist)
+    if dist ~= "WHISPER" or type(msg.v) ~= "string" or #msg.v > 24 then return end
+    local Guild = ns.Guild
+    if not (Guild and Guild.IsInGuild and Guild:IsInGuild(sender, true)) then return end
+    MarkSeen(sender, msg.v, nil, msg.iface)
 end
 
 local function OnState(sender, msg, dist)
@@ -1048,6 +1072,7 @@ function Sync:OnInit()
     if Comm then
         Comm:Register("H", OnHello)
         Comm:Register("S", OnState)
+        Comm:Register("V", OnVersion)
         Comm:Register("M", OnManifest)
         Comm:Register("W", OnWant)
         Comm:Register("L", OnList)

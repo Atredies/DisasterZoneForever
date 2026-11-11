@@ -2,7 +2,7 @@
 ## Title: |cffff8000Disaster|rZone · Karazhan Chess
 ## Notes: Play Medivh's echo, or a guildmate.
 ## Author: Casual Disaster
-## Version: 0.2.3
+## Version: 0.2.4
 ## Dependencies: DisasterZone
 ## X-DZ-Pack: chess
 ## X-DZ-Kind: game
