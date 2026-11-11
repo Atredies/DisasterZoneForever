@@ -45,8 +45,10 @@ def key(name="main"):
 
 
 def _unique(name):
+    # (with the pid: on Linux tools/forkrun.py forks every case from one set-up, so the cases share TMP and start
+    # from the same counter; without it two cases made the same folder)
     _COUNTER[0] += 1
-    return os.path.join(TMP, "%s_%d" % (name, _COUNTER[0]))
+    return os.path.join(TMP, "%s_%d_%d" % (name, os.getpid(), _COUNTER[0]))
 
 
 def _pristine():

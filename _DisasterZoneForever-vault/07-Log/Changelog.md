@@ -1,11 +1,20 @@
 ---
 tags: [log]
-updated: 2026-11-11
+updated: 2026-11-12
 ---
 
 # Changelog
 
 Newest first.
+
+## 2026-11-12 - /dz update installs in-game updates; the update suites run on Linux
+`/dz update` (Core/Patch.lua `Patch:Update`) is now what a member types: a downloaded in-game update is installed at
+once (the interface reloads), otherwise the guild is asked right away instead of at the next half-hourly announce;
+the "update is downloaded" line says to type it. Test `dz_update_asks_the_guild_and_installs_what_arrived`.
+The patch suites failed on Linux only: `tools/forkrun.py` forks every case from one set-up, so cases shared temp
+folder names (`_patchkit._unique` now adds the pid) and one release sandbox (`Sandbox` makes its folders per
+process). `Core/Compat.lua` keeps its first comment on the guard line like every other file
+(`guards_cover_every_patchable_file`). All 12 patch suites pass (and 15/15 run sequentially).
 
 ## 2026-11-10 - 0.2.2: why 0.2.0 players "don't sync", sync says so now; attunements card
 Guildmates on 0.2.0 did not sync with 0.2.1. Two causes. (1) 0.2.1 was built but **never
