@@ -1,5 +1,4 @@
-if DisasterZoneBoot and DisasterZoneBoot.Run("Core/Compat.lua", ...) then return end
--- DisasterZone (Forever): the client compatibility layer. Loads right after the boot loader, before everything else.
+if DisasterZoneBoot and DisasterZoneBoot.Run("Core/Compat.lua", ...) then return end -- DisasterZone (Forever): the client compatibility layer. Loads right after the boot loader, before everything else.
 --
 -- WoW Forever (client 1.60.1, Interface 16001) runs vanilla content on the current retail engine. Measured by the
 -- DZProbe addon (dev/probe/, vault: 01-Overview/Probe Findings 2026-11-08.md):

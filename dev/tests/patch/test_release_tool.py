@@ -198,23 +198,44 @@ def staged_fixture_equals_a_real_download():
 # ---------------------------------------------------------------------------------------------------------------
 
 class Sandbox:
-    """Points release.py at a private copy of the source tree, key folder, release log and dist folder."""
+    """Points release.py at a private copy of the source tree, key folder, release log and dist folder.
+
+    Each process gets its own, made on first use: on Linux tools/forkrun.py runs a case's leading `sb = Sandbox()`
+    once and forks every case from there, and a fork copies the process, not the folders (the cases shared one key
+    file and release log)."""
 
     def __init__(self):
-        self.root = _unique("sandbox")
-        self.addon = source_copy("sandbox_addon")
-        os.remove(os.path.join(self.addon, "Core", "PatchKey.lua"))
-        write(self.addon, "Art/map.blp", "BLP2 art")
         self.saved = (release.ADDON_DIR, release.KEY_PATH, release.RELEASES, release.DIST)
-        release.ADDON_DIR = self.addon
-        release.KEY_PATH = os.path.join(self.root, "keys", "patch_key.json")
-        release.RELEASES = os.path.join(self.root, "releases")
-        release.DIST = os.path.join(self.root, "dist")
+        self._mine = {}
+
+    def _here(self):
+        pid = os.getpid()
+        if pid not in self._mine:
+            root = _unique("sandbox")
+            addon = source_copy("sandbox_addon")
+            os.remove(os.path.join(addon, "Core", "PatchKey.lua"))
+            write(addon, "Art/map.blp", "BLP2 art")
+            self._mine[pid] = (root, addon)
+        root, addon = self._mine[pid]
+        release.ADDON_DIR = addon
+        release.KEY_PATH = os.path.join(root, "keys", "patch_key.json")
+        release.RELEASES = os.path.join(root, "releases")
+        release.DIST = os.path.join(root, "dist")
+        return root, addon
+
+    @property
+    def root(self):
+        return self._here()[0]
+
+    @property
+    def addon(self):
+        return self._here()[1]
 
     def close(self):
         release.ADDON_DIR, release.KEY_PATH, release.RELEASES, release.DIST = self.saved
 
     def run(self, *argv, fails=None):
+        self._here()
         try:
             release.main(list(argv))
         except SystemExit as e:
@@ -224,6 +245,7 @@ class Sandbox:
 
     def install(self, version):
         """What a member does: unzip the release into the AddOns folder."""
+        self._here()
         dst = _unique("installed")
         with zipfile.ZipFile(os.path.join(release.DIST, "DisasterZone-%s.zip" % version)) as zf:
             names = zf.namelist()
