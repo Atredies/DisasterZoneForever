@@ -50,7 +50,7 @@ refuses changed art while `assetPack` is unchanged, and reminds you when no chan
 
 | Command | Effect |
 |---|---|
-| `/dz update` | version, what is stored, download progress |
+| `/dz update` | installs a downloaded update (the interface reloads); otherwise shows the version and download progress and asks the guild for a newer update |
 | `/dzpatch` | loader status (works even when the rest of the addon did not load) |
 | `/dzpatch off` / `on` | kill switch: no downloads, nothing applied, no serving |
 | `/dzpatch rollback` | mark the running update bad; after a reload the installed version runs |
