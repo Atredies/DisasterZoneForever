@@ -417,7 +417,8 @@ pub fn form_sent(user: &str, data: &ModalInteractionData) -> Answer {
     let mut out = (&mut typed, &mut class, &mut spec);
     data.components.iter().for_each(|c| walk(c, &mut out));
     let name = bridge::tidy_name(&typed);
-    if name.chars().count() < 2 || name.chars().any(|c| !(c.is_alphabetic() || c == '-' || c == '\'')) {
+    // (letters, ' and - as in TBC; Forever names are two words: "Name Surname")
+    if name.chars().count() < 2 || name.chars().any(|c| !(c.is_alphabetic() || c == '-' || c == '\'' || c == ' ')) {
         return text("That doesn't look like a character name.");
     }
     if bridge::owner_of(&bridge::load_profiles(), &name).is_some_and(|o| o != user) {

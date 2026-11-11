@@ -207,15 +207,23 @@ pub fn owner_of(p: &Profiles, name: &str) -> Option<String> {
     p.iter().find(|(_, chars)| chars.iter().any(|c| short_lower(&c.name) == want)).map(|(u, _)| u.clone())
 }
 
-/// A name as WoW writes it: first letter upper, the rest lower ("lEE" -> "Lee"); a realm after '-' is kept as typed.
+/// "aRAKIS" -> "Arakis": the first letter upper case, the rest lower.
+fn word_case(w: &str) -> String {
+    let mut out: String = w.chars().take(1).flat_map(|c| c.to_uppercase()).collect();
+    out.extend(w.chars().skip(1).flat_map(|c| c.to_lowercase()));
+    out
+}
+
+/// A name as WoW writes it: each word's first letter upper, the rest lower ("lEE" -> "Lee", Forever's
+/// "arakis  war" -> "Arakis War"); a realm after '-' is kept as typed.
 pub fn tidy_name(name: &str) -> String {
     let name = name.trim();
     let (n, realm) = match name.split_once('-') {
         Some((n, r)) => (n, Some(r)),
         None => (name, None),
     };
-    let mut out: String = n.chars().take(1).flat_map(|c| c.to_uppercase()).collect();
-    out.extend(n.chars().skip(1).flat_map(|c| c.to_lowercase()));
+    // each word capitalised: TBC names are one word, Forever's are "Name Surname" (one space between)
+    let mut out = n.split_whitespace().map(word_case).collect::<Vec<_>>().join(" ");
     if let Some(r) = realm.filter(|r| !r.is_empty()) {
         out.push('-');
         out.push_str(r);
@@ -405,5 +413,7 @@ pub(crate) mod tests {
         assert_eq!(tidy_name(" lEE "), "Lee");
         assert_eq!(tidy_name("élise-Thunderstrike"), "Élise-Thunderstrike");
         assert_eq!(tidy_name("bob-"), "Bob");
+        assert_eq!(tidy_name("arakis  WAR"), "Arakis War");
+        assert_eq!(tidy_name(" aurel namahs-CAMWOWEU4Realm4PvP"), "Aurel Namahs-CAMWOWEU4Realm4PvP");
     }
 }
