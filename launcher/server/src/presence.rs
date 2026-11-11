@@ -3,16 +3,17 @@
 //! game saves), so a report older than STALE means the PC went quiet: no longer in game. Kept per Discord user (one person
 //! with two PCs is one row: the PC in game wins) in presence.json, so a restart keeps "last seen".
 
-use crate::bridge::{path, save_json};
+use crate::store;
 use dz_proto::{GameNow, Presence, PresenceDown};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 use std::sync::Mutex;
 
 /// No report for this long while in game: the PC went off or lost its connection.
 pub const STALE: u64 = 5 * 60;
 /// Who hasn't been in game for this long is left out of the list.
 const FORGET: u64 = 30 * 24 * 3600;
+/// The list is read again after this long (every launcher asks once a minute; it need not be fresher than that).
+const LIST_TTL: std::time::Duration = std::time::Duration::from_secs(10);
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 struct Entry {
@@ -34,57 +35,60 @@ struct Entry {
     heard: u64,
 }
 
-static STATE: Mutex<Option<BTreeMap<String, Entry>>> = Mutex::new(None);
+fn doc(user: &str) -> String {
+    format!("presence/{}.json", store::safe(user))
+}
 
-fn with<R>(f: impl FnOnce(&mut BTreeMap<String, Entry>) -> R) -> R {
-    let mut g = STATE.lock().unwrap();
-    let all = g.get_or_insert_with(|| {
-        std::fs::read(path("presence.json")).ok().and_then(|d| serde_json::from_slice(&d).ok()).unwrap_or_default()
-    });
-    f(all)
+/// (the entries as last read, and when)
+static LISTED: Mutex<Option<(std::time::Instant, Vec<Entry>)>> = Mutex::new(None);
+
+fn entries() -> Vec<Entry> {
+    let mut g = LISTED.lock().unwrap();
+    if let Some((at, v)) = g.as_ref() {
+        if at.elapsed() < LIST_TTL {
+            return v.clone();
+        }
+    }
+    let v: Vec<Entry> = store::list::<Entry>("presence/").into_iter().map(|(_, e)| e).collect();
+    *g = Some((std::time::Instant::now(), v.clone()));
+    v
 }
 
 /// A launcher's report (`hidden`: its member doesn't share it, they leave the list).
 pub fn report(user: &str, name: &str, game: &GameNow, now: u64) {
-    with(|all| {
-        let before = all.get(user).cloned();
-        match game {
-            g if g.hidden => {
-                all.remove(user);
+    if game.hidden {
+        let _ = store::delete(&doc(user));
+    } else {
+        // (one document per person, written at each report: every copy of the bot sees the same "in game")
+        let r = store::update(&doc(user), |e: &mut Entry| {
+            e.name = name.to_string();
+            if game.character.is_some() {
+                e.character = game.character.clone();
+                e.class = game.class.clone();
+                e.spec = game.spec.clone();
             }
-            g => {
-                let e = all.entry(user.to_string()).or_default();
-                e.name = name.to_string();
-                if g.character.is_some() {
-                    e.character = g.character.clone();
-                    e.class = g.class.clone();
-                    e.spec = g.spec.clone();
+            e.heard = now;
+            if game.running {
+                if e.since == 0 || now > e.seen + STALE {
+                    e.since = now;
                 }
-                e.heard = now;
-                if g.running {
-                    if e.since == 0 || now > e.seen + STALE {
-                        e.since = now;
-                    }
-                    e.seen = now;
-                } else {
-                    e.since = 0;
-                }
+                e.seen = now;
+            } else {
+                e.since = 0;
             }
+        });
+        if let Err(e) = r {
+            eprintln!("presence: {e}");
         }
-        // (written when someone comes or goes, and at most every 10 minutes otherwise: not a disk write a minute)
-        let after = all.get(user);
-        let moved = before.as_ref().map(|b| b.since != 0) != after.map(|a| a.since != 0)
-            || before.as_ref().map(|b| b.seen + 600 <= now).unwrap_or(true);
-        if moved {
-            let _ = save_json(&path("presence.json"), &*all);
-        }
-    })
+    }
+    *LISTED.lock().unwrap() = None;
 }
 
 /// The list for the launchers: in game first (longest first), then by last seen; a month away and they're gone.
 pub fn list(now: u64) -> PresenceDown {
-    let mut people: Vec<Presence> = with(|all| {
-        all.values()
+    let mut people: Vec<Presence> = {
+        entries()
+            .iter()
             .filter(|e| e.seen > 0 && now.saturating_sub(e.seen) < FORGET)
             .map(|e| {
                 let in_game = e.since > 0 && now.saturating_sub(e.seen) <= STALE;
@@ -99,14 +103,14 @@ pub fn list(now: u64) -> PresenceDown {
                 }
             })
             .collect()
-    });
+    };
     people.sort_by(|a, b| b.in_game.cmp(&a.in_game).then(a.since.cmp(&b.since)).then(b.seen.cmp(&a.seen)));
     PresenceDown { now, people }
 }
 
 #[cfg(test)]
 pub(crate) fn reset() {
-    *STATE.lock().unwrap() = None;
+    *LISTED.lock().unwrap() = None;
 }
 
 #[cfg(test)]

@@ -64,11 +64,23 @@ pub async fn sync(http: &Client, app: Id<ApplicationMarker>) {
             }
         }
     }
+    // (kept in the store too: a copy of the bot that never ran this, on AWS, reads them from there)
+    let ids: std::collections::BTreeMap<String, u64> = have.iter().map(|(n, i)| (n.clone(), i.get())).collect();
+    if let Err(e) = crate::store::save(STORED, &ids) {
+        eprintln!("emoji: save: {e}");
+    }
     *EMOJI.lock().unwrap() = Some(have);
 }
 
+const STORED: &str = "emoji.json";
+
 fn id(name: &str) -> Option<Id<EmojiMarker>> {
-    EMOJI.lock().unwrap().as_ref()?.get(name).copied()
+    let mut g = EMOJI.lock().unwrap();
+    if g.is_none() {
+        let ids: std::collections::BTreeMap<String, u64> = crate::store::load(STORED);
+        *g = Some(ids.into_iter().filter_map(|(n, i)| Some((n, Id::new_checked(i)?))).collect());
+    }
+    g.as_ref()?.get(name).copied()
 }
 
 /// "<:name:id> " for message text, or "" when the bot doesn't have it.

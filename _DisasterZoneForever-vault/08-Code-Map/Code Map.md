@@ -15,6 +15,7 @@ Same layout as upstream (see [[Developer Guide]] > Layout and the deep-dive repo
 | `dev/tests/`, `dev/tf_e/` | scenario suites, run_all | both profiles |
 | `dev/generators/` | data generators (Forever and TBC inputs) | both |
 | `launcher/` | Rust desktop launcher and Discord bot server (not covered by these notes) | Forever flavor |
+| `addon/DisasterZone/Core/Bridge.lua` | `ns.BridgeKeys[guildKey]`: one bot key per guild (`Bridge.KeyFor`), legacy `ns.BridgeKey` still read; `dev/tests/bridge/test_bridge.py` covers it | changed |
 | `dev/fixtures/tbc/DisasterZone_Rooms/DisasterZone_Rooms.toc` | the full TBC room list for TBC-profile clients; `gen_rooms.py` / `gen_standins.py` write it | new |
 | `addon/DisasterZone/Core/ClassKit.lua` | `ClassKit:MyRole()`: tank list, talents, stance/form, group role, spec role | changed |
 | `addon/DisasterZone/Core/Compat.lua` | Forever compat: old-name shims (auras: none when refused in combat), combat log gate, chat lockdown check, secret-safe readers (`Plain`, `Pct`, `HealthPct`, `PowerPct`, `GUID`), talents from the trait tree (`TalentTabPoints`, `NumTalentTabs`, `Talents`, `TalentRank`, `SpecRole`), `CanAccess` (secret event payloads), C_ shims (ConvertToRaid, GuildInvite, officer notes, PickupSpell...), combat readers (`SpellCooldown`, `AttackSpeed`, `RangedSpeed`, `UnitSpeed`, `RaidMark`, `SameUnit`, `Name`) | new |

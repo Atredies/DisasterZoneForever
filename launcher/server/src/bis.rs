@@ -39,7 +39,7 @@ fn short(key: &str) -> &str {
 const SLOTS: [&str; 17] = crate::signup::SLOTS;
 
 fn phase_name(p: u8) -> String {
-    if p == 0 { "Pre-raid".into() } else { format!("Phase {p}") }
+    crate::config().phase_name(p)
 }
 
 /// The snapshot's list of a character (by name, any case, with or without realm): (key, entry).
@@ -120,6 +120,7 @@ fn sheet(snap: &Value, name: &str, phase: Option<u8>, off: bool) -> Option<(Embe
         .and_then(|m| m.get("class").and_then(|c| c.as_str()));
     let class = entry.get("class").and_then(|x| x.as_str()).or(roster_class).unwrap_or("");
     let phase = phase.unwrap_or_else(|| snap.get("phase").and_then(|p| p.as_u64()).unwrap_or(1) as u8);
+    let phase = phase.min(crate::config().last_phase());
     let has_off = entry.get("oph").is_some();
     let off = off && has_off;
     let queue = bridge::load_queue();
@@ -153,10 +154,11 @@ fn sheet(snap: &Value, name: &str, phase: Option<u8>, off: bool) -> Option<(Embe
             sku_id: None,
         })
     };
-    let phases: Vec<Component> = (0..=4u8)
-        .map(|p| btn(format!("bs:{p}:{l}:{n}"), &if p == 0 { "Pre-raid".into() } else { format!("Phase {p}") }, if p == phase { ButtonStyle::Primary } else { ButtonStyle::Secondary }, p == phase))
-        .collect();
-    let mut row2 = vec![btn(format!("bs:5:{l}:{n}"), "Phase 5", if phase == 5 { ButtonStyle::Primary } else { ButtonStyle::Secondary }, phase == 5)];
+    // Pre-raid + the game's phases (TBC 1-5, Forever's one season); a row holds five buttons, phase 5 goes below
+    let last = crate::config().last_phase();
+    let pbtn = |p: u8| btn(format!("bs:{p}:{l}:{n}"), &phase_name(p), if p == phase { ButtonStyle::Primary } else { ButtonStyle::Secondary }, p == phase);
+    let phases: Vec<Component> = (0..=last.min(4)).map(pbtn).collect();
+    let mut row2: Vec<Component> = if last >= 5 { vec![pbtn(5)] } else { Vec::new() };
     if has_off {
         let other = if off { "m" } else { "o" };
         row2.push(btn(format!("bs:{phase}:{other}:{n}"), if off { "Main spec" } else { "Off spec" }, ButtonStyle::Secondary, false));
@@ -260,16 +262,28 @@ pub fn button(user: &str, custom: &str) -> Reply {
     }
 }
 
-/// A choice in the slot menu or the matches menu.
-pub fn select(user: &str, by: &str, custom: &str, values: &[String]) -> Reply {
-    let v = values.first().map(String::as_str).unwrap_or("");
+/// The choices that open the item form (answered at once: bot::immediate).
+pub fn modal_for(custom: &str, values: &[String]) -> Option<Reply> {
+    let v = values.first()?;
     let parts: Vec<&str> = custom.split(':').collect();
     match parts[..] {
-        ["bq", p, l, name] => Reply::Modal {
+        ["bq", p, l, name] => Some(Reply::Modal {
             custom_id: format!("bm:{p}:{l}:{v}:{name}"),
             title: format!("{} · {}", SLOTS.get(v.parse::<usize>().unwrap_or(1).saturating_sub(1)).unwrap_or(&"Slot"), name),
             components: item_form(),
-        },
+        }),
+        _ => None,
+    }
+}
+
+/// A choice in the slot menu or the matches menu.
+pub fn select(user: &str, by: &str, custom: &str, values: &[String]) -> Reply {
+    if let Some(m) = modal_for(custom, values) {
+        return m;
+    }
+    let v = values.first().map(String::as_str).unwrap_or("");
+    let parts: Vec<&str> = custom.split(':').collect();
+    match parts[..] {
         ["bi", p, l, sid, w, name] => apply(user, by, p, l, sid, w, name, v),
         _ => private("Unknown menu."),
     }

@@ -2,15 +2,14 @@
 //! a message in its team's channel (or the guild channel): a short embed and a picture of the sign-ups
 //! (render::raid), with Accept / Tentative / Can't come / Change spec. Answers given in Discord show at once as
 //! "pending" (from the bridge queue) until a member's game has taken them. A post is edited when what it shows
-//! changes. Which message belongs to which raid is kept in <config>/DisasterZoneLauncher/bridge_posts.json.
+//! changes. Which message belongs to which raid is kept in the store (bridge_posts.json).
 
-use crate::core::bridge::{self, lua_list, save_json, Record};
+use crate::core::bridge::{self, lua_list, Record};
 use crate::render::raid::{Person, RaidCard};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
-use std::path::PathBuf;
 use twilight_http::Client;
 use twilight_model::channel::message::component::{ActionRow, Button, ButtonStyle, Component};
 use twilight_model::channel::message::Embed;
@@ -29,12 +28,10 @@ pub struct Post {
     pub hash: String,
 }
 
-fn posts_path() -> PathBuf {
-    crate::data_dir().join("bridge_posts.json")
-}
+const POSTS: &str = "bridge_posts.json";
 
 pub fn load_posts() -> BTreeMap<String, Post> {
-    std::fs::read(posts_path()).ok().and_then(|d| serde_json::from_slice(&d).ok()).unwrap_or_default()
+    crate::store::load(POSTS)
 }
 
 fn s<'a>(v: &'a Value, k: &str) -> Option<&'a str> {
@@ -378,7 +375,8 @@ pub async fn update(http: &Client, snap: &Value) -> usize {
         }
     }
     if posts != before {
-        if let Err(e) = save_json(&posts_path(), &posts) {
+        // (one writer: updates run one at a time, here and on AWS (the posts queue group))
+        if let Err(e) = crate::store::save(POSTS, &posts) {
             eprintln!("posts: save: {e}");
         }
     }
@@ -485,10 +483,9 @@ pub fn render_week(snap: &Value, queue: &[Record], now: i64, draw: bool) -> Rend
 }
 
 /// After an answer in Discord: the posts again from the last snapshot (only the changed one is edited).
-pub async fn refresh(http: &Client) {
-    if let Some(snap) = crate::signup::current_snap() {
-        update(http, &snap).await;
-    }
+/// The posts should show a change (a Discord answer, a merged save): an update job (posts edits run one at a time).
+pub fn request_refresh() {
+    crate::jobs::submit(crate::jobs::Job::Posts);
 }
 
 #[cfg(test)]

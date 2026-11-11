@@ -145,7 +145,9 @@ struct KeyFile {
 }
 
 pub struct Signer {
-    path: PathBuf,
+    /// where the key file is saved after each signature; None for a key whose used leaves are counted elsewhere
+    /// ([`Signer::from_parts`] + [`Signer::sign_leaf`]: the bot on AWS keeps the count in its database)
+    path: Option<PathBuf>,
     file: KeyFile,
     secret: Vec<u8>,
     seed: Vec<u8>,
@@ -205,23 +207,41 @@ impl Signer {
         let file = KeyFile { secret: hex::encode(&secret), seed: hex::encode(&seed), height, root: hex::encode(levels.last().unwrap()[0]), next: 0 };
         write_atomic(&leaves_path(path), &raw)?;
         write_atomic(path, &serde_json::to_vec_pretty(&file).unwrap())?;
-        Ok(Signer { path: path.to_path_buf(), file, secret, seed, levels })
+        Ok(Signer { path: Some(path.to_path_buf()), file, secret, seed, levels })
     }
 
     pub fn open(path: &Path) -> Result<Signer, KeyError> {
-        let file: KeyFile = serde_json::from_slice(&std::fs::read(path)?).map_err(|e| KeyError::Bad(e.to_string()))?;
+        let mut s = Signer::from_parts(&std::fs::read(path)?, &std::fs::read(leaves_path(path))?)?;
+        s.path = Some(path.to_path_buf());
+        Ok(s)
+    }
+
+    /// A key from the bytes of its two files (`<key>.json` and `<key>.json.leaves`), checked against its root. It is
+    /// never saved: whoever uses it must hand each leaf out once ([`Signer::sign_leaf`]). The file's `next` is kept
+    /// as the first leaf such a counter may start at.
+    pub fn from_parts(key_json: &[u8], leaves: &[u8]) -> Result<Signer, KeyError> {
+        let file: KeyFile = serde_json::from_slice(key_json).map_err(|e| KeyError::Bad(e.to_string()))?;
         let secret = hex::decode(&file.secret).map_err(|e| KeyError::Bad(e.to_string()))?;
         let seed = hex::decode(&file.seed).map_err(|e| KeyError::Bad(e.to_string()))?;
-        let raw = std::fs::read(leaves_path(path))?;
-        if raw.len() != N << file.height {
+        if leaves.len() != N << file.height {
             return Err(KeyError::Bad("the .leaves file does not match the key".into()));
         }
-        let leaves: Vec<H> = raw.chunks(N).map(|c| c.try_into().unwrap()).collect();
+        let leaves: Vec<H> = leaves.chunks(N).map(|c| c.try_into().unwrap()).collect();
         let levels = tree(&seed, leaves);
         if hex::encode(levels.last().unwrap()[0]) != file.root {
             return Err(KeyError::Bad("the leaves do not make the key's root".into()));
         }
-        Ok(Signer { path: path.to_path_buf(), file, secret, seed, levels })
+        Ok(Signer { path: None, file, secret, seed, levels })
+    }
+
+    /// 2^height: how many signatures the key has in all.
+    pub fn capacity(&self) -> u64 {
+        1u64 << self.file.height
+    }
+
+    /// The first unused leaf as the key file says (a counter elsewhere starts here).
+    pub fn first_unused(&self) -> u32 {
+        self.file.next
     }
 
     pub fn public(&self) -> PublicKey {
@@ -240,7 +260,18 @@ impl Signer {
             return Err(KeyError::Spent);
         }
         self.file.next += 1;
-        write_atomic(&self.path, &serde_json::to_vec_pretty(&self.file).unwrap())?;
+        if let Some(p) = &self.path {
+            write_atomic(p, &serde_json::to_vec_pretty(&self.file).unwrap())?;
+        }
+        self.sign_leaf(leaf, message)
+    }
+
+    /// Sign with this leaf. ⚠️ The caller guarantees the leaf was never used before and never will be again (two
+    /// messages signed with one leaf give the key away): reserve it first, e.g. with an atomic counter.
+    pub fn sign_leaf(&self, leaf: u32, message: &[u8]) -> Result<Vec<u8>, KeyError> {
+        if (leaf as u64) >= (1u64 << self.file.height) {
+            return Err(KeyError::Spent);
+        }
         let d = digits(&self.seed, leaf, message);
         let mut out = Vec::with_capacity(sig_len(self.file.height));
         out.extend_from_slice(&leaf.to_be_bytes());
@@ -288,6 +319,26 @@ mod tests {
         assert_eq!(s2.left(), 14);
         let c = s2.sign(b"x").unwrap();
         assert_eq!(u32::from_be_bytes(c[..4].try_into().unwrap()), 2);
+    }
+
+    #[test]
+    fn a_key_from_its_parts_signs_the_leaf_it_is_given() {
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path().join("k.json");
+        let mut file_key = Signer::create(&p, 3, &entropy()).unwrap();
+        let parts = Signer::from_parts(&std::fs::read(&p).unwrap(), &std::fs::read(leaves_path(&p)).unwrap()).unwrap();
+        assert_eq!(parts.public().root, file_key.public().root);
+        assert_eq!((parts.capacity(), parts.first_unused()), (8, 0));
+        // (the same leaf gives the same bytes as the file-backed key's next signature)
+        assert_eq!(parts.sign_leaf(0, b"m").unwrap(), file_key.sign(b"m").unwrap());
+        let s = parts.sign_leaf(5, b"m").unwrap();
+        assert_eq!(u32::from_be_bytes(s[..4].try_into().unwrap()), 5);
+        assert!(verify(&parts.public(), b"m", &s));
+        assert!(matches!(parts.sign_leaf(8, b"m"), Err(KeyError::Spent)));
+        // nothing was written: the key file still says leaf 1 is next (the file-backed key used leaf 0)
+        assert_eq!(Signer::open(&p).unwrap().first_unused(), 1);
+        // wrong leaves are refused
+        assert!(Signer::from_parts(&std::fs::read(&p).unwrap(), &[0u8; 32 * 8]).is_err());
     }
 
     #[test]

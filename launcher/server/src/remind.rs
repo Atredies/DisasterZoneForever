@@ -1,15 +1,15 @@
 //! Raid reminders: an hour before a raid, a DM to everyone who is in and made their character in Discord,
 //! with "Running late" (how late: the raid leader hears of it, the sign-up note in game says it) and "Can't make it"
 //! (they're marked can't come, and whoever is tentative or benched for that raid gets a ping that a spot opened).
-//! Who was reminded is kept in <config>/DisasterZoneLauncher/bridge_reminders.json; /character turns them off.
+//! Who was reminded is kept in the store (bridge_reminders.json); /character turns them off (bridge_reminders_off.json).
 //!
 //! Custom ids: rl:<raid>:<name> Running late · rm:<raid>:<name> its minutes menu · rx:<raid>:<name> Can't make it
 //! · rt:<user> the /character toggle.
 
-use crate::core::bridge::{self, lua_list, save_json};
+use crate::core::bridge::{self, lua_list};
+use crate::store;
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
-use std::path::PathBuf;
 use twilight_http::Client;
 use twilight_model::channel::message::component::{ActionRow, Button, ButtonStyle, Component, SelectMenu, SelectMenuOption, SelectMenuType};
 use twilight_model::channel::message::Embed;
@@ -17,18 +17,15 @@ use twilight_util::builder::embed::EmbedBuilder;
 
 const AHEAD: i64 = 3600;
 
-fn cfg(name: &str) -> PathBuf {
-    crate::data_dir().join(name)
-}
+const SENT: &str = "bridge_reminders.json";
+const OFF: &str = "bridge_reminders_off.json";
 
 /// raid id -> Discord users reminded
-fn load_sent() -> BTreeMap<String, BTreeSet<String>> {
-    std::fs::read(cfg("bridge_reminders.json")).ok().and_then(|d| serde_json::from_slice(&d).ok()).unwrap_or_default()
-}
+type Sent = BTreeMap<String, BTreeSet<String>>;
 
 /// Discord users who turned reminders off
 fn load_off() -> BTreeSet<String> {
-    std::fs::read(cfg("bridge_reminders_off.json")).ok().and_then(|d| serde_json::from_slice(&d).ok()).unwrap_or_default()
+    store::load(OFF)
 }
 
 pub fn is_on(user: &str) -> bool {
@@ -37,10 +34,14 @@ pub fn is_on(user: &str) -> bool {
 
 /// /character's button: reminders on or off for this user. Returns the new state.
 pub fn toggle(user: &str) -> bool {
-    let mut off = load_off();
-    let on = if off.remove(user) { true } else { off.insert(user.to_string()); false };
-    let _ = save_json(&cfg("bridge_reminders_off.json"), &off);
-    on
+    store::update(OFF, |off: &mut BTreeSet<String>| if off.remove(user) { true } else { off.insert(user.to_string()); false })
+        .unwrap_or(true)
+}
+
+/// Mark this person reminded for this raid; false when someone (another copy of the bot, a run before) already did.
+/// The mark comes first, then the DM: a reminder is never sent twice (a failed DM is not tried again, as before).
+fn claim(raid: &str, user: &str) -> bool {
+    store::update(SENT, |sent: &mut Sent| sent.entry(raid.to_string()).or_default().insert(user.to_string())).unwrap_or(false)
 }
 
 fn short(k: &str) -> &str {
@@ -126,9 +127,8 @@ pub fn due(raid: &Value, now: i64) -> bool {
 
 /// Called every minute or so: DMs for raids starting within the hour (once per raid and person).
 pub async fn tick(http: &Client, snap: &Value, now: i64) {
-    let mut sent = load_sent();
+    let sent: Sent = store::load(SENT);
     let profiles = bridge::load_profiles();
-    let mut changed = false;
     for raid in lua_list(snap.get("raids")) {
         if !due(raid, now) {
             continue;
@@ -136,23 +136,17 @@ pub async fn tick(http: &Client, snap: &Value, now: i64) {
         let id = raid.get("id").and_then(|x| x.as_str()).unwrap_or("").to_string();
         for (name, class, spec) in accepted(raid) {
             let Some(user) = owner(&profiles, &name) else { continue };
-            if !is_on(&user) || sent.get(&id).is_some_and(|s| s.contains(&user)) {
+            if !is_on(&user) || sent.get(&id).is_some_and(|s| s.contains(&user)) || !claim(&id, &user) {
                 continue;
             }
             let (e, c) = reminder(raid, &name, &class, spec);
             dm(http, &user, Some(e), None, &c).await;
-            sent.entry(id.clone()).or_default().insert(user);
-            changed = true;
         }
     }
     // (raids long over are forgotten)
     let live: BTreeSet<String> =
         lua_list(snap.get("raids")).iter().filter_map(|r| r.get("id").and_then(|x| x.as_str()).map(str::to_string)).collect();
-    let before = sent.len();
-    sent.retain(|k, _| live.contains(k));
-    if changed || sent.len() != before {
-        let _ = save_json(&cfg("bridge_reminders.json"), &sent);
-    }
+    let _ = store::update(SENT, |sent: &mut Sent| sent.retain(|k, _| live.contains(k)));
 }
 
 fn find_raid<'a>(snap: &'a Value, id: &str) -> Option<&'a Value> {
@@ -272,6 +266,18 @@ async fn ping_bench(http: &Client, raid: &Value, profiles: &bridge::Profiles) ->
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_reminder_is_claimed_once() {
+        let (_d, _g) = crate::bridge::tests::scratch();
+        assert!(claim("r1", "42"));
+        assert!(!claim("r1", "42"));
+        assert!(claim("r2", "42"));
+        assert!(!toggle("42"));
+        assert!(!is_on("42"));
+        assert!(toggle("42"));
+        assert!(is_on("42"));
+    }
 
     #[test]
     fn reminders_go_in_the_last_hour() {

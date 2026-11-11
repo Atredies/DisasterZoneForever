@@ -16,6 +16,13 @@ folder names (`_patchkit._unique` now adds the pid) and one release sandbox (`Sa
 process). `Core/Compat.lua` keeps its first comment on the guard line like every other file
 (`guards_cover_every_patchable_file`). All 12 patch suites pass (and 15/15 run sequentially).
 
+## 2026-11-11 - Addon: one bot key per guild
+`Core/Bridge.lua` now reads `ns.BridgeKeys[guildKey]` (keyed like `Guild:GetGuildKey()`, "Guild Name-Realm"), so the
+PvP and PvE guilds each trust only their own bot's signed records; a record signed for another guild is ignored, not
+marked refused. The single legacy `ns.BridgeKey` is still read. `Core/BridgeKey.lua` ships the Forever PvP guild's
+bot key (upstream's refused key is gone). `test_bridge.py`: two new cases, suite 23/23; patch
+suite 15/15.
+
 ## 2026-11-10 - 0.2.2: why 0.2.0 players "don't sync", sync says so now; attunements card
 Guildmates on 0.2.0 did not sync with 0.2.1. Two causes. (1) 0.2.1 was built but **never
 published**: GitHub's Latest was still 0.2.0, so everyone downloading got 0.2.0. (2) `Store:ValidateData` refuses a

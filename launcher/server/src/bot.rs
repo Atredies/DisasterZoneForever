@@ -59,13 +59,9 @@ pub async fn run_forever(token: String, app_id: String, guild_id: String) {
     }
 }
 
-/// Runs until the connection ends for good; returns why.
-async fn run(token: String, app_id: Id<ApplicationMarker>, guild_id: Id<GuildMarker>) -> String {
-    // (shared with the tasks below: an answer must never wait for a picture being drawn)
-    let http = Arc::new(Client::new(token.clone()));
-    *crate::signup::GUILD.lock().unwrap() = guild_id.get().to_string();
-    // guild commands show up at once (global ones can take an hour); setting the whole list drops old ones
-    let commands = [
+/// The bot's slash commands.
+pub fn commands() -> Vec<twilight_model::application::command::Command> {
+    vec![
         CommandBuilder::new("ping", "Check that the DisasterZone bot is online", CommandType::ChatInput).build(),
         CommandBuilder::new("raids", "The coming raids, their sign-ups and your answer", CommandType::ChatInput).build(),
         CommandBuilder::new("bis", "BiS lists: see one, or change yours", CommandType::ChatInput)
@@ -87,7 +83,7 @@ async fn run(token: String, app_id: Id<ApplicationMarker>, guild_id: Id<GuildMar
                             .required(false)
                             .choices([("Main", "main"), ("Alternative", "alt")]),
                     )
-                    .option(IntegerBuilder::new("phase", "Which phase (0 = Pre-raid; default: the guild's)").required(false).min_value(0).max_value(5)),
+                    .option(IntegerBuilder::new("phase", "Which phase (0 = Pre-raid; default: the guild's)").required(false).min_value(0).max_value(crate::config().last_phase() as i64)),
             )
             .build(),
         CommandBuilder::new("character", "Your characters for raid sign-ups: add, see or remove them", CommandType::ChatInput)
@@ -98,7 +94,50 @@ async fn run(token: String, app_id: Id<ApplicationMarker>, guild_id: Id<GuildMar
         CommandBuilder::new("bridgetest", "Send a test line to the game (it shows at the next login or /reload)", CommandType::ChatInput)
             .option(StringBuilder::new("text", "What the game should print").required(true).max_length(200))
             .build(),
-    ];
+    ]
+}
+
+/// What the bot does once it can talk to Discord (the gateway's Ready; on AWS the "setup" job, run at each deploy
+/// and every hour): its commands, the channel list, its emoji, the badges.
+pub async fn setup(http: &Client, app_id: Id<ApplicationMarker>, guild_id: Id<GuildMarker>, with_commands: bool) {
+    if with_commands {
+        if let Err(e) = http.interaction(app_id).set_guild_commands(guild_id, &commands()).await {
+            eprintln!("bot: commands: {}", explain_http(&e.to_string()));
+        }
+    }
+    refresh_channels(http, guild_id).await;
+    crate::emoji::sync(http, app_id).await;
+    let profiles = bridge::load_profiles();
+    if !profiles.is_empty() {
+        if let Err(e) = bridge::push_links(&profiles) {
+            eprintln!("bot: badges: {e}");
+        }
+    }
+}
+
+/// The ids in server.json, checked.
+pub fn ids() -> std::result::Result<(Id<ApplicationMarker>, Id<GuildMarker>), String> {
+    let c = crate::config();
+    parse_ids(&c.app_id, &c.guild_id)
+}
+
+/// The Discord client without a gateway connection (the bot on AWS: Discord calls it over HTTP).
+pub fn init_http(token: &str) -> Arc<Client> {
+    let http = Arc::new(Client::new(token.to_string()));
+    *HTTP.write().unwrap() = Some(http.clone());
+    if let Ok((_, g)) = ids() {
+        *crate::signup::GUILD.lock().unwrap() = g.get().to_string();
+    }
+    http
+}
+
+/// Runs until the connection ends for good; returns why.
+async fn run(token: String, app_id: Id<ApplicationMarker>, guild_id: Id<GuildMarker>) -> String {
+    // (shared with the tasks below: an answer must never wait for a picture being drawn)
+    let http = Arc::new(Client::new(token.clone()));
+    *crate::signup::GUILD.lock().unwrap() = guild_id.get().to_string();
+    // guild commands show up at once (global ones can take an hour); setting the whole list drops old ones
+    let commands = commands();
     if let Err(e) = http.interaction(app_id).set_guild_commands(guild_id, &commands).await {
         return explain_http(&e.to_string());
     }
@@ -110,10 +149,7 @@ async fn run(token: String, app_id: Id<ApplicationMarker>, guild_id: Id<GuildMar
         let item = tokio::select! {
             item = shard.next_event(wanted) => match item { Some(x) => x, None => break },
             _ = tick.tick() => {
-                if let Some(snap) = crate::signup::current_snap() {
-                    let h = http.clone();
-                    tokio::spawn(async move { crate::remind::tick(&h, &snap, unix_now() as i64).await; });
-                }
+                crate::jobs::submit(crate::jobs::Job::Tick);
                 continue;
             }
         };
@@ -124,19 +160,13 @@ async fn run(token: String, app_id: Id<ApplicationMarker>, guild_id: Id<GuildMar
                 refresh_channels(&http, guild_id).await;
                 crate::emoji::sync(&http, app_id).await;
                 // (post what changed while the bot was offline)
-                if let Some(snap) = crate::signup::current_snap() {
-                    let h = http.clone();
-                    tokio::spawn(async move {
-                        crate::render::fetch::ensure_items(crate::render::fetch::snapshot_items(&snap)).await;
-                        crate::posts::update(&h, &snap).await;
-                    });
-                }
+                crate::jobs::submit(crate::jobs::Job::Posts);
             }
             Ok(Event::InteractionCreate(i)) => {
                 // (each answer on its own task: Discord waits 3 seconds for it)
                 let h = http.clone();
                 tokio::spawn(async move {
-                    if let Err(e) = answer(&h, app_id, &i.0).await {
+                    if let Err(e) = answer(&h, app_id, &i.0, Mode::Callback).await {
                         eprintln!("bot: answer failed: {e}");
                     }
                 });
@@ -233,7 +263,7 @@ fn explain_http(e: &str) -> String {
     }
 }
 
-async fn answer(http: &Client, app_id: Id<ApplicationMarker>, i: &Interaction) -> Result<()> {
+pub async fn answer(http: &Client, app_id: Id<ApplicationMarker>, i: &Interaction, mode: Mode) -> Result<()> {
     let user = i.author_id().map(|u| u.get().to_string()).unwrap_or_default();
     let name = i.author().map(|u| u.global_name.clone().unwrap_or_else(|| u.name.clone())).unwrap_or_default();
     let now = unix_now();
@@ -249,8 +279,8 @@ async fn answer(http: &Client, app_id: Id<ApplicationMarker>, i: &Interaction) -
                     ..Default::default()
                 }),
             };
-            http.interaction(app_id).create_response(i.id, &i.token, &resp).await.map_err(|e| crate::core::Error::Net(e.to_string()))?;
-            crate::posts::refresh(http).await;
+            send(http, app_id, i, &resp, mode).await?;
+            crate::posts::request_refresh();
             return Ok(());
         }
         Some(InteractionData::MessageComponent(c)) if c.custom_id.starts_with('b') && c.custom_id.as_bytes().get(2) == Some(&b':') => {
@@ -259,11 +289,11 @@ async fn answer(http: &Client, app_id: Id<ApplicationMarker>, i: &Interaction) -
             } else {
                 crate::bis::select(&user, &name, &c.custom_id, &c.values)
             };
-            return respond_bis(http, app_id, i, r).await;
+            return respond_bis(http, app_id, i, r, mode).await;
         }
         Some(InteractionData::ModalSubmit(m)) if m.custom_id.starts_with("bm:") => {
             let r = crate::bis::form_sent(&user, &name, m);
-            return respond_bis(http, app_id, i, r).await;
+            return respond_bis(http, app_id, i, r, mode).await;
         }
         Some(InteractionData::ApplicationCommand(cmd)) if cmd.name == "bis" && matches!(cmd.options.first().map(|o| o.name.as_str()), Some("show") | None) => {
             let who = cmd.options.first().and_then(|o| match &o.value {
@@ -273,7 +303,7 @@ async fn answer(http: &Client, app_id: Id<ApplicationMarker>, i: &Interaction) -
                 }),
                 _ => None,
             });
-            return respond_bis(http, app_id, i, crate::bis::show(&user, who.as_deref())).await;
+            return respond_bis(http, app_id, i, crate::bis::show(&user, who.as_deref()), mode).await;
         }
         Some(InteractionData::MessageComponent(c)) => {
             let a = if c.values.is_empty() {
@@ -281,23 +311,23 @@ async fn answer(http: &Client, app_id: Id<ApplicationMarker>, i: &Interaction) -
             } else {
                 crate::signup::select(&user, &name, &c.custom_id, &c.values, now)
             };
-            let r = respond(http, app_id, i, a).await;
-            crate::posts::refresh(http).await; // (after the answer: a new sign-up shows on its post, pending)
+            let r = respond(http, app_id, i, a, mode).await;
+            crate::posts::request_refresh(); // (after the answer: a new sign-up shows on its post, pending)
             return r;
         }
         Some(InteractionData::ModalSubmit(m)) => {
-            let r = respond(http, app_id, i, crate::signup::form_sent(&user, m)).await;
-            crate::posts::refresh(http).await;
+            let r = respond(http, app_id, i, crate::signup::form_sent(&user, m), mode).await;
+            crate::posts::request_refresh();
             return r;
         }
         Some(InteractionData::ApplicationCommand(cmd)) if i.kind == InteractionType::ApplicationCommandAutocomplete => {
-            return item_choices(http, app_id, i, cmd).await;
+            return item_choices(http, app_id, i, cmd, mode).await;
         }
         Some(InteractionData::ApplicationCommand(cmd)) if cmd.name == "raids" => {
-            return respond(http, app_id, i, crate::signup::my_raids(&user, None)).await;
+            return respond(http, app_id, i, crate::signup::my_raids(&user, None), mode).await;
         }
         Some(InteractionData::ApplicationCommand(cmd)) if cmd.name == "character" => {
-            return respond(http, app_id, i, crate::signup::characters(&user)).await;
+            return respond(http, app_id, i, crate::signup::characters(&user), mode).await;
         }
         _ => {}
     }
@@ -366,13 +396,13 @@ async fn answer(http: &Client, app_id: Id<ApplicationMarker>, i: &Interaction) -
         }
         _ => "This command is not ready yet.".to_string(),
     };
-    reply(http, app_id, i, text).await
+    reply(http, app_id, i, text, mode).await
 }
 
-async fn respond(http: &Client, app_id: Id<ApplicationMarker>, i: &Interaction, a: crate::signup::Answer) -> Result<()> {
+async fn respond(http: &Client, app_id: Id<ApplicationMarker>, i: &Interaction, a: crate::signup::Answer, mode: Mode) -> Result<()> {
     use crate::signup::Answer;
     let (kind, data) = match a {
-        Answer::Text(t, c) => return reply_with(http, app_id, i, t, c).await,
+        Answer::Text(t, c) => return reply_with(http, app_id, i, t, c, mode).await,
         Answer::Sheet(e, c, f, b) => (
             InteractionResponseType::ChannelMessageWithSource,
             InteractionResponseData {
@@ -406,11 +436,7 @@ async fn respond(http: &Client, app_id: Id<ApplicationMarker>, i: &Interaction, 
         ),
     };
     let resp = InteractionResponse { kind, data: Some(data) };
-    http.interaction(app_id)
-        .create_response(i.id, &i.token, &resp)
-        .await
-        .map_err(|e| crate::core::Error::Net(e.to_string()))?;
-    Ok(())
+    send(http, app_id, i, &resp, mode).await
 }
 
 /// /bis set's item: the items whose name holds what was typed so far.
@@ -419,7 +445,13 @@ async fn item_choices(
     app_id: Id<ApplicationMarker>,
     i: &Interaction,
     cmd: &twilight_model::application::interaction::application_command::CommandData,
+    mode: Mode,
 ) -> Result<()> {
+    send(http, app_id, i, &autocomplete(choices_for(cmd)), mode).await
+}
+
+/// /bis set's item choices for what was typed so far.
+fn choices_for(cmd: &twilight_model::application::interaction::application_command::CommandData) -> Vec<CommandOptionChoice> {
     fn focused(opts: &[twilight_model::application::interaction::application_command::CommandDataOption]) -> Option<String> {
         opts.iter().find_map(|o| match &o.value {
             CommandOptionValue::Focused(v, _) => Some(v.clone()),
@@ -440,18 +472,17 @@ async fn item_choices(
             value: CommandOptionChoiceValue::String("none".into()),
         });
     }
-    let resp = InteractionResponse {
-        kind: InteractionResponseType::ApplicationCommandAutocompleteResult,
-        data: Some(InteractionResponseData { choices: Some(choices), ..Default::default() }),
-    };
-    http.interaction(app_id)
-        .create_response(i.id, &i.token, &resp)
-        .await
-        .map_err(|e| crate::core::Error::Net(e.to_string()))?;
-    Ok(())
+    choices
 }
 
-async fn respond_bis(http: &Client, app_id: Id<ApplicationMarker>, i: &Interaction, r: crate::bis::Reply) -> Result<()> {
+fn autocomplete(choices: Vec<CommandOptionChoice>) -> InteractionResponse {
+    InteractionResponse {
+        kind: InteractionResponseType::ApplicationCommandAutocompleteResult,
+        data: Some(InteractionResponseData { choices: Some(choices), ..Default::default() }),
+    }
+}
+
+async fn respond_bis(http: &Client, app_id: Id<ApplicationMarker>, i: &Interaction, r: crate::bis::Reply, mode: Mode) -> Result<()> {
     use crate::bis::Reply;
     let resp = match r {
         Reply::Modal { custom_id, title, components } => InteractionResponse {
@@ -470,15 +501,11 @@ async fn respond_bis(http: &Client, app_id: Id<ApplicationMarker>, i: &Interacti
             }),
         },
     };
-    http.interaction(app_id)
-        .create_response(i.id, &i.token, &resp)
-        .await
-        .map_err(|e| crate::core::Error::Net(e.to_string()))?;
-    Ok(())
+    send(http, app_id, i, &resp, mode).await
 }
 
-async fn reply(http: &Client, app_id: Id<ApplicationMarker>, i: &Interaction, text: String) -> Result<()> {
-    reply_with(http, app_id, i, text, Vec::new()).await
+async fn reply(http: &Client, app_id: Id<ApplicationMarker>, i: &Interaction, text: String, mode: Mode) -> Result<()> {
+    reply_with(http, app_id, i, text, Vec::new(), mode).await
 }
 
 async fn reply_with(
@@ -487,6 +514,7 @@ async fn reply_with(
     i: &Interaction,
     text: String,
     components: Vec<twilight_model::channel::message::Component>,
+    mode: Mode,
 ) -> Result<()> {
     // (a message holds 2000 characters, an embed's text 4096: a long answer, e.g. a BiS list with its links, goes
     // in an embed; anything longer is cut)
@@ -509,11 +537,134 @@ async fn reply_with(
             ..Default::default()
         }),
     };
-    http.interaction(app_id)
-        .create_response(i.id, &i.token, &resp)
-        .await
-        .map_err(|e| crate::core::Error::Net(e.to_string()))?;
+    send(http, app_id, i, &resp, mode).await
+}
+
+// ------------------------------------------------------------------------------------------------------------------
+// How answers reach Discord: over the gateway the bot answers the interaction's callback within 3 seconds; over HTTP
+// (Discord calling the bot, on AWS) it acknowledges at once ("thinking", [`deferral`]) and the answer comes after,
+// from the worker, as an edit of that reply or a follow-up. Forms and autocomplete can't wait: [`immediate`].
+// ------------------------------------------------------------------------------------------------------------------
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Mode {
+    Callback,
+    Deferred,
+}
+
+async fn send(http: &Client, app_id: Id<ApplicationMarker>, i: &Interaction, resp: &InteractionResponse, mode: Mode) -> Result<()> {
+    let net = |e: twilight_http::Error| crate::core::Error::Net(e.to_string());
+    if mode == Mode::Callback {
+        http.interaction(app_id).create_response(i.id, &i.token, resp).await.map_err(net)?;
+        return Ok(());
+    }
+    let ic = http.interaction(app_id);
+    let d = resp.data.clone().unwrap_or_default();
+    let files = d.attachments.clone().unwrap_or_default();
+    let from_component = matches!(i.kind, InteractionType::MessageComponent | InteractionType::ModalSubmit);
+    // The worker can be quicker than Discord: the deferral this answer edits may not exist yet for a moment, and
+    // Discord says "Unknown Webhook" (10015). Try again a few times (about 4 s in all) before giving up.
+    let mut wait = 250u64;
+    loop {
+        let sent: std::result::Result<(), twilight_http::Error> = match resp.kind {
+            // the message the button is on (a component's deferral), or the command's "thinking" reply
+            InteractionResponseType::UpdateMessage | InteractionResponseType::ChannelMessageWithSource
+                if resp.kind == InteractionResponseType::UpdateMessage || !from_component =>
+            {
+                // (only what the answer sets is changed, as with the callback)
+                let mut u = ic.update_response(&i.token);
+                if d.content.is_some() {
+                    u = u.content(d.content.as_deref());
+                }
+                if d.embeds.is_some() {
+                    u = u.embeds(d.embeds.as_deref());
+                }
+                if d.components.is_some() {
+                    u = u.components(d.components.as_deref());
+                }
+                if !files.is_empty() {
+                    u = u.attachments(&files);
+                }
+                u.await.map(|_| ())
+            }
+            // a new private message after a button
+            InteractionResponseType::ChannelMessageWithSource => {
+                let mut f = ic.create_followup(&i.token);
+                if let Some(c) = d.content.as_deref().filter(|c| !c.is_empty()) {
+                    f = f.content(c);
+                }
+                if let Some(e) = d.embeds.as_deref() {
+                    f = f.embeds(e);
+                }
+                if let Some(c) = d.components.as_deref() {
+                    f = f.components(c);
+                }
+                if !files.is_empty() {
+                    f = f.attachments(&files);
+                }
+                f = f.flags(d.flags.unwrap_or(MessageFlags::EPHEMERAL));
+                f.await.map(|_| ())
+            }
+            other => return Err(crate::core::Error::Msg(format!("a {other:?} answer can't follow a deferral (see bot::immediate)"))),
+        };
+        match sent {
+            Ok(()) => break,
+            Err(e) if wait <= 2000 && is_unknown_webhook(&e.to_string()) => {
+                tokio::time::sleep(std::time::Duration::from_millis(wait)).await;
+                wait *= 2;
+            }
+            Err(e) => return Err(net(e)),
+        }
+    }
     Ok(())
+}
+
+/// Discord's "Unknown Webhook": the interaction's reply isn't there (yet) to edit or follow.
+fn is_unknown_webhook(err: &str) -> bool {
+    err.contains("\"code\": 10015") || err.contains("\"code\":10015")
+}
+
+/// The acknowledgement Discord gets at once for an interaction answered later: a button's message stays as it is
+/// until the answer edits it; a command shows "thinking" (privately) until the answer replaces it.
+pub fn deferral(i: &Interaction) -> InteractionResponse {
+    match i.kind {
+        InteractionType::MessageComponent | InteractionType::ModalSubmit => {
+            InteractionResponse { kind: InteractionResponseType::DeferredUpdateMessage, data: None }
+        }
+        _ => InteractionResponse {
+            kind: InteractionResponseType::DeferredChannelMessageWithSource,
+            data: Some(InteractionResponseData { flags: Some(MessageFlags::EPHEMERAL), ..Default::default() }),
+        },
+    }
+}
+
+/// The answers that can't be deferred, made at once: autocomplete and the clicks that open a form. They only read
+/// (no record, no save), so answering them twice would do no harm either.
+pub fn immediate(i: &Interaction) -> Option<InteractionResponse> {
+    let user = i.author_id().map(|u| u.get().to_string()).unwrap_or_default();
+    let modal = |custom_id: String, title: String, components| InteractionResponse {
+        kind: InteractionResponseType::Modal,
+        data: Some(InteractionResponseData { custom_id: Some(custom_id), title: Some(title), components: Some(components), ..Default::default() }),
+    };
+    match &i.data {
+        Some(InteractionData::ApplicationCommand(cmd)) if i.kind == InteractionType::ApplicationCommandAutocomplete => {
+            Some(autocomplete(choices_for(cmd)))
+        }
+        Some(InteractionData::MessageComponent(c)) => {
+            if c.custom_id.starts_with('b') && c.custom_id.as_bytes().get(2) == Some(&b':') {
+                match crate::bis::modal_for(&c.custom_id, &c.values)? {
+                    crate::bis::Reply::Modal { custom_id, title, components } => Some(modal(custom_id, title, components)),
+                    _ => None,
+                }
+            } else {
+                match crate::signup::modal_for(&user, &c.custom_id, &c.values)? {
+                    crate::signup::Answer::Modal { custom_id, title, components } => Some(modal(custom_id, title, components)),
+                    _ => None,
+                }
+            }
+        }
+        _ => None,
+    }
 }
 
 pub fn unix_now() -> u64 {
@@ -571,6 +722,64 @@ pub fn fmt_age(secs: u64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// An interaction as Discord sends it (kind 2 command, 3 component, 4 autocomplete, 5 form).
+    fn interaction(kind: u8, data: serde_json::Value) -> Interaction {
+        serde_json::from_value(serde_json::json!({
+            "id": "1000000000000000001", "application_id": "1000000000000000002", "type": kind, "token": "tok",
+            "version": 1, "guild_id": "1000000000000000003", "channel_id": "1000000000000000004",
+            "member": { "user": { "id": "42", "username": "lee", "discriminator": "0", "avatar": null },
+                        "roles": [], "joined_at": "2026-01-01T00:00:00.000000+00:00", "deaf": false, "mute": false,
+                        "flags": 0 },
+            "entitlements": [], "authorizing_integration_owners": {}, "data": data,
+        }))
+        .unwrap()
+    }
+
+    fn button(custom: &str) -> Interaction {
+        interaction(3, serde_json::json!({ "custom_id": custom, "component_type": 2 }))
+    }
+
+    fn menu(custom: &str, v: &str) -> Interaction {
+        interaction(3, serde_json::json!({ "custom_id": custom, "component_type": 3, "values": [v] }))
+    }
+
+    #[test]
+    fn unknown_webhook_is_recognised_in_discords_answer() {
+        let real = r#"response error: status code 404, error: {"message": "Unknown Webhook", "code": 10015}"#;
+        assert!(is_unknown_webhook(real));
+        assert!(!is_unknown_webhook(r#"response error: status code 404, error: {"message": "Unknown Message", "code": 10008}"#));
+    }
+
+    #[test]
+    fn forms_are_answered_at_once_everything_else_is_deferred() {
+        let (_d, _g) = crate::bridge::tests::scratch();
+        let is_modal = |i: &Interaction| immediate(i).is_some_and(|r| r.kind == InteractionResponseType::Modal);
+        // no character yet: the raid post's buttons open the character form
+        assert!(is_modal(&button("su:r1:A")));
+        assert!(is_modal(&button("mr:r1:A")));
+        assert!(is_modal(&button("ch:add")));
+        assert!(is_modal(&menu("sp:r1", "new")));
+        assert!(is_modal(&menu("bq:1:m:Lee", "3")), "the item form");
+        // with a character they sign up: that writes a record, so it is deferred to the worker
+        let mut p = crate::bridge::Profiles::new();
+        p.insert("42".into(), vec![crate::bridge::Char { name: "Lee".into(), class: "WARRIOR".into(), spec: 3, by: "lee".into() }]);
+        crate::store::save("bridge_profiles.json", &p).unwrap();
+        assert!(immediate(&button("su:r1:A")).is_none());
+        assert!(immediate(&menu("sp:r1", "0|3")).is_none());
+        assert!(immediate(&button("bs:1:m:Lee")).is_none(), "a sheet picture: deferred");
+        // the deferral: a button leaves its message, a command thinks privately
+        assert_eq!(deferral(&button("su:r1:A")).kind, InteractionResponseType::DeferredUpdateMessage);
+        let cmd = interaction(2, serde_json::json!({ "id": "1000000000000000005", "name": "raids", "type": 1 }));
+        assert!(immediate(&cmd).is_none());
+        let d = deferral(&cmd);
+        assert_eq!(d.kind, InteractionResponseType::DeferredChannelMessageWithSource);
+        assert_eq!(d.data.unwrap().flags, Some(MessageFlags::EPHEMERAL));
+        // autocomplete: answered at once
+        let auto = interaction(4, serde_json::json!({ "id": "1000000000000000005", "name": "bis", "type": 1,
+            "options": [{ "name": "set", "type": 1, "options": [{ "name": "item", "type": 3, "value": "dra", "focused": true }] }] }));
+        assert_eq!(immediate(&auto).unwrap().kind, InteractionResponseType::ApplicationCommandAutocompleteResult);
+    }
 
     #[test]
     fn ages_read_plainly() {
