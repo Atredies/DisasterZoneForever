@@ -279,9 +279,12 @@ async fn param(ssm: &aws_sdk_ssm::Client, name: &str) -> Result<String> {
 
 /// The art and Items.lua from <profile>/assets/ into the data folder (the worker draws the pictures).
 async fn fetch_assets(s3: &aws_sdk_s3::Client, bucket: &str, profile: &str) -> Result<usize> {
+    use futures::stream::{self, StreamExt, TryStreamExt};
     let prefix = format!("{profile}/assets/");
     let dir = crate::data_dir();
-    let mut n = 0;
+    // the keys first (1000 a page), then the files 32 at a time: a bot's art is about a thousand small icons, and
+    // one by one that is half a minute of every cold start
+    let mut todo = Vec::new();
     let mut token = None;
     loop {
         let page = s3
@@ -296,22 +299,29 @@ async fn fetch_assets(s3: &aws_sdk_s3::Client, bucket: &str, profile: &str) -> R
             let Some(k) = o.key() else { continue };
             let Some(rel) = k.strip_prefix(&prefix).filter(|r| !r.is_empty() && !r.ends_with('/') && !r.contains("..")) else { continue };
             let dest = dir.join(rel);
-            if dest.exists() {
-                continue;
+            if !dest.exists() {
+                todo.push((k.to_string(), dest));
             }
-            let body = s3.get_object().bucket(bucket).key(k).send().await.map_err(|x| e("s3 get", x))?;
-            let bytes = body.body.collect().await.map_err(|x| e("s3 read", x))?.into_bytes();
-            if let Some(p) = dest.parent() {
-                std::fs::create_dir_all(p)?;
-            }
-            std::fs::write(&dest, &bytes)?;
-            n += 1;
         }
         match page.next_continuation_token() {
             Some(t) => token = Some(t.to_string()),
             None => break,
         }
     }
+    let n = todo.len();
+    stream::iter(todo)
+        .map(|(k, dest)| async move {
+            let body = s3.get_object().bucket(bucket).key(&k).send().await.map_err(|x| e("s3 get", x))?;
+            let bytes = body.body.collect().await.map_err(|x| e("s3 read", x))?.into_bytes();
+            if let Some(p) = dest.parent() {
+                std::fs::create_dir_all(p)?;
+            }
+            std::fs::write(&dest, &bytes)?;
+            Ok::<(), crate::core::Error>(())
+        })
+        .buffer_unordered(32)
+        .try_collect::<Vec<()>>()
+        .await?;
     Ok(n)
 }
 

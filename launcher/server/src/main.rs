@@ -60,11 +60,15 @@ pub struct Config {
     /// Developer Portal > General Information > Public Key: checks that /api/interactions requests are Discord's
     /// (only needed when Discord calls the bot over HTTP)
     pub public_key: String,
+    /// The game's last phase (TBC: 5; WoW Forever: 1). 0 = 5. The /bis buttons and options follow it.
+    pub phases: u8,
+    /// What a phase is called (TBC: "Phase"; WoW Forever: "Season"). Empty = "Phase".
+    pub phase_word: String,
 }
 
 impl Config {
     /// Settings from the environment win over server.json (the bot on AWS has no data folder to keep them in):
-    /// DZ_APP_ID, DZ_GUILD_ID, DZ_LISTEN, DZ_GUILD, DZ_PUBLIC_KEY.
+    /// DZ_APP_ID, DZ_GUILD_ID, DZ_LISTEN, DZ_GUILD, DZ_PUBLIC_KEY, DZ_PHASES, DZ_PHASE_WORD.
     fn with_env(mut self) -> Config {
         let env = |k: &str| std::env::var(k).ok().filter(|v| !v.trim().is_empty());
         if let Some(v) = env("DZ_APP_ID") {
@@ -82,7 +86,27 @@ impl Config {
         if let Some(v) = env("DZ_PUBLIC_KEY") {
             self.public_key = v;
         }
+        if let Some(v) = env("DZ_PHASES").and_then(|v| v.trim().parse().ok()) {
+            self.phases = v;
+        }
+        if let Some(v) = env("DZ_PHASE_WORD") {
+            self.phase_word = v;
+        }
         self
+    }
+
+    /// The last phase (1-5).
+    pub fn last_phase(&self) -> u8 {
+        if self.phases == 0 { 5 } else { self.phases.min(5) }
+    }
+
+    /// "Phase 2", "Season 1"; 0 is "Pre-raid".
+    pub fn phase_name(&self, p: u8) -> String {
+        if p == 0 {
+            return "Pre-raid".into();
+        }
+        let w = self.phase_word.trim();
+        format!("{} {p}", if w.is_empty() { "Phase" } else { w })
     }
 }
 
@@ -267,6 +291,14 @@ async fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn phases_follow_the_game() {
+        let tbc = Config::default();
+        assert_eq!((tbc.last_phase(), tbc.phase_name(0), tbc.phase_name(5)), (5, "Pre-raid".into(), "Phase 5".into()));
+        let forever = Config { phases: 1, phase_word: "Season".into(), ..Config::default() };
+        assert_eq!((forever.last_phase(), forever.phase_name(1)), (1, "Season 1".into()));
+    }
 
     #[test]
     fn the_key_file_names_its_guild() {

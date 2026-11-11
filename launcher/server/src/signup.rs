@@ -786,7 +786,7 @@ pub fn bis_text_from(snap: &Value, profiles: &bridge::Profiles, user: &str, who:
     };
     let phase = snap.get("phase").and_then(|p| p.as_i64()).unwrap_or(1);
     let spec = list.get("spec").and_then(|s| s.as_str()).map(|s| format!(" · {s}")).unwrap_or_default();
-    let mut lines = vec![format!("**{}**{spec} · Phase {phase}", key.split('-').next().unwrap_or(key))];
+    let mut lines = vec![format!("**{}**{spec} · {}", key.split('-').next().unwrap_or(key), crate::config().phase_name(phase as u8))];
     let slots = lua_list(list.get("slots"));
     if slots.is_empty() {
         lines.push("Nothing picked for this phase yet.".into());

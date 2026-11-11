@@ -83,7 +83,7 @@ pub fn commands() -> Vec<twilight_model::application::command::Command> {
                             .required(false)
                             .choices([("Main", "main"), ("Alternative", "alt")]),
                     )
-                    .option(IntegerBuilder::new("phase", "Which phase (0 = Pre-raid; default: the guild's)").required(false).min_value(0).max_value(5)),
+                    .option(IntegerBuilder::new("phase", "Which phase (0 = Pre-raid; default: the guild's)").required(false).min_value(0).max_value(crate::config().last_phase() as i64)),
             )
             .build(),
         CommandBuilder::new("character", "Your characters for raid sign-ups: add, see or remove them", CommandType::ChatInput)
