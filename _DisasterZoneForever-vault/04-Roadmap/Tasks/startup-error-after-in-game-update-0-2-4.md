@@ -1,0 +1,43 @@
+---
+title: "Startup error after in-game update 0.2.4 (HookScript)"
+tags: [task]
+status: "1 - In progress"
+priority: p1
+effort: M
+updated: 2026-11-12
+---
+
+# Startup error after in-game update 0.2.4 (HookScript)
+
+A tester who installed in-game update #1 (0.2.4 on top of 0.2.3, `/dz update`) gets the boot loader's "had 1 error
+while starting" popup at every login. Not seen on 0.2.3 (checked by rolling back with `/dzpatch rollback`): it comes
+with the update. The update only changes `Core/Sync.lua`, `UI/Members.lua` and `Data/Changelog.lua`.
+
+The error (scriptErrors on):
+
+```
+bad argument #2 to '?' (Usage: local success = self:HookScript(scriptTypeName, script [, bindingType]))
+[C]: in function 'xpcall'
+Core/Init.lua:62  (SafeCall)
+Core/Init.lua:503 (the event dispatcher)
+```
+
+An EVENT handler calls `HookScript` with a nil script; its own frame is not in the stack (a tail call or a C function),
+so the source isn't named.
+
+What is known:
+- The update applies with 0 errors in the harness, with the real 0.2.3 zip and the real signed update, also for a
+  member on another connected realm (the tester's home realm differs from the guild's).
+- None of the three changed files calls `HookScript` at startup; the new code (`SendVersionTo`) uses `Util.After`
+  (`C_Timer`); `UI/Changelog.lua`'s only hook takes an inline function.
+- The publisher's own copy (a development copy: updates never apply) does not show it.
+
+Next:
+1. The tester's addon list, and BugSack/BugGrabber for a fuller trace.
+2. Reproduce on a client running the 0.2.3 release zip that takes the update with `/dz update` (not the development
+   copy), BugSack on.
+3. Fix, a test for it, and a new signed update.
+
+## Done when
+
+A client on the 0.2.3 zip takes the fixed update and starts with no error.
