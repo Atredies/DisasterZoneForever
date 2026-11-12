@@ -9,8 +9,63 @@ updated: 2026-11-12
 
 # Invite & sort follows the raid
 
-`DeleteRaid` stops a running Invite & sort for that raid (`Core/RaidPlan.lua:3856`), but `CancelRaid` (`:3830`) does not, and a cancel or delete that arrives from another planner through the sync never stops it. The run keeps inviting and sorting the planned layout (`Core/RaidInvite.lua:247-273`). Have `Pump` check the raid itself (gone or cancelled: stop, and say why). See `02-Architecture/Implicit State Machines.md`.
+## Context
+
+Invite & sort (`Core/RaidInvite.lua`) is the raid leader's button that invites everyone placed in a planned raid's group layout and sorts them into their groups, then keeps sorting late joiners. Its state is the module-local `active` table (`Core/RaidInvite.lua:340-354`), saved to `db.raidInvite` and resumed after a /reload (`:464-476`). States: idle (`active = nil`), inviting (`active.inviting`), sorting only, waiting for combat (`active.waitCombat`). It is started by the leader (`RaidInvite:Start :356`, `Resort :369`) and stopped by `Stop` (`:233`): the Stop button (`UI/RaidPlanUI.lua:1687`), leaving the group, the raid session ending, MAX_AGE (`Pump :247-273`), or `RaidPlan:DeleteRaid` (`Core/RaidPlan.lua:3856`).
+
+The raid it serves has its own lifecycle in the planner (`Core/RaidPlan.lua`): scheduled, cancelled (`x`, `CancelRaid :3830`), deleted (`del` tombstone, `DeleteRaid :3847`), written by the GM, the raid leaders and the raid's own leader, and spread to every client by the guild sync.
+
+## What was found
+
+The run does not follow the raid's lifecycle.
+
+1. Bob (raid leader) runs Invite & sort for Friday's Karazhan. Lock is offline, so he is listed as missing.
+2. The raid is cancelled, either by Bob (`CancelRaid`) or by the GM Gina on her own client (the cancel reaches Bob through the sync). Gina could also delete it.
+3. `CancelRaid` (`Core/RaidPlan.lua:3830-3842`) never calls `RaidInvite:Stop`, and the merge of a remote cancel or delete does not either. Only a local `DeleteRaid` does (`:3856`).
+4. Lock logs in. The next `Pump` (on `GROUP_ROSTER_UPDATE`) still has `active` and invites him into the raid group of a raid that no longer exists.
+
+Impact: players are invited and moved for a cancelled raid, and the leader's panel still shows a running Invite & sort. It is user-visible and confusing, but no data is lost. It is likely whenever a raid is cancelled at short notice while the leader is already forming the group, which is when cancels happen.
+
+## How it was found
+
+State-machine audit 2026-11-12 (prompt: 'Find all the implicit state machines in my app'), read-only code trace from ~/claude-code. I traced every caller of `RaidInvite:Stop` and `Stop` (`grep -rn 'RaidInvite:Stop' addon/`) against the raid's cancel and delete paths.
+
+**Reproduced** with the repo's own harness, run from a scratch script outside the repo (`smrepro/repro_invite.py` in the audit's scratch space, run with `dev/luaenv/bin/python` and `DISASTERZONE_ADDON_DIR=addon/DisasterZone`), built on `dev/tests/raidplan/test_raidplan_invite.py`'s `setup`:
+
+| Who ends the raid | `RaidInvite:IsActive()` after | Lock invited after logging in |
+|---|---|---|
+| Bob, `CancelRaid` (local) | true | yes |
+| Gina, `CancelRaid` (remote, via sync) | true | yes |
+| Gina, `DeleteRaid` (remote) | true | yes |
+| Bob, `DeleteRaid` (local) | false | no |
+
+Not checked: the UI side (the Groups tab's run line) after a remote cancel.
+
+## Best fix
+
+Make the run check its raid every time it acts, instead of relying on every writer to remember to stop it:
+
+- In `Pump` (`Core/RaidInvite.lua:247`), right after the MAX_AGE check, look up the raid: `local v = ns.RaidPlan:GetRaid(active.occ)`. If `not v` (deleted or gone) or `v.cancelled`, `return Stop("Invite & sort stopped: the raid was cancelled.")` (or "deleted").
+- Also `SchedulePump` on `RAIDPLAN_CHANGED` (fired by `RaidPlan`'s `Changed()`, `Core/RaidPlan.lua:406-409`) while `active`, so a synced cancel stops the run without waiting for a roster event.
+- Keep the explicit `RaidInvite:Stop()` in `DeleteRaid`. It is now redundant but harmless.
+- No data migration: `active` lives only in memory and in `db.raidInvite`, and a stale saved run hits the new check on its first pump after login.
+
+Tests to add in `dev/tests/raidplan/test_raidplan_invite.py`:
+- `the_run_stops_when_the_raid_is_cancelled`: the local cancel case above.
+- `the_run_stops_when_another_planner_cancels_or_deletes_the_raid`: Gina cancels on her client, and in a second world deletes it. `IsActive()` is false within a few ticks, and a member who logs in afterwards is not invited.
+
+## Why this approach
+
+- **Alternative: call `RaidInvite:Stop()` from `CancelRaid` and from the sync merge.** That patches today's writers but leaves the same hole for the next one (an edit that moves the raid, a series stop, a leader change). The repo already prefers derived checks over pushed notifications for this kind of thing: `Pump` already re-reads the group and the raid session on every pass (`:255-273`).
+- **Alternative: stop the run only at the UI.** It would not cover a /reload resume (`:464`) or a leader who has the panel closed.
+- The check costs one table lookup per pump, which is negligible.
 
 ## Done when
 
-A test cancels the raid locally, and another one merges a remote cancel and a remote delete, while a run is active: in each case `RaidInvite:IsActive()` is false after the next pump and no further invite goes out.
+- `the_run_stops_when_the_raid_is_cancelled` and `the_run_stops_when_another_planner_cancels_or_deletes_the_raid` pass, with the rest of `test_raidplan_invite.py`.
+- Running `repro_invite.py` gives `IsActive() == false` and no invite after cancel or delete in all four rows.
+
+## Related
+
+- [[Implicit State Machines]]
+- [[one-sign-up-path-for-game-and-discord]]
