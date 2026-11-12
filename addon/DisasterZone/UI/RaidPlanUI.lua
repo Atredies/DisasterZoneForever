@@ -209,7 +209,7 @@ end
 local function passesFilter(v, now, ws)
     local hiddenView = state.filterWhen == "hidden"
     if (RP():IsRaidHidden(v) ~= nil) ~= hiddenView then return false end
-    if hiddenView and v.t < now - 6 * 3600 then return false end
+    if hiddenView and RP():IsOver(v, now) then return false end
     if state.filterRaid ~= "all" then
         -- (a raid of several instances shows under each of them)
         local hit = false
@@ -231,7 +231,7 @@ local function passesFilter(v, now, ws)
     elseif when == "later" then
         return v.t >= ws + 14 * DAY
     elseif when == "past" then
-        return v.t < now - 6 * 3600
+        return RP():IsOver(v, now)
     end
     return true
 end
@@ -244,7 +244,7 @@ local function raidRows()
     local labels = { "This week", "Next week", "Later", "Recent" }
     local function add(v)
         local b
-        if v.t < now - 6 * 3600 then b = 4
+        if RP():IsOver(v, now) then b = 4
         elseif v.t < ws + 7 * DAY then b = 1
         elseif v.t < ws + 14 * DAY then b = 2
         else b = 3
@@ -279,7 +279,7 @@ local function defaultSelection(rows)
     local first
     for _, d in ipairs(rows) do
         local v = d.v
-        if v and not v.cancelled and v.t >= Now() - 6 * 3600 then
+        if v and not v.cancelled and not RP():IsOver(v) then
             first = first or v.id
             local inv = RP():GetInvited(v)
             local me = ns.Util.PlayerKey()
@@ -478,7 +478,7 @@ end
 local function myState(v)
     local char = (state.selected == v.id and state.pendingChar) or RP():GetMySignupCharacter(v.id) or ns.Util.PlayerKey()
     local mine = RP():GetMySignup(v.id)
-    local open = not v.cancelled and v.t >= Now() - 6 * 3600
+    local open = not v.cancelled and not RP():IsOver(v)
     local block = RP():GetSignupBlock(v, char)
     local canAsk = block == "lock" and RP():CanRequest(v, char)
     local request = canAsk and RP():GetMyRequest(v.id)
@@ -531,7 +531,7 @@ end
 -- The raids I hid that are still ahead (the "Hidden" view's count).
 function UP.hiddenCount()
     local n, now = 0, Now()
-    for _, v in ipairs(RP():GetRaids(now - 6 * 3600)) do
+    for _, v in ipairs(RP():GetRaids(RP():OverCutoff(now))) do
         if RP():IsRaidHidden(v) then n = n + 1 end
     end
     return n
@@ -591,7 +591,7 @@ function UP.kicker(v, plain)
     local now = Now()
     local lead, word
     if v.cancelled then lead, word = "BAD", "cancelled"
-    elseif v.t < now - 6 * 3600 then lead, word = "DIM", relDay(v.t)
+    elseif RP():IsOver(v, now) then lead, word = "DIM", relDay(v.t)
     elseif v.t - now < 7 * DAY then lead, word = "GOLD", relDay(v.t) end
     if not lead then return when end
     word = plain and (word:sub(1, 1):upper() .. word:sub(2)) or word:upper()
@@ -658,7 +658,7 @@ end
 -- "ask" (Ask to join) | nil, more (the ··· button), menu(owner) (the ··· / right-click menu).
 function UP.answerOf(v)
     local kind, block, canAnswer, canAsk, mine = myState(v)
-    local past = v.t < Now() - 6 * 3600
+    local past = RP():IsOver(v)
     local a = {}
     if kind == "C" then
         a.pill = { "mute", "Cancelled" }
@@ -814,7 +814,7 @@ function UP.fillCard(c, v, width, preview)
     c.__cdlData = { v = v }
     c:SetWidth(width)
     local list = RP():GetRaidInstances(v)
-    local past = v.t < Now() - 6 * 3600
+    local past = RP():IsOver(v)
     local dim = (v.cancelled or past) and true or false
     local a = (not preview) and UP.answerOf(v) or {}
     c.menuFor = a.menu
@@ -1063,7 +1063,7 @@ local function rosterModel(v)
     end
     -- 1.3.1: the open slots of the team's target comp, as ghosts at the end of each role's band (the counts stay the
     -- answers); a raid that is over has none
-    local open = v.t >= Now() - 6 * 3600 and RP():GetRaidOpenSlots(v) or nil
+    local open = not RP():IsOver(v) and RP():GetRaidOpenSlots(v) or nil
     if open then
         local colOf = { tank = 1, healer = 2, melee = 3, ranged = 4 }
         for _, sl in ipairs(open.slots or {}) do
@@ -1765,7 +1765,7 @@ local function createRaidGroups(d)
         isMe = isMe,
         getGhosts = function(byGroup, n)
             local v = selectedRaid()
-            local open = v and v.t >= Now() - 6 * 3600 and RP():GetRaidOpenSlots(v) or nil
+            local open = v and not RP():IsOver(v) and RP():GetRaidOpenSlots(v) or nil
             if not (open and open.slots and #open.slots > 0) then return nil end
             return ns.RaidComp:PlaceOpen(byGroup, open.slots, n)
         end,
@@ -2174,7 +2174,7 @@ end
 local function refreshAnswer(d, v)
     local organizer = RP():CanManageRaid(v)
     local mine = RP():GetMySignup(v.id)
-    local open = not v.cancelled and v.t >= Now() - 6 * 3600
+    local open = not v.cancelled and not RP():IsOver(v)
     local char = myChar(v.id)
     -- "lock": locked to its teams and invited players, and I'm not one; "level": the character's level is too low;
     -- "blacklist" / "declined": the organizers keep me out (of every raid / of this one)
@@ -2800,7 +2800,7 @@ end
 -- Upcoming raids that invite a team, soonest first.
 function TV.raids(id)
     local out = {}
-    for _, v in ipairs(RP():GetRaids(Now() - 6 * 3600)) do
+    for _, v in ipairs(RP():GetRaids(RP():OverCutoff())) do
         if not v.cancelled then
             for _, tid in ipairs(v.tm or {}) do
                 if tid == id then out[#out + 1] = v break end

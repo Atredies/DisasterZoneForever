@@ -126,6 +126,33 @@ def closed_sign_ups_hide_the_answers_and_say_why():
 
 
 @case
+def past_cut_off_follows_the_core_constant():
+    """The UI asks the core when a raid is over (RaidPlan:IsOver / OverCutoff): a changed RaidPlan.SIGNUP_CLOSE moves
+    the page and the core together (2026-11-12: the UI repeated 6 * 3600)."""
+    w, c = world()
+    bob, rita, lee = c["Bob"], c["Rita"], c["Lee"]
+    occ = create(bob, i="kara", t=now(bob) + 120)
+    w.tick(2)
+    assert signup(rita, occ, "T")["ok"] is True
+    w.tick(4 * 3600, step=300)                 # started about 4 hours ago: still open with the 6-hour rule
+    open_tab(w, lee)
+    lee.eval("ns.RaidPlanUI:SelectRaid(...)", occ)
+    w.tick(0.3)
+    assert shown(lee, P + ".upcoming.statusBtns.A")
+    # Lee's client closes sign-ups 3 hours after the start
+    lee.eval("ns.RaidPlan.SIGNUP_CLOSE = 3 * 3600")
+    lee.eval("ns.RaidPlanUI:SelectRaid(...)", occ)
+    w.tick(0.3)
+    assert lee.eval("return ns.RaidPlan:IsOver(ns.RaidPlan:GetRaid(...))", occ) is True
+    assert not shown(lee, P + ".upcoming.statusBtns.A")
+    assert lee.find_text("Sign-ups are closed.", True, True)
+    assert signup(lee, occ, "A") == {"ok": False, "e": "This raid is over."}
+    # the other clients keep the 6-hour rule
+    assert signup(rita, occ, "A")["ok"] is True
+    w.assert_no_errors()
+
+
+@case
 def dragging_a_player_lifts_them_and_lands_where_the_spot_lights_up():
     w, c = world()
     bob = c["Bob"]
