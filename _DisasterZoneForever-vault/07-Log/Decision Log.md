@@ -32,6 +32,10 @@ updated: 2026-11-12
 | 2026-11-09 | Release zips ship with in-game updates off (empty PatchKey); upstream keys always refused | No keys of our own yet; upstream could otherwise sign code for our guild |
 | 2026-11-09 | Soft reserves: each copy of a duplicate drop uses up one reservation | Fixes the original's duplicate-drop bug |
 | 2026-11-09 | Loot log: another council member's entry of a loot line within 120 s is the same line; the same recorder's second entry is a second item; a council award hides one loot line (its hand-out), not all of them for 6 h | Two copies won by one player showed as one (original 1.5.5 / 1.6.0). The old rule assumed one client could log one hand-out twice, which it cannot |
+| 2026-11-12 | State-machine fixes keep every wire message as it was; receivers get stricter instead (Reserves holder, chess CHL / CHG) | Guild members update at different times: an old sender's legit traffic must still match the new rules, so only forged traffic is lost |
+| 2026-11-12 | Invite & sort derives "raid still on" from the plan on every pump (`RaidPlan:RaidStatus`), not from writers calling Stop | Covers remote cancels / deletes and any future writer; unknown (no guild key yet after a /reload) is not "gone" |
+| 2026-11-12 | Chess CHL: a player can concede, not claim (sender's loss or a draw only) | Both clients report every finished game, so the loser's report carries it; one line, no extra state |
+| 2026-11-12 | A loot mark keeps `prized` (and `lootOther`); only Finish clears them | The master-loot hand-out finishes after its own loot message and reads the pending prized facts |
 
 ## 2026-11-08 - Comm queues during encounters
 Addon messages return `AddOnMessageLockdown` for the whole of a boss pull on Forever (measured). Comm will queue
