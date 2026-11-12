@@ -2,9 +2,10 @@
 title: "Compat layer and Forever TOC"
 tags: [task]
 status: 1 - In progress
+due: 2026-11-12
 priority: p1
 effort: L
-updated: 2026-11-11
+updated: 2026-11-12
 ---
 
 # Compat layer and Forever TOC

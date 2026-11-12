@@ -2,9 +2,10 @@
 title: "Leader features for 10/20/40 raids"
 tags: [task]
 status: 1 - In progress
+due: 2026-11-12
 priority: p1
 effort: L
-updated: 2026-11-11
+updated: 2026-11-12
 ---
 
 # Leader features for 10/20/40 raids
