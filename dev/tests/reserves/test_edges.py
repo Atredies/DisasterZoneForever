@@ -35,6 +35,42 @@ def a_new_raid_leader_takes_the_list_over_and_answers_whispers():
     w.assert_no_errors()
 
 
+FORGE_RVS = r"""
+    local item = ...
+    local L = ns.Reserves:Get()
+    local src
+    for _, set in pairs(L.r or {}) do for _, s in pairs(set) do src = s end end
+    local me = ns.Util.PlayerKey()
+    ns.Comm:Send({ t = "RVS", id = L.id, by = L.by, v = (L.v or 0) + 5, at = L.at, rk = L.rk, n = L.n, o = 1, h = {},
+                   r = { [me] = item .. ":" .. (src or "w") } }, "RAID", nil, "ctrl")"""
+
+
+@R.case
+def former_host_cannot_rewrite_after_the_authority_moves():
+    """Alice hosted the list; the lead goes to Zed (no addon) and her raid session ends, so nobody adopts the list and
+    every client still names her as its holder. A list she sends now (hand-made) is not taken."""
+    r = setup(n=1)
+    w = r.w
+    r["Carol"].eval("ns.Reserves:Reserve(...)", MINDBLADE)
+    w.tick(2)
+    assert reserves_of(r["Bob"], "Carol") == [MINDBLADE]
+    zed = [e for e in r.extra if e.name == "Zed"][0]
+    w.auto_session = False
+    w.make_raid(list(r.c.values()), leader=zed, extra_members=r.extra)
+    w.tick(8)
+    r["Alice"].slash("/dz raid end")
+    w.tick(10)
+    for n in ("Bob", "Carol"):
+        st = r[n].eval_py("local L = ns.Reserves:Get(); return { a = ns.GroupRules:GetAuthority() or false, by = L and L.by }")
+        assert st == {"a": False, "by": key("Alice")}, (n, st)
+    r["Alice"].eval(FORGE_RVS, RUBY_DRAPE)
+    w.tick(3)
+    for n in ("Bob", "Carol", "Gina"):
+        assert reserves_of(r[n], "Carol") == [MINDBLADE], n
+        assert reserves_of(r[n], "Alice") == [], n
+    w.assert_no_errors()
+
+
 @R.case
 def a_full_40_player_list_fits_and_arrives_whole():
     r = setup(n=3)
