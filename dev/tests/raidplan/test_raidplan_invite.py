@@ -318,5 +318,62 @@ def whole_groups_swap_in_the_raid_and_the_team_and_resort_follows():
     w.assert_no_errors()
 
 
+def running_with_lock_offline():
+    """Bob runs Invite & sort with Lock offline (listed as missing)."""
+    w, c, occ = setup(skip=("Sam", "Eli"))
+    bob = c["Bob"]
+    c["Lock"].logout()
+    w.tick(1)
+    open_groups(w, bob, occ)
+    bob.click(bob.eval("return ns.RaidsUI:GetPanel().upcoming.detail.groups.inviteBtn"))
+    w.tick(20)
+    assert bob.eval("return ns.RaidInvite:IsActive()") is True
+    return w, c, occ
+
+
+def lock_not_invited_after_login(w, c, bob, n0):
+    """Lock logs in after the raid ended: nobody invites him into a raid that is off."""
+    inv0 = len(w.invite_log)
+    c["Lock"].login()
+    w.tick(10)
+    assert bob.eval("return ns.RaidInvite:IsActive()") is False
+    late = [e for e in w.invite_log[inv0:] if "Lock" in str(e)]
+    assert late == [], late
+    assert "Lock" not in {m.name for m in w.group_members()}
+
+
+@case
+def the_run_stops_when_the_raid_is_cancelled():
+    w, c, occ = running_with_lock_offline()
+    bob = c["Bob"]
+    n0 = len(bob.chat_frame)
+    ok = bob.eval_py("return (ns.RaidPlan:CancelRaid(...))", occ, "one")
+    assert ok is True, ok
+    w.tick(3)
+    assert bob.eval("return ns.RaidInvite:IsActive()") is False
+    assert any("raid was cancelled" in strip_codes(l) for l in printed_since(bob, n0)), printed_since(bob, n0)
+    lock_not_invited_after_login(w, c, bob, n0)
+    w.assert_no_errors()
+
+
+@case
+def the_run_stops_when_another_planner_cancels_or_deletes_the_raid():
+    for how in ("cancel", "delete"):
+        w, c, occ = running_with_lock_offline()
+        bob, gina = c["Bob"], c["Gina"]
+        n0 = len(bob.chat_frame)
+        if how == "cancel":
+            ok = gina.eval_py("return (ns.RaidPlan:CancelRaid(...))", occ, "one")
+        else:
+            ok = gina.eval_py("return (ns.RaidPlan:DeleteRaid(...))", occ)
+        assert ok is True, (how, ok)
+        w.tick(5)
+        assert bob.eval("return ns.RaidInvite:IsActive()") is False, how
+        word = "cancelled" if how == "cancel" else "deleted"
+        assert any(("raid was " + word) in strip_codes(l) for l in printed_since(bob, n0)), (how, printed_since(bob, n0))
+        lock_not_invited_after_login(w, c, bob, n0)
+        w.assert_no_errors()
+
+
 if __name__ == "__main__":
     run_all()

@@ -1,7 +1,8 @@
 ---
 title: "Invite & sort follows the raid"
 tags: [task]
-status: 3 - To do
+status: "5 - Done"
+completed: 2026-11-12
 priority: p2
 effort: S
 updated: 2026-11-12
@@ -64,6 +65,17 @@ Tests to add in `dev/tests/raidplan/test_raidplan_invite.py`:
 
 - `the_run_stops_when_the_raid_is_cancelled` and `the_run_stops_when_another_planner_cancels_or_deletes_the_raid` pass, with the rest of `test_raidplan_invite.py`.
 - Running `repro_invite.py` gives `IsActive() == false` and no invite after cancel or delete in all four rows.
+
+## Fix (2026-11-12)
+
+Done as the card's best fix, branch `fix/state-machines`.
+
+- **What changed:** `Core/RaidPlan.lua` gains `RaidPlan:RaidStatus(occId)` ("on", "cancelled", "gone", or nil while the guild's plan is not known yet). `Core/RaidInvite.lua`: `Pump` checks it right after the MAX_AGE check and stops with "the raid was cancelled" / "the raid was deleted"; a `RAIDPLAN_CHANGED` listener schedules a pump while a run is active, so a synced cancel stops it without waiting for a roster event. The explicit `RaidInvite:Stop()` in `DeleteRaid` stays.
+- **Why `RaidStatus` and not `GetRaid` in `Pump`:** `GetRaid` also returns nil when there is no guild key yet (the first seconds after a /reload, when `OnLogin` resumes a saved run). Treating that as "deleted" would have stopped every resumed run. `RaidStatus` returns nil (unknown) in that window and the run continues.
+- **Protocol:** no message changed. Old clients still keep inviting for a cancelled raid; new clients stop.
+- **Tests added** (`dev/tests/raidplan/test_raidplan_invite.py`): `the_run_stops_when_the_raid_is_cancelled`, `the_run_stops_when_another_planner_cancels_or_deletes_the_raid` (Gina cancels, then in a second world deletes; Lock logs in afterwards and is not invited). Both fail on the old code, pass now.
+- **Side-effect audit:** `Pump` is called by Start, Resort, UpdatePlan, the login resume, roster / regen / group-rules events and now RAIDPLAN_CHANGED. All of them now stop on a cancelled or deleted raid, which is the intent. RAIDPLAN_CHANGED fires on every plan merge, so an active run pumps a little more often; the pump is debounced (0.5 s) and invites are tracked in `active.invited`, so nothing is sent twice. `RaidStatus` is new and has no other caller. A raid that is merely past its start is not affected.
+- **Checks:** `test_raidplan_invite.py` 10/10; full harness run listed in the PR.
 
 ## Related
 

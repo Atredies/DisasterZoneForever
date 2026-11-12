@@ -1838,6 +1838,17 @@ function RaidPlan:GetRaid(occId)
     return ResolveOcc(Root(false), occId)
 end
 
+-- Is a raid still on? "on", "cancelled" or "gone" (deleted, or no longer a trusted raid); nil while the guild's plan
+-- is not known yet (no guild key in the first seconds after a /reload), so a caller does not mistake that for gone.
+-- Invite & sort checks it on every pass (2026-11-12: a cancel or delete from another planner left the run inviting).
+function RaidPlan:RaidStatus(occId)
+    local root = Root(false)
+    if not root then return nil end
+    local v = ResolveOcc(root, occId)
+    if not v then return "gone" end
+    return v.cancelled and "cancelled" or "on"
+end
+
 -- The members a locked raid takes sign-ups from { [key] = true }; nil when it is open to everyone (not locked, or
 -- locked without any team or invite).
 local function LockSet(v)

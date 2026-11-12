@@ -247,6 +247,11 @@ end
 Pump = function()
     if not active then return end
     if Now() - active.at > MAX_AGE then return Stop() end
+    -- the run follows its raid: a cancel or delete, mine or another planner's (through the sync), ends it
+    local RP = ns.RaidPlan
+    local status = active.occ and RP and RP.RaidStatus and RP:RaidStatus(active.occ)
+    if status == "cancelled" then return Stop("Invite & sort stopped: the raid was cancelled.") end
+    if status == "gone" then return Stop("Invite & sort stopped: the raid was deleted.") end
     if InCombatLockdown() then
         active.waitCombat = true
         ns:Fire("RAIDINVITE_CHANGED")
@@ -458,6 +463,7 @@ function RaidInvite:OnInit()
     ns:RegisterEvent("GROUP_ROSTER_UPDATE", function() if active then SchedulePump(0.5) end end)
     ns:RegisterEvent("PLAYER_REGEN_ENABLED", function() if active then SchedulePump(0.5) end end)
     ns:On("GROUP_RULES_CHANGED", function() if active then SchedulePump(0.5) end end)
+    ns:On("RAIDPLAN_CHANGED", function() if active then SchedulePump(0.5) end end)
     ns:RegisterEvent("CHAT_MSG_SYSTEM", function(_, text) if active then RaidInvite:OnSystemMessage(text) end end)
 end
 
