@@ -1,7 +1,8 @@
 ---
 title: "One award transition for roll sessions"
 tags: [task]
-status: 3 - To do
+status: "5 - Done"
+completed: 2026-11-12
 priority: p3
 effort: M
 updated: 2026-11-12
@@ -68,6 +69,21 @@ Tests: run the existing `dev/tests/loot-roll/` suites (`test_award.py`, `test_ro
 
 - `grep -c 'state = "awarded"' addon/DisasterZone/Core/Roll.lua` returns 1.
 - `award_fields_are_the_same_whichever_way_it_was_awarded` passes, as do all of `dev/tests/loot-roll/`.
+
+## Fix (2026-11-12)
+
+Done as the card's best fix with two corrections found while re-reading the code, branch `fix/state-machines`.
+
+- **What changed:** `Core/Roll.lua` gains one local `SetAwarded(ses, key, src)` (`src.kind` = "mine" / "loot" / "remote"), the only `state = "awarded"` in the file (`grep -c` gives 1). It closes an open session (CloseSession; a loot mark closes inline as before), dequeues a queued one, and sets `winner, given, via, looted, lootPrev, awardedBy, awardedAt, awardTs, reason, final` per kind. `Finish`, `MarkAwarded` and `OnRollWin` keep their guards and side effects (ledger, prized record, RW, announce, loot conflict) and call it.
+- **Behaviour change:** a loot mark now clears `reason` (it is provisional: no reason, like no `awardedBy`). Everything else each path wrote is unchanged.
+- **Corrections to the card:**
+  - `prized` is **not** cleared by a loot mark or a remote RW. It is not stale there: my own master-loot hand-out sets it in `PrizedGate`, the loot message arrives first (`MarkAwarded`), and the hand-out callback then calls `Finish`, which reads it for `Prized:RecordGiven`. Same after a crossed RW, when my physical hand-out wins (`ConfirmGive`). `Finish` still clears it.
+  - `lootOther` is left alone: no path cleared it before, and `FlagLootConflict` sets it after the award.
+  - `Updated` stays with the callers, because each fires it at a different point (Finish and OnRollWin after the ledger).
+- **Protocol:** no message changed.
+- **Test added** (`dev/tests/loot-roll/test_award.py`): `award_fields_are_the_same_whichever_way_it_was_awarded`. My award (`MarkAwardedExternally`) and the RW another client receives leave identical fields; a loot mark leaves the loot fields with no reason even when one was left on the session. Fails on the old code (stale `reason`), passes now.
+- **Side-effect audit:** `Finish` callers: Award / ConfirmGive / ConfirmAward / MarkAwardedExternally and the demo award. `MarkAwarded` caller: `OnItemLooted`. `OnRollWin`: the RW handler. Readers of the fields (`AwardBeats`, `LootMarked`, `MarkGiven`, the drop panel, the award log) see the same values as before except `reason` on loot marks, which the drop panel does not show for loot marks, and `MarkGiven` only sends for non-loot awards.
+- **Checks:** all of `dev/tests/loot-roll/`, `rollclose/`, `prized/` and `council/` pass (17 suites); full harness run listed in the PR.
 
 ## Related
 

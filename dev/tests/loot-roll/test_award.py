@@ -44,6 +44,47 @@ def award_lines(w, start):
     return [e for e in w.chat_log[start:] if "->" in e["text"] or "→" in e["text"]]
 
 
+AWARD_FIELDS = r"""
+    local s = ns.Roll:Get(...)
+    return { state = s.state, winner = s.winner, given = s.given, via = s.via or false, looted = s.looted or false,
+             lootPrev = s.lootPrev or false, awardedBy = s.awardedBy or false, hasAwardedAt = s.awardedAt ~= nil,
+             awardTs = s.awardTs ~= nil, reason = s.reason or false, final = type(s.final) == "table" }"""
+
+
+@R.case
+def award_fields_are_the_same_whichever_way_it_was_awarded():
+    """The three ways to "awarded" (my award, a loot message, someone else's RW) go through one transition
+    (Roll.lua SetAwarded) and leave the documented fields: no stale reason on a loot mark."""
+    r = setup()
+    w = r.w
+    A, B = r["Alice"], r["Bob"]
+    # my award (Alice) / the remote one (Bob receives Alice's RW)
+    s1 = rolled_session(r)
+    A.close_loot()
+    w.tick(0.5)
+    ok = A.eval_py("local id, k = ...; return { ns.Roll:MarkAwardedExternally(id, k, nil, 'os') }", s1, key("Dave"))
+    assert ok == [True], ok
+    w.tick(1)
+    mine = A.eval_py(AWARD_FIELDS, s1)
+    assert mine == {"state": "awarded", "winner": key("Dave"), "given": False, "via": False, "looted": False,
+                    "lootPrev": False, "awardedBy": key("Alice"), "hasAwardedAt": True, "awardTs": True,
+                    "reason": "os", "final": True}, mine
+    remote = B.eval_py(AWARD_FIELDS, s1)
+    assert remote == dict(mine), remote
+    # a loot message (every client): provisional, no awardedBy / awardTs / reason, even if one was left on the session
+    w.tick(3)
+    s2 = rolled_session(r, item=THOUSAND_MARKS, rolls=(("Carol", 70),))
+    B.eval("ns.Roll:Get(...).reason = 'bis'", s2)
+    w.broadcast_loot_received(r["Carol"], THOUSAND_MARKS)
+    w.tick(0.5)
+    loot = B.eval_py(AWARD_FIELDS, s2)
+    assert loot == {"state": "awarded", "winner": key("Carol"), "given": True, "via": "loot", "looted": True,
+                    "lootPrev": "closed", "awardedBy": False, "hasAwardedAt": True, "awardTs": False,
+                    "reason": False, "final": True}, loot
+    assert A.eval_py(AWARD_FIELDS, s2) == loot
+    w.assert_no_errors()
+
+
 # ------------------------------------------------------------------------------------------------------------------
 @R.case
 def ml_give_via_master_loot_full_flow():
