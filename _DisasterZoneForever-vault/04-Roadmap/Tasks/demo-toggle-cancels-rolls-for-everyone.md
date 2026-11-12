@@ -1,7 +1,8 @@
 ---
 title: "Demo toggle cancels rolls for everyone"
 tags: [task]
-status: 3 - To do
+status: "5 - Done"
+completed: 2026-11-12
 priority: p3
 effort: S
 updated: 2026-11-12
@@ -47,6 +48,16 @@ Test to add in `dev/tests/loot-roll/test_rolls.py`: `demo_toggle_mid_roll_cancel
 
 - `demo_toggle_mid_roll_cancels_it_everywhere` passes, and all of `dev/tests/loot-roll/` passes.
 - `repro_demo.py` shows every client `cancelled` right after the toggle.
+
+## Fix (2026-11-12)
+
+Done as the card's best fix, branch `fix/state-machines`.
+
+- **What changed:** `Core/Roll.lua` `OnDemoToggled`: for each open real session I started (`isLocal`, not demo) it sends `RE { id, x = true }` with `real = true` (goes out although demo mode is now on), then cancels every open or queued session through `CancelSession` instead of writing `state` by hand. The queue is emptied first, so `CancelSession`'s `OnSessionFinished` advances nothing. Remote sessions are only cancelled locally, as before. Demo sessions are cancelled and dropped as before.
+- **Protocol:** no new message. `RE` with `x` is the existing cancel (`OnRollEnd`), which old clients already handle the same way.
+- **Test added** (`dev/tests/loot-roll/test_rolls.py`): `demo_toggle_mid_roll_cancels_it_everywhere`. Alice turns demo on mid-roll: one RE x from Alice, all seven clients `cancelled` within 1 s and still `cancelled` 40 s later; a roll Bob started is not ended on the wire when Alice toggles. Fails on the old code (no RE), passes now.
+- **Side-effect audit:** `OnDemoToggled` runs only on `DEMO_TOGGLED`. `CancelSession` callers (Preempt, OnRollEnd, CancelQueue, the cancel button) are unchanged. Turning demo off with a real roll open cannot happen in practice (starting a real roll is blocked in demo mode), but would also send RE x now. Queued sessions keep the `endsAt` stamp the old code gave them.
+- **Checks:** all of `dev/tests/loot-roll/`, `rollclose/` and `reserves/` pass (17 suites); full harness run listed in the PR.
 
 ## Related
 

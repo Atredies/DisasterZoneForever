@@ -2812,16 +2812,21 @@ local function OnDemoToggled()
     for _, ses in pairs(sessions) do
         local live = ses.state == "open" or ses.state == "queued"
         if live then
-            ses.state = "cancelled"
+            -- a real roll I started is cancelled for everyone (RE x, sent past the demo switch: real = true), not
+            -- only here: before 2026-11-12 the others kept it open, closed it on their timer and could award it
+            -- while my client called it cancelled. Someone else's roll: theirs to end, demo only hides it here.
+            if ses.isLocal and not ses.demo and ses.state == "open" then Send({ t = "RE", id = ses.id, x = true }, true) end
             if ses.endsAt == nil or ses.endsAt > GetTime() then ses.endsAt = GetTime() end
+            CancelSession(ses)   -- (the queue is empty already: nothing advances)
+        elseif ses.demo then
+            changed[#changed + 1] = ses
         end
-        if live or ses.demo then changed[#changed + 1] = ses end
     end
     for _, ses in ipairs(changed) do
-        if ses.demo then ses.state = "cancelled" end
+        ses.state = "cancelled"
         Updated(ses)
     end
-    for _, ses in ipairs(changed) do
+    for _, ses in pairs(sessions) do
         if ses.demo then sessions[ses.id] = nil end
     end
 end
