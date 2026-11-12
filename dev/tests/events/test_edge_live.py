@@ -582,6 +582,35 @@ def handover_needs_someone_online():
     w.assert_no_errors()
 
 
+@case
+def handover_keeps_the_host_when_the_state_cannot_go_out():
+    w, cs = guild(FIVE)
+    g, b, c, d, e = cs
+    occ = cup(w, g, [b, c, e])
+    # Gina's client refuses the EVS once (demo, no guild yet after a /reload, too large: Comm:Send returns false)
+    g.eval("""
+        local orig = ns.Comm.Send
+        ns.Comm.Send = function(self, msg, ...)
+            if type(msg) == "table" and msg.t == "EVS" and not _G.__refusedEVS then
+                _G.__refusedEVS = true
+                return false
+            end
+            return orig(self, msg, ...)
+        end
+    """)
+    res = g.eval_py("return { ns.EventLive:HandOver(..., 'Cora-Thunderstrike') }", occ)
+    assert res == [False, "Could not reach the guild: you still host it."], res
+    assert g.eval("return ns.EventLive:IsHosting(...)", occ) is True
+    assert state(g, occ)["host"] == K("Gina")
+    w.tick(120)
+    assert hosts_of([g, b, c, d, e], occ) == ["Gina"], hosts_of([g, b, c, d, e], occ)
+    # the next try goes out: Cora hosts
+    assert g.eval("return ns.EventLive:HandOver(..., 'Cora-Thunderstrike')", occ)
+    w.tick(3)
+    assert hosts_of([g, b, c, d, e], occ) == ["Cora"]
+    w.assert_no_errors()
+
+
 # ------------------------------------------------------------------------------------------------------------------
 # Live: traffic
 # ------------------------------------------------------------------------------------------------------------------
