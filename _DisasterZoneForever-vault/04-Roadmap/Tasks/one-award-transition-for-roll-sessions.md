@@ -82,7 +82,7 @@ Done as the card's best fix with two corrections found while re-reading the code
   - `Updated` stays with the callers, because each fires it at a different point (Finish and OnRollWin after the ledger).
 - **Protocol:** no message changed.
 - **Test added** (`dev/tests/loot-roll/test_award.py`): `award_fields_are_the_same_whichever_way_it_was_awarded`. My award (`MarkAwardedExternally`) and the RW another client receives leave identical fields; a loot mark leaves the loot fields with no reason even when one was left on the session. Fails on the old code (stale `reason`), passes now.
-- **Side-effect audit:** `Finish` callers: Award / ConfirmGive / ConfirmAward / MarkAwardedExternally and the demo award. `MarkAwarded` caller: `OnItemLooted`. `OnRollWin`: the RW handler. Readers of the fields (`AwardBeats`, `LootMarked`, `MarkGiven`, the drop panel, the award log) see the same values as before except `reason` on loot marks, which the drop panel does not show for loot marks, and `MarkGiven` only sends for non-loot awards.
+- **Side-effect audit:** `Finish` callers: Award / ConfirmGive / ConfirmAward / MarkAwardedExternally and the demo award. `MarkAwarded` caller: `OnItemLooted`. `OnRollWin`: the RW handler. Readers of the fields (`AwardBeats`, `LootMarked`, `MarkGiven`, the drop panel, the award log) see the same values as before except `reason` on loot marks: the drop panel's status line (`UI/DropPanel.lua:720`) no longer shows a leftover reason next to "(looted)", and `MarkGiven` only sends RW for non-loot awards, so no RW carries it.
 - **Checks:** all of `dev/tests/loot-roll/`, `rollclose/`, `prized/` and `council/` pass (17 suites); full harness run listed in the PR.
 
 ## Related
