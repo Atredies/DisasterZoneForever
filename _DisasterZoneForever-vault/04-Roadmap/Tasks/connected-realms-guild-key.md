@@ -2,6 +2,7 @@
 title: "Connected realms: one guild key for members of every realm"
 tags: [task]
 status: "2 - Next up"
+due: 2026-11-12
 priority: p1
 effort: M
 updated: 2026-11-12

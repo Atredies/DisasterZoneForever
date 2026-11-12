@@ -2,9 +2,10 @@
 title: "In-game check of every page"
 tags: [task]
 status: 1 - In progress
+due: 2026-11-12
 priority: p1
 effort: S
-updated: 2026-11-11
+updated: 2026-11-12
 ---
 
 # In-game check of every page
