@@ -388,6 +388,76 @@ def resigning_and_draws_end_the_game_for_both_and_the_ladder_agrees():
     no_errors(w)
 
 
+def trio():
+    w = World()
+    a, b, carol = (Client(w, n, guild_rank=3) for n in ("Alice", "Bob", "Carol"))
+    for x in (a, b, carol):
+        x.load_addon()
+    w.tick(3)
+    return w, a, b, carol
+
+
+def ratings(x):
+    return x.eval_py("local o = {} for _, p in ipairs(ns.Chess:Ratings()) do "
+                     "o[#o + 1] = p.key:match('^[^-]+') .. '=' .. p.rating end return o")
+
+
+@case
+def a_forged_ladder_win_is_ignored():
+    """A player can concede on the ladder, not claim: Bob's CHL of a win over Alice (never played) is not taken; his
+    report of a loss or a draw is."""
+    w, a, b, carol = trio()
+    b.eval("ns.Games:Send('chess', { t = 'CHL', id = 'forged-1', w = ns.Util.PlayerKey(), b = 'Alice-Thunderstrike',"
+           " r = '1-0', at = GetServerTime(), n = 40 }, 'GUILD')")
+    w.tick(2)
+    assert ratings(a) == [] and ratings(carol) == [], (ratings(a), ratings(carol))
+    b.eval("ns.Games:Send('chess', { t = 'CHL', id = 'concede-1', w = 'Alice-Thunderstrike', b = ns.Util.PlayerKey(),"
+           " r = '1-0', at = GetServerTime(), n = 40 }, 'GUILD')")
+    w.tick(2)
+    assert [r.split("=")[0] for r in ratings(carol)] == ["Alice", "Bob"], ratings(carol)
+    no_errors(w)
+
+
+@case
+def the_opponent_cannot_resign_for_me():
+    """A CHG whose result is my resignation, or a draw I never offered, does not end my game; the opponent's own
+    resignation and a draw I offered (their accept missed) do."""
+    w, a, b, carol = trio()
+    gid = a.eval("return ns.Chess:Invite('Bob', 1).id")
+    w.tick(1)
+    b.eval("ns.Chess:Accept(ns.Chess:Get(...))", gid)
+    w.tick(1)
+    for i, mv in enumerate(["e2e4", "e7e5"]):
+        (a if i == 0 else b).eval("ns.Chess:Play(ns.Chess:Get(...), select(2, ...))", gid, mv)
+        w.tick(1)
+    st = "local g = ns.Chess:Get(...) return g.status .. ' ' .. tostring(g.result) .. ' ' .. tostring(g.reason)"
+    # Alice is white: 0-1 "resign" would be her resignation; "agreed" without an offer
+    b.eval("ns.Chess:Whisper('Alice', { t = 'CHG', id = ..., ms = 'e2e4 e7e5', r = '0-1', why = 'resign' })", gid)
+    w.tick(1)
+    b.eval("ns.Chess:Whisper('Alice', { t = 'CHG', id = ..., ms = 'e2e4 e7e5', r = '1/2-1/2', why = 'agreed' })", gid)
+    w.tick(1)
+    assert a.eval(st, gid) == "active nil nil", a.eval(st, gid)
+    assert ratings(a) == [] and ratings(carol) == []
+    # Alice offers a draw; Bob's accept arrives only as the whole game (CHG): taken
+    a.eval("ns.Chess:OfferDraw(ns.Chess:Get(...))", gid)
+    w.tick(1)
+    b.eval("ns.Chess:Whisper('Alice', { t = 'CHG', id = ..., ms = 'e2e4 e7e5', r = '1/2-1/2', why = 'agreed' })", gid)
+    w.tick(1)
+    assert a.eval(st, gid) == "over 1/2-1/2 agreed", a.eval(st, gid)
+    # a second game: Bob's own resignation arriving as CHG (his CHR missed) ends it as Alice's win
+    g2 = a.eval("return ns.Chess:Invite('Bob', 1).id")
+    w.tick(1)
+    b.eval("ns.Chess:Accept(ns.Chess:Get(...))", g2)
+    w.tick(1)
+    for i, mv in enumerate(["d2d4", "d7d5"]):
+        (a if i == 0 else b).eval("ns.Chess:Play(ns.Chess:Get(...), select(2, ...))", g2, mv)
+        w.tick(1)
+    b.eval("ns.Chess:Whisper('Alice', { t = 'CHG', id = ..., ms = 'd2d4 d7d5', r = '1-0', why = 'resign' })", g2)
+    w.tick(1)
+    assert a.eval(st, g2) == "over 1-0 resign", a.eval(st, g2)
+    no_errors(w)
+
+
 @case
 def someone_offline_catches_up_on_the_ladder_at_login():
     w = World()
