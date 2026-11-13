@@ -1,6 +1,6 @@
 ---
 tags: [log]
-updated: 2026-11-12
+updated: 2026-11-13
 ---
 
 # Decision Log
@@ -36,6 +36,7 @@ updated: 2026-11-12
 | 2026-11-12 | Invite & sort derives "raid still on" from the plan on every pump (`RaidPlan:RaidStatus`), not from writers calling Stop | Covers remote cancels / deletes and any future writer; unknown (no guild key yet after a /reload) is not "gone" |
 | 2026-11-12 | Chess CHL: a player can concede, not claim (sender's loss or a draw only) | Both clients report every finished game, so the loser's report carries it; one line, no extra state |
 | 2026-11-12 | A loot mark keeps `prized` (and `lootOther`); only Finish clears them | The master-loot hand-out finishes after its own loot message and reads the pending prized facts |
+| 2026-11-13 | A Discord answer to a locked (not private) raid becomes a request to join that the raid leader can accept, same as an in-game answer; no longer refused | One rule for both sign-up paths; the raid leader still decides who joins a locked raid |
 
 ## 2026-11-08 - Comm queues during encounters
 Addon messages return `AddOnMessageLockdown` for the whole of a boss pull on Forever (measured). Comm will queue
