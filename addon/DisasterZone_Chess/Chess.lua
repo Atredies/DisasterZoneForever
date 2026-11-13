@@ -739,9 +739,12 @@ end
 handlers.CHL = function(sender, msg)
     -- (only one of the two players may report a game, and only as their loss or a draw: a player can concede, not
     -- claim; 2026-11-12: a made-up win over anyone was taken. Both players' clients report every game they finish,
-    -- so the loser's report carries it; older clients send both as before.)
+    -- so the loser's report carries it; older clients send both as before. 2026-11-13: a draw too only from one of the
+    -- two players, else a bystander could forge draws between any two and move their ratings.)
     local function same(a, b) return Util.NormalizeName and Util.NormalizeName(a) == Util.NormalizeName(b) or a == b end
-    local concedes = msg.r == "1/2-1/2" or (same(sender, msg.w) and msg.r == "0-1") or (same(sender, msg.b) and msg.r == "1-0")
+    local isW, isB = same(sender, msg.w), same(sender, msg.b)
+    if not (isW or isB) then return end
+    local concedes = msg.r == "1/2-1/2" or (isW and msg.r == "0-1") or (isB and msg.r == "1-0")
     if not concedes then return end
     if AddResult(msg.id, msg) then Changed(nil, "ladder") end
 end
