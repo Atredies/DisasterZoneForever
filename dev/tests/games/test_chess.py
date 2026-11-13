@@ -419,6 +419,22 @@ def a_forged_ladder_win_is_ignored():
 
 
 @case
+def a_bystander_cannot_forge_a_ladder_draw():
+    """Only one of the two players may report a game, a draw included: Carol's CHL of a draw between Alice and Bob
+    (validation 2026-11-13) is not taken; Bob's own report of the same draw is."""
+    w, a, b, carol = trio()
+    carol.eval("ns.Games:Send('chess', { t = 'CHL', id = 'forged-draw-1', w = 'Alice-Thunderstrike',"
+               " b = 'Bob-Thunderstrike', r = '1/2-1/2', at = GetServerTime(), n = 40 }, 'GUILD')")
+    w.tick(2)
+    assert ratings(a) == [] and ratings(b) == [], (ratings(a), ratings(b))
+    b.eval("ns.Games:Send('chess', { t = 'CHL', id = 'draw-1', w = 'Alice-Thunderstrike', b = ns.Util.PlayerKey(),"
+           " r = '1/2-1/2', at = GetServerTime(), n = 40 }, 'GUILD')")
+    w.tick(2)
+    assert sorted(r.split("=")[0] for r in ratings(carol)) == ["Alice", "Bob"], ratings(carol)
+    no_errors(w)
+
+
+@case
 def the_opponent_cannot_resign_for_me():
     """A CHG whose result is my resignation, or a draw I never offered, does not end my game; the opponent's own
     resignation and a draw I offered (their accept missed) do."""

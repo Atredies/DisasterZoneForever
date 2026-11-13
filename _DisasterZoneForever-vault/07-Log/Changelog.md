@@ -1,11 +1,17 @@
 ---
 tags: [log]
-updated: 2026-11-12
+updated: 2026-11-13
 ---
 
 # Changelog
 
 Newest first.
+
+## 2026-11-13 - Chess: a ladder draw only from one of the two players
+Validation of the 2026-11-12 fixes: `handlers.CHL` took a draw from any sender, so a bystander could forge a draw
+between two members and move their ratings. The sender must now be one of the two players; the concede rule
+(their loss or a draw) applies on top. New `a_bystander_cannot_forge_a_ladder_draw`. Card
+[[chess-results-need-both-sides]].
 
 ## 2026-11-13 - 0.2.5 (update #2): GuestBook's tooltip hook, the cause of the startup error
 Confirmed in game: `GameTooltip:HasScript("OnTooltipSetUnit")` is false on Forever (retail engine). `UI/GuestBook.lua`

@@ -5,7 +5,7 @@ status: "5 - Done"
 completed: 2026-11-12
 priority: p3
 effort: S
-updated: 2026-11-12
+updated: 2026-11-13
 ---
 
 # Chess results need both sides
@@ -67,6 +67,10 @@ Done with option (a) for CHL, branch `fix/state-machines`.
 - **Not fixed, new card:** the ladder sync `CHZ` (whisper) adds any results it carries with no check at all, so a member can still inject results that way: [[chess-ladder-sync-trusts-any-result]].
 - **Backfill:** none, as the card says.
 - **Checks:** `test_chess.py` 19/19; full harness run listed in the PR.
+
+### Validation follow-up (2026-11-13)
+
+Wave-4 validation found the 2026-11-12 CHL rule dropped the sender check for draws: `msg.r == "1/2-1/2"` passed from any sender, so a bystander (Carol) could forge a draw between Alice and Bob and move both ratings. `handlers.CHL` now first requires the sender to be one of the two players (`same(sender, w)` or `same(sender, b)`), then applies the concede rule on top. New test `a_bystander_cannot_forge_a_ladder_draw` (Carol's draw is ignored, Bob's own draw report is taken) fails on the old code and passes now; `test_chess.py` 20/20. Branch `fix/validation-followups`.
 
 ## Related
 
