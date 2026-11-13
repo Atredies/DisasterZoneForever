@@ -603,7 +603,11 @@ local function OnList(sender, msg, dist)
     -- Only the authority, or whoever holds the list I have. (Not any raid leader or assistant: an assistant could
     -- replace the reserves on every client. Right after a /reload, while I don't know the authority yet or take
     -- myself for it, the list waits below and is taken once the authority speaks, GROUP_RULES_CHANGED.)
-    if not (auth == sender or (cur and cur.by == sender)) then
+    -- The holder counts only while no one else is known as the authority and they still have a loot role (2026-11-12:
+    -- a host who lost the lead to someone without DisasterZone could go on rewriting the list for good).
+    local holder = cur and cur.by == sender and (auth == nil or Util.IsMe(auth))
+        and not (G and G.IsCandidate and not G:IsCandidate(sender))
+    if not (auth == sender or holder) then
         -- (a player who just joined may not know the raid's leader yet: kept a moment, taken once they do)
         pendingList = { sender = sender, msg = msg, at = GetTime() }
         return

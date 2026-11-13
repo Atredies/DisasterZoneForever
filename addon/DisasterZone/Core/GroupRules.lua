@@ -997,6 +997,18 @@ function GroupRules:IsAuthority()
     return AmAuthority()
 end
 
+-- Could key be the group's authority right now (a candidate by role: the raid leader, the master looter, a guild
+-- assistant with the raid log, the session's keeper; whether they run DisasterZone or not)? Reserves uses it to stop
+-- taking a former host's list once they lost every loot role (2026-11-12).
+function GroupRules:IsCandidate(key)
+    if type(key) ~= "string" or not IsInGroup() then return false end
+    local _, _, list = Resolve()
+    for _, k in ipairs(list or {}) do
+        if k == key then return true end
+    end
+    return false
+end
+
 -- The rules received from the authority (a copy { from, rev, values = {rd, q, dq, dm, ph, lk, lkAt}, at }),
 -- or nil.
 function GroupRules:GetActive()

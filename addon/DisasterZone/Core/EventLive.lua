@@ -619,12 +619,18 @@ function Live:HandOver(occId, key)
     key = WireKey(key)
     if not h or not key or key == Me() then return false end
     if not IsOnline(key) then return false, "They're offline." end
+    local was = h.run.st.host
     h.run.st.host = key
     local chain = {}
     for _, x in ipairs(h.hosts) do chain[#chain + 1] = x end
     chain[#chain + 1] = key
     while #chain > MAX_CHAIN do tremove(chain, 2) end
-    Send({ t = "EVS", o = occId, h = key, s = Outgoing(h.run), c = chain }, "GUILD")
+    -- the role moves only when the state went out: a refused send (demo, not in the guild yet after a /reload, too
+    -- large) would leave the event with no host until an entrant takes over (2026-11-12)
+    if not Send({ t = "EVS", o = occId, h = key, s = Outgoing(h.run), c = chain }, "GUILD") then
+        h.run.st.host = was
+        return false, "Could not reach the guild: you still host it."
+    end
     seen[occId] = { st = Outgoing(h.run), h = key, c = chain, at = GetTime() }
     hosting[occId] = nil
     Fire(occId)

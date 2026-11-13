@@ -1838,6 +1838,32 @@ function RaidPlan:GetRaid(occId)
     return ResolveOcc(Root(false), occId)
 end
 
+-- When a raid is over: sign-ups close SIGNUP_CLOSE after its start; it is shown as past and left out of upcoming lists.
+-- The one definition for the core and the UI (2026-11-12: the UI repeated 6 * 3600 thirteen times). Read through
+-- RaidPlan.SIGNUP_CLOSE, so a change (or a test) moves every check at once.
+RaidPlan.SIGNUP_CLOSE = SIGNUP_CLOSE
+
+-- The start time before which a raid is over, at `now` (default: the server time).
+function RaidPlan:OverCutoff(now)
+    return (now or Now()) - RaidPlan.SIGNUP_CLOSE
+end
+
+-- Is raid view `v` over (no more answers, shown as past)?
+function RaidPlan:IsOver(v, now)
+    return v.t < RaidPlan:OverCutoff(now)
+end
+
+-- Is a raid still on? "on", "cancelled" or "gone" (deleted, or no longer a trusted raid); nil while the guild's plan
+-- is not known yet (no guild key in the first seconds after a /reload), so a caller does not mistake that for gone.
+-- Invite & sort checks it on every pass (2026-11-12: a cancel or delete from another planner left the run inviting).
+function RaidPlan:RaidStatus(occId)
+    local root = Root(false)
+    if not root then return nil end
+    local v = ResolveOcc(root, occId)
+    if not v then return "gone" end
+    return v.cancelled and "cancelled" or "on"
+end
+
 -- The members a locked raid takes sign-ups from { [key] = true }; nil when it is open to everyone (not locked, or
 -- locked without any team or invite).
 local function LockSet(v)
@@ -2651,7 +2677,7 @@ function RaidPlan:IsRaidInviteFrom(from)
     local me = Util.PlayerKey()
     if not me or type(from) ~= "string" or Util.IsMe(from) then return false end
     local now = Now()
-    for _, v in ipairs(self:GetRaids(now - SIGNUP_CLOSE, now + 2 * 3600)) do
+    for _, v in ipairs(self:GetRaids(self:OverCutoff(now), now + 2 * 3600)) do
         if not v.cancelled and (self:CanEditGroups(v, from) or self:CanManageRaid(v, from)) then
             local mine = self:GetMySignup(v.id)
             local grp = self:GetLayout(v)
@@ -2723,7 +2749,7 @@ function RaidPlan:SetRaidHidden(occId, on, scope)
             if not s or s.x then set[key] = nil end
         else
             local r = self:GetRaid(key)
-            if not r or r.t < now - SIGNUP_CLOSE then set[key] = nil end
+            if not r or self:IsOver(r, now) then set[key] = nil end
         end
     end
     if not next(set) then ns.db.raidplanHidden = nil end
@@ -4046,43 +4072,73 @@ end
 -- status: "A" | "T" | "B" | "X"; spec: index into ns.SPECS[the character's class] (nil = keep / last used); note:
 -- optional (false clears it); charKey: another character of my account to answer with (default: this one).
 -- Returns ok, err.
+-- One member answer, the rules both ways of answering share (2026-11-12: SignUp and SignUpFor each had their own copy
+-- and had drifted; a Discord note over 40 characters was dropped silently): cancelled, over, status, the blocks, the
+-- character's class, the rev rules (newer than an answer the organizers removed, newer than my other characters'),
+-- spec and note. note: nil keeps the stored one, false clears it, too long refuses. opts carries what differs on
+-- purpose: request (a member outside a locked raid may ask to join: the game; Discord does not), dc (given in
+-- Discord), noClass (the refusal when the class is not known). Returns the clean record, or nil, err.
+local function BuildSignup(root, v, occId, key, status, spec, note, opts)
+    if v.cancelled then return nil, "This raid was cancelled." end
+    if RaidPlan:IsOver(v) then return nil, "This raid is over." end
+    if not STATUSES[status] then return nil, "invalid status" end
+    local block = RaidPlan:GetSignupBlock(v, key)
+    if block == "blacklist" then
+        return nil, "You can't sign up for raids. Contact an officer."
+    elseif block == "declined" then
+        return nil, "You were taken off this raid."
+    elseif block == "lock" then
+        if not opts.request then return nil, "This raid is locked to its teams and invited players." end
+        -- (outside a locked raid the answer is a request to join; private, or who runs it: invite instead)
+        if not RaidPlan:CanRequest(v, key) then
+            return nil, v.pv and "This raid is private to its teams and invited players. Ask a raid leader for an invite."
+                or "This raid is locked to its teams and invited players: add yourself with Invite."
+        end
+    elseif block == "level" then
+        return nil, strformat("This raid is for level %d characters.", v.ml)
+    end
+    local class = ClassOf(key)
+    if not class then return nil, opts.noClass end
+    local cur = root.U[occId] and root.U[occId][key]
+    local s = { st = status, rev = NextRev(cur), c = class, dc = opts.dc and 1 or nil }
+    -- an answer the organizers removed is older than the new one, whatever the clocks say
+    if v.rm and v.rm[key] and s.rev <= v.rm[key] then s.rev = v.rm[key] + 1 end
+    -- the newest answer of the player's characters is the one that counts: this one
+    for _, other in ipairs(Linked(key)) do
+        local o = other ~= key and root.U[occId] and root.U[occId][other]
+        if o and s.rev <= o.rev then s.rev = o.rev + 1 end
+    end
+    s.at = cur and (cur.at or cur.rev) or s.rev
+    if spec == nil then spec = (cur and cur.sp) or RaidPlan:GetLastSpec(key) end
+    if spec ~= nil then
+        if not IsInt(spec, 1, SpecCount(class)) then return nil, "invalid spec" end
+        s.sp = spec
+    end
+    if note == nil then
+        s.n = cur and cur.n or nil
+    elseif note ~= false and Util.Trim(tostring(note)) ~= "" then
+        s.n = CleanText(note, MAX_SIGNUP_NOTE)
+        if not s.n then return nil, "Notes are at most 40 characters." end
+    end
+    local clean = CleanSignup(s, Now())
+    if not clean then return nil, "could not save the sign-up" end
+    return clean
+end
+
 -- An answer a member gave in Discord, for their character `key` (Core/Bridge.lua, from a record the bot signed:
 -- every game that takes the record runs this, so nothing is broadcast; the guild sync carries it to the rest).
--- Same checks as their own sign-up (cancelled, over, blacklist, taken off, lock, level). Returns ok, err.
+-- Same rules as their own sign-up (BuildSignup), except that a locked raid refuses instead of taking a request to
+-- join. Returns ok, err.
 function RaidPlan:SignUpFor(occId, key, status, spec, note)
     local root = Root(true)
     key = WireKey(key)
     if not root or not key then return false, "unknown character" end
     local v = ResolveOcc(root, occId)
     if not v then return false, "unknown raid" end
-    if v.cancelled then return false, "This raid was cancelled." end
-    if v.t < Now() - SIGNUP_CLOSE then return false, "This raid is over." end
-    if not STATUSES[status] then return false, "invalid status" end
-    local block = self:GetSignupBlock(v, key)
-    if block == "blacklist" then return false, "You can't sign up for raids. Contact an officer."
-    elseif block == "declined" then return false, "You were taken off this raid."
-    elseif block == "lock" then return false, "This raid is locked to its teams and invited players."
-    elseif block == "level" then return false, strformat("This raid is for level %d characters.", v.ml)
-    end
-    local class = ClassOf(key)
-    if not class then return false, "That character is not in the guild roster." end
-    local cur = root.U[occId] and root.U[occId][key]
-    local s = { st = status, rev = NextRev(cur), c = class, dc = 1 }
-    if v.rm and v.rm[key] and s.rev <= v.rm[key] then s.rev = v.rm[key] + 1 end
-    for _, other in ipairs(Linked(key)) do
-        local o = other ~= key and root.U[occId] and root.U[occId][other]
-        if o and s.rev <= o.rev then s.rev = o.rev + 1 end
-    end
-    s.at = cur and (cur.at or cur.rev) or s.rev
-    if spec == nil then spec = cur and cur.sp or self:GetLastSpec(key) end
-    if spec ~= nil then
-        if not IsInt(spec, 1, SpecCount(class)) then return false, "invalid spec" end
-        s.sp = spec
-    end
-    if note == nil then s.n = cur and cur.n or nil
-    elseif Util.Trim(tostring(note)) ~= "" then s.n = CleanText(note, MAX_SIGNUP_NOTE) end
-    local clean = CleanSignup(s, Now())
-    if not clean or not MergeSignup(root, occId, key, clean) then return false, "could not save the sign-up" end
+    local clean, err = BuildSignup(root, v, occId, key, status, spec, note,
+        { dc = true, noClass = "That character is not in the guild roster." })
+    if not clean then return false, err end
+    if not MergeSignup(root, occId, key, clean) then return false, "could not save the sign-up" end
     Changed()
     return true
 end
@@ -4101,46 +4157,10 @@ function RaidPlan:SignUp(occId, status, spec, note, charKey)
     end
     local v = ResolveOcc(root, occId)
     if not v then return false, "unknown raid" end
-    if v.cancelled then return false, "This raid was cancelled." end
-    if v.t < Now() - SIGNUP_CLOSE then return false, "This raid is over." end
-    if not STATUSES[status] then return false, "invalid status" end
-    local block = self:GetSignupBlock(v, me)
-    if block == "blacklist" then
-        return false, "You can't sign up for raids. Contact an officer."
-    elseif block == "declined" then
-        return false, "You were taken off this raid."
-    elseif block == "lock" and not self:CanRequest(v, me) then
-        -- (outside a locked raid the answer is a request to join; private, or who runs it: invite instead)
-        return false, v.pv and "This raid is private to its teams and invited players. Ask a raid leader for an invite."
-            or "This raid is locked to its teams and invited players: add yourself with Invite."
-    elseif block == "level" then
-        return false, strformat("This raid is for level %d characters.", v.ml)
-    end
-    local class = ClassOf(me)
-    if not class then return false, "That character's class is not known yet; try again in a moment." end
-    local cur = root.U[occId] and root.U[occId][me]
-    local s = { st = status, rev = NextRev(cur), c = class }
-    -- an answer the organizers removed is older than the new one, whatever the clocks say
-    if v.rm and v.rm[me] and s.rev <= v.rm[me] then s.rev = v.rm[me] + 1 end
-    -- the newest answer of my characters is the one that counts: this one
-    for _, other in ipairs(self:GetMyCharacters()) do
-        local o = other ~= me and root.U[occId] and root.U[occId][other]
-        if o and s.rev <= o.rev then s.rev = o.rev + 1 end
-    end
-    s.at = cur and (cur.at or cur.rev) or s.rev
-    if spec == nil then spec = (cur and cur.sp) or self:GetLastSpec(me) end
-    if spec ~= nil then
-        if not IsInt(spec, 1, SpecCount(class)) then return false, "invalid spec" end
-        s.sp = spec
-    end
-    if note == nil then
-        s.n = cur and cur.n or nil
-    elseif note ~= false and Util.Trim(tostring(note)) ~= "" then
-        s.n = CleanText(note, MAX_SIGNUP_NOTE)
-        if not s.n then return false, "Notes are at most 40 characters." end
-    end
-    local clean = CleanSignup(s, Now())
-    if not clean or not MergeSignup(root, occId, me, clean) then return false, "could not save the sign-up" end
+    local clean, err = BuildSignup(root, v, occId, me, status, spec, note,
+        { request = true, noClass = "That character's class is not known yet; try again in a moment." })
+    if not clean then return false, err end
+    if not MergeSignup(root, occId, me, clean) then return false, "could not save the sign-up" end
     if clean.sp then
         local db = ns.db
         if type(db.raidplanSpec) ~= "table" then db.raidplanSpec = {} end
@@ -4207,10 +4227,10 @@ local function InUse(root, kind, rec, now)
     if kind == "T" then return true end
     if kind == "S" then
         if rec.x then return rec.rev >= now - TOMBSTONE_DAYS end
-        return not (rec.u and SeriesTime(rec, rec.u) < now - SIGNUP_CLOSE)
+        return not (rec.u and SeriesTime(rec, rec.u) < RaidPlan:OverCutoff(now))
     end
     local t = OccTime(root, rec.id)
-    if t then return t >= now - SIGNUP_CLOSE end
+    if t then return t >= RaidPlan:OverCutoff(now) end
     return rec.rev >= now - TOMBSTONE_DAYS
 end
 

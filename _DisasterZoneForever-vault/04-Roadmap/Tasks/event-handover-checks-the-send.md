@@ -1,7 +1,8 @@
 ---
 title: "Event handover checks the send"
 tags: [task]
-status: 3 - To do
+status: "5 - Done"
+completed: 2026-11-12
 priority: p2
 effort: S
 updated: 2026-11-12
@@ -66,6 +67,16 @@ Test to add in `dev/tests/events/test_edge_live.py`: `handover_keeps_the_host_wh
 
 - `handover_keeps_the_host_when_the_state_cannot_go_out` and the existing `handover_needs_someone_online` pass.
 - `repro_handover.py` shows `HandOver` returning false and Gina still hosting.
+
+## Fix (2026-11-12)
+
+Done as the card's best fix, branch `fix/state-machines`.
+
+- **What changed:** `Core/EventLive.lua` `Live:HandOver` checks `Send`'s result. On a refusal it restores `h.run.st.host` to the previous host, keeps `hosting[occId]`, does not write `seen[occId]`, and returns `false, "Could not reach the guild: you still host it."`. The Live panel already prints `HandOver`'s second value (`UI/EventBoard.lua:4105`).
+- **Protocol:** no message changed. The EVS sent on success is the same as before, so old and new clients interoperate.
+- **Test added** (`dev/tests/events/test_edge_live.py`): `handover_keeps_the_host_when_the_state_cannot_go_out`. Gina's `Comm:Send` refuses one EVS; `HandOver` returns the reason, Gina still hosts after 120 s (no name-order takeover), and a second try hands over to Cora. Fails on the old code, passes now. `handover_needs_someone_online` still passes.
+- **Side-effect audit:** `HandOver` has one caller, the hand-over menu in `UI/EventBoard.lua`, which now shows the new reason instead of a silent success. `Send` and `SendState` are unchanged. Not covered: a send that is accepted locally but lost on the way (the card's ack alternative); `OnState` still resolves that overlap as before.
+- **Checks:** `test_edge_live.py` 29/29; full harness run listed in the PR.
 
 ## Related
 

@@ -1,6 +1,6 @@
 ---
 tags: [code-map]
-updated: 2026-11-11
+updated: 2026-11-12
 ---
 
 # Code Map
@@ -51,3 +51,10 @@ Same layout as upstream (see [[Developer Guide]] > Layout and the deep-dive repo
 | `dev/install_forever.sh` | dev install of the addon into the Forever client | new |
 | `dev/probe/` | DZProbe addon + reader + offline test (see its README) | new |
 | `_DisasterZoneForever-vault/` | this vault | new |
+| `addon/DisasterZone/Core/RaidPlan.lua` | `RaidStatus(occId)` (Invite & sort's check), `BuildSignup` (the one member sign-up rule set for `SignUp` / `SignUpFor`), `SIGNUP_CLOSE` / `OverCutoff` / `IsOver` (the raid-over cut-off for core and UI) | changed |
+| `addon/DisasterZone/Core/RaidInvite.lua`, `UI/RaidPlanUI.lua` | the run stops on a cancelled / deleted raid; the UI asks `RaidPlan:IsOver` | changed |
+| `addon/DisasterZone/Core/EventLive.lua` | `HandOver` keeps the host role when the EVS is refused | changed |
+| `addon/DisasterZone/Core/Roll.lua` | `SetAwarded` (the one transition to "awarded"); `OnDemoToggled` cancels through `CancelSession` + RE x | changed |
+| `addon/DisasterZone/Core/Reserves.lua`, `Core/GroupRules.lua` | the list holder counts only while no authority is known and they are a candidate (`GroupRules:IsCandidate`) | changed |
+| `addon/DisasterZone_Chess/Chess.lua` | CHL concede-only, CHG results only in the receiver's favour or on its own draw offer | changed |
+| `dev/tests/raidplan/test_raidplan_signup_paths.py` | both sign-up paths through one table of rules | new |

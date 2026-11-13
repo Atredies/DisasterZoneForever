@@ -170,6 +170,10 @@ fixed.
 
 ## Worth fixing
 
+**All eight fixed 2026-11-12** (branch `fix/state-machines`; each card's `## Fix` section lists the change, the
+test and the side-effect audit). Two follow-ups came out of it: [[discord-requests-to-join-a-locked-raid]] and
+[[chess-ladder-sync-trusts-any-result]].
+
 Every item has a fix-ready card in `04-Roadmap/Tasks/` (context, scenario, how it was found, best fix, tests, done when).
 
 1. **Medium: Invite & sort stops when its raid is cancelled or deleted**, locally or by sync (`Core/RaidPlan.lua:3830`,

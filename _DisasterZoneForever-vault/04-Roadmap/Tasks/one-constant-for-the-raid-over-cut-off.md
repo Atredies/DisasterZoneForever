@@ -1,7 +1,8 @@
 ---
 title: "One constant for the raid-over cut-off"
 tags: [task]
-status: 3 - To do
+status: "5 - Done"
+completed: 2026-11-12
 priority: p3
 effort: S
 updated: 2026-11-12
@@ -43,6 +44,18 @@ Test: `dev/tests/raidplan/test_raidplan_page.py` gains `past_cut_off_follows_the
 
 - `grep -n '6 \* 3600' addon/DisasterZone/UI/RaidPlanUI.lua` finds nothing.
 - `past_cut_off_follows_the_core_constant` passes, and all of `dev/tests/raidplan/` passes.
+
+## Fix (2026-11-12)
+
+Done as the card's best fix, branch `fix/state-machines`.
+
+- **What changed:** `Core/RaidPlan.lua` exposes `RaidPlan.SIGNUP_CLOSE`, `RaidPlan:OverCutoff(now)` (the start time before which a raid is over) and `RaidPlan:IsOver(v, now)`. The core's own checks read them: the sign-up guard (now in `BuildSignup`), `IsRaidInviteFrom`, `SetRaidHidden`'s cleanup and `InUse`. `UI/RaidPlanUI.lua`: the 13 literals are now `RP():IsOver(v[, now])` or `RP():OverCutoff([now])`; `grep -n '6 \* 3600' addon/DisasterZone/UI/RaidPlanUI.lua` finds nothing. The local `SIGNUP_CLOSE` stays only as the initial value.
+- **Behaviour:** none while the value is 6 h; the comparisons are the same (`<` for over, `>=` for open).
+- **Left alone, as the card says:** `Core/Events.lua:1054` (guild events, a separate machine) and `Core/GuestBook.lua:47` (`NEXT_RAID_SLACK`).
+- **Protocol:** none.
+- **Test added** (`dev/tests/raidplan/test_raidplan_page.py`): `past_cut_off_follows_the_core_constant`. Lee's client sets `SIGNUP_CLOSE` to 3 h; a raid 4 h past its start hides the answer buttons, shows "Sign-ups are closed." and `SignUp` refuses "This raid is over.", while Rita (6 h rule) can still answer.
+- **Side-effect audit:** every UI caller listed in the card (list filter, past bucket, board grouping, open-slots, the banner and card answer states, the upcoming queries) now asks the core; the core's sign-up guard, invite toast, hide cleanup and record reuse (`InUse`) read the same value.
+- **Checks:** all of `dev/tests/raidplan/`, `bridge/` and `notify/` pass (22 suites); full harness run listed in the PR.
 
 ## Related
 

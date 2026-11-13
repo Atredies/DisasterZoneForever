@@ -299,6 +299,36 @@ def end_roll_early_by_other_council_member():
 
 
 @R.case
+def demo_toggle_mid_roll_cancels_it_everywhere():
+    r = setup()
+    w = r.w
+    panel_start(r["Alice"], RUBY_DRAPE)
+    w.tick(1)
+    sid = active_session(r["Alice"])["id"]
+    assert set(states(r, sid).values()) == {"open"}, states(r, sid)
+    log0 = len(w.addon_log)
+    r["Alice"].eval("ns.Demo:SetEnabled(true)")
+    w.tick(1)
+    RE = msgs_of_type(w, "RE", log0)
+    assert [(m["_sender"], m.get("x")) for m in RE] == [(key("Alice"), True)], RE
+    assert set(states(r, sid).values()) == {"cancelled"}, states(r, sid)
+    w.tick(40)                                 # nobody's timer reopens or closes it as a normal roll
+    assert set(states(r, sid).values()) == {"cancelled"}, states(r, sid)
+    # someone else's roll is left alone on the wire: Bob starts one, Alice toggles demo off and on
+    r["Alice"].eval("ns.Demo:SetEnabled(false)")
+    w.tick(1)
+    panel_start(r["Bob"], THOUSAND_MARKS)
+    w.tick(1)
+    sid2 = active_session(r["Bob"])["id"]
+    log1 = len(w.addon_log)
+    r["Alice"].eval("ns.Demo:SetEnabled(true)")
+    w.tick(1)
+    assert msgs_of_type(w, "RE", log1) == [], msgs_of_type(w, "RE", log1)
+    assert states(r, sid2, ("Bob", "Carol")) == {"Bob": "open", "Carol": "open"}, states(r, sid2)
+    w.assert_no_errors()
+
+
+@R.case
 def roll_all_runs_one_at_a_time_in_order():
     r = setup()
     w = r.w

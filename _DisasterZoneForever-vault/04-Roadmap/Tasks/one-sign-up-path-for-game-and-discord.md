@@ -1,7 +1,8 @@
 ---
 title: "One sign-up path for game and Discord"
 tags: [task]
-status: 3 - To do
+status: "5 - Done"
+completed: 2026-11-12
 priority: p2
 effort: M
 updated: 2026-11-12
@@ -62,6 +63,17 @@ Test to add, `dev/tests/raidplan/test_raidplan_signup_paths.py`: `both_paths_app
 
 - `both_paths_apply_the_same_rules` passes, and the rest of `dev/tests/raidplan/` and `dev/tests/bridge/` still pass.
 - `repro_signup.py` shows the long note refused, or kept, on both paths, and the lock behaviour the owner chose on both.
+
+## Fix (2026-11-12)
+
+Done as the card's best fix, branch `fix/state-machines`. The lock difference is kept as it was and moved to its own card for the owner: [[discord-requests-to-join-a-locked-raid]].
+
+- **What changed:** `Core/RaidPlan.lua` gains one local `BuildSignup(root, v, occId, key, status, spec, note, opts)`: the guard chain (cancelled, over, status, blacklist, declined, lock, level), the class, the rev rules (`rm`, the player's other characters through `Linked(key)`), spec defaulting and note handling (nil keeps, false clears, over 40 characters refuses), then `CleanSignup`. `opts.request` (game: a member outside a locked raid asks to join), `opts.dc` (Discord mark), `opts.noClass` (each path's message) carry the deliberate differences. `SignUp` = SameAccount check + `BuildSignup` + `MergeSignup` + spec memory + broadcast; `SignUpFor` = `BuildSignup` + `MergeSignup`, no broadcast, as before.
+- **Behaviour changes:** a Discord answer with a note over 40 characters is now refused with "Notes are at most 40 characters." (it was stored with the old note dropped). The bot only sends short fixed notes ("late 15 min", `launcher/server/src/remind.rs`), so this is latent today. `SignUpFor` now also accepts `note = false` (clears); the Bridge never passes it.
+- **Protocol:** no message changed. The stored record (`U[occ][key]`) has the same fields; old clients merge it as before.
+- **Tests added** (`dev/tests/raidplan/test_raidplan_signup_paths.py`): `both_paths_apply_the_same_rules` (table of cancelled, level, declined, blacklist, lock, removed, long note, `note=false`, over, each through both paths; the lock row asserts the named difference) and `a_discord_answer_is_marked_and_keeps_the_note_when_none_is_given`. The first fails on the old code (Discord took the long note), passes now.
+- **Side-effect audit:** `SignUp` callers: the raid page's answer buttons and sign-up strip (`UI/RaidPlanUI.lua`), the reminder / notify actions, the tests. `SignUpFor` caller: the Bridge's `signup` type (`Core/Bridge.lua:694-703`). Both keep their error strings for every refusal they had before; the only new refusal is the long Discord note. The other-characters loop now uses `Linked(key)` on both paths; `GetMyCharacters()` was `{ me } + Linked(me)`, so the set is the same. `GetMyCharacters` keeps its other callers.
+- **Checks:** all of `dev/tests/raidplan/` (21 suites) and `dev/tests/bridge/` pass; full harness run listed in the PR.
 
 ## Related
 

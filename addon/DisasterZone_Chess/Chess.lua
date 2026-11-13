@@ -533,7 +533,12 @@ local function Merge(g, ms, result, reason)
         end
     end
     if g.status ~= "over" then
-        if (result == "1-0" or result == "0-1" or result == "1/2-1/2") and (reason == "resign" or reason == "agreed") then
+        -- A result from the wire ends my game only when it is theirs to give (2026-11-12: any "resign" or "agreed"
+        -- was taken, so the opponent could end my game as my resignation): their resignation (a win for me), or a
+        -- draw I offered (they accepted; the CHD may have been missed). Anything else: the moves decide.
+        local myWin = g.me == 1 and "1-0" or "0-1"
+        if (reason == "resign" and result == myWin)
+            or (reason == "agreed" and result == "1/2-1/2" and g.drawFrom == Me()) then
             Finish(g, result, reason)
         else
             CheckEnd(g)
@@ -732,9 +737,12 @@ function Chess:Record(g)
 end
 
 handlers.CHL = function(sender, msg)
-    -- (only one of the two players may report a game)
+    -- (only one of the two players may report a game, and only as their loss or a draw: a player can concede, not
+    -- claim; 2026-11-12: a made-up win over anyone was taken. Both players' clients report every game they finish,
+    -- so the loser's report carries it; older clients send both as before.)
     local function same(a, b) return Util.NormalizeName and Util.NormalizeName(a) == Util.NormalizeName(b) or a == b end
-    if not (same(sender, msg.w) or same(sender, msg.b)) then return end
+    local concedes = msg.r == "1/2-1/2" or (same(sender, msg.w) and msg.r == "0-1") or (same(sender, msg.b) and msg.r == "1-0")
+    if not concedes then return end
     if AddResult(msg.id, msg) then Changed(nil, "ladder") end
 end
 

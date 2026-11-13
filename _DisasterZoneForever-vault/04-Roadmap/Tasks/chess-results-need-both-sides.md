@@ -1,7 +1,8 @@
 ---
 title: "Chess results need both sides"
 tags: [task]
-status: 3 - To do
+status: "5 - Done"
+completed: 2026-11-12
 priority: p3
 effort: S
 updated: 2026-11-12
@@ -52,6 +53,20 @@ The existing `resigning_and_draws_end_the_game_for_both_and_the_ladder_agrees` m
 
 - `a_forged_ladder_win_is_ignored` and `the_opponent_cannot_resign_for_me` pass, and all of `dev/tests/games/test_chess.py` passes.
 - `repro_chess.py` shows unchanged ratings and an `active` game.
+
+## Fix (2026-11-12)
+
+Done with option (a) for CHL, branch `fix/state-machines`.
+
+- **What changed** (`DisasterZone_Chess/Chess.lua`):
+  - `Merge` (CHG): a wire result ends my game only if it is a resignation that is a win for me, or an `agreed` draw that I offered (`g.drawFrom == Me()`, their CHD accept missed). Stricter than the card's "drawFrom set": a draw the opponent offered and I never accepted cannot be closed by their CHG. When I accept, `AnswerDraw` already finishes locally, so nothing is lost. Anything else leaves the game to the moves (`CheckEnd`).
+  - `handlers.CHL`: a result is taken only as the sender's loss or a draw (concede, not claim).
+- **Protocol compatibility:** no message changed. Both players' clients (old and new) report every game they finish (`Finish` -> `Record`), so the loser's report carries each result to bystanders; a new client ignores only the winner's copy. A legit CHG resignation or missed draw accept from an old client still matches the new rule. Old clients still accept forged results (no worse than before).
+- **Tests added** (`dev/tests/games/test_chess.py`): `a_forged_ladder_win_is_ignored` (Bob's claimed win over Alice changes no ratings on Alice or Carol; his concession is taken) and `the_opponent_cannot_resign_for_me` (a CHG "0-1 resign" for Alice and an unoffered "agreed" leave her game active; a draw she offered and Bob's own resignation, both arriving as CHG, still end it). Both fail on the old code, pass now. `resigning_and_draws_end_the_game_for_both_and_the_ladder_agrees` and `someone_offline_catches_up_on_the_ladder_at_login` still pass.
+- **Side-effect audit:** `Merge` is called only by CHG (SendWhole answers to CHP sync). `CHL` comes only from `Record`. The CHR, CHD and CHX handlers are unchanged (each already ends the game only in the sender's disfavour or on my own offer).
+- **Not fixed, new card:** the ladder sync `CHZ` (whisper) adds any results it carries with no check at all, so a member can still inject results that way: [[chess-ladder-sync-trusts-any-result]].
+- **Backfill:** none, as the card says.
+- **Checks:** `test_chess.py` 19/19; full harness run listed in the PR.
 
 ## Related
 

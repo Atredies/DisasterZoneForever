@@ -1,7 +1,8 @@
 ---
 title: "Reserves: drop the former host as writer"
 tags: [task]
-status: 3 - To do
+status: "5 - Done"
+completed: 2026-11-12
 priority: p3
 effort: S
 updated: 2026-11-12
@@ -55,6 +56,17 @@ Test: `dev/tests/reserves/` gains `former_host_cannot_rewrite_after_the_authorit
 ## Done when
 
 - `former_host_cannot_rewrite_after_the_authority_moves` passes, and all of `dev/tests/reserves/` passes.
+
+## Fix (2026-11-12)
+
+Done with the card's preferred option, branch `fix/state-machines`.
+
+- **What changed:** `Core/GroupRules.lua` gains `GroupRules:IsCandidate(key)`: is `key` in the authority's candidate list right now (raid leader, master looter, a guild assistant with the raid log, the session's keeper), whether or not they run the addon. `Core/Reserves.lua` `OnList` takes the list's holder (`cur.by == sender`) only while no one else is known as the authority (`auth == nil`, or my client takes itself for it, the post-/reload window the comment describes) **and** the holder is still a candidate. The authority itself is accepted as before.
+- **Finding while reproducing:** while the former host's raid session runs, she stays a candidate as its keeper (`Candidates`, 1.3.3) and is still the real authority, so her lists are rightly taken. The hole opens once she holds no role: lead passed to someone without the addon and the session ended. The test uses exactly that.
+- **Protocol:** RVS is unchanged. A new client simply ignores a demoted holder's list; an old client still takes it (no worse than before).
+- **Test added** (`dev/tests/reserves/test_edges.py`): `former_host_cannot_rewrite_after_the_authority_moves`. Alice hosts with Carol's reserve on it, the lead goes to Zed (no addon), Alice ends the session; every client still names Alice as holder and knows no authority; Alice's hand-made RVS (v + 5, her own reserve only) leaves Bob, Carol and Gina's lists unchanged. Fails on the old code, passes now.
+- **Side-effect audit:** `OnList` is the only RVS handler; `RetryPending` re-runs it, so a list held back in the reload window is still taken once the authority speaks (existing reload cases pass). `a_new_raid_leader_takes_the_list_over_and_answers_whispers` (adoption by the new authority) passes. `IsCandidate` is new and has no other caller; it uses the memoised `Resolve()`, so no extra roster scans per frame.
+- **Checks:** all of `dev/tests/reserves/`, `grouprules/` and `loot-roll/` pass (17 suites); full harness run listed in the PR.
 
 ## Related
 

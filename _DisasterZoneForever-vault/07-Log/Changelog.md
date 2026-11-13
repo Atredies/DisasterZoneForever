@@ -18,6 +18,29 @@ fails. New `test_a_forever_login_has_no_startup_error`; the `/dz update` test as
 checks accept the in-update state (packs and rooms on the base release's version, an update record ahead of its
 base: `release.check_tree`, `test_release_tool`). Card [[startup-error-after-in-game-update-0-2-4]] done.
 
+## 2026-11-12 - State-machine fixes: the eight audit cards
+The fixes from [[Implicit State Machines]], each with a harness test that fails on the old code:
+- Invite & sort stops when its raid is cancelled or deleted, locally or by another planner through the sync
+  (`RaidPlan:RaidStatus`, checked on every pump; a pump on `RAIDPLAN_CHANGED`). [[invite-and-sort-follows-the-raid]]
+- Event handover keeps the host when the state could not go out (`Live:HandOver` checks `Send`).
+  [[event-handover-checks-the-send]]
+- One sign-up path: `SignUp` and `SignUpFor` share `BuildSignup`; a Discord note over 40 characters is refused instead
+  of dropping the stored note. The locked-raid difference stays for now ([[discord-requests-to-join-a-locked-raid]]).
+  [[one-sign-up-path-for-game-and-discord]]
+- Roll sessions reach "awarded" through one `SetAwarded`; a loot mark no longer keeps a stale reason.
+  [[one-award-transition-for-roll-sessions]]
+- Turning demo mode on cancels my open real roll for everyone (RE x) through `CancelSession`.
+  [[demo-toggle-cancels-rolls-for-everyone]]
+- The raid-over cut-off has one definition (`RaidPlan.SIGNUP_CLOSE`, `IsOver`, `OverCutoff`); the UI's 13 literals are
+  gone. [[one-constant-for-the-raid-over-cut-off]]
+- Reserves take a list from its former host only while no authority is known and the host still has a loot role
+  (`GroupRules:IsCandidate`). [[reserves-drop-the-former-host-as-writer]]
+- Chess: a result from the wire is a concession, never a claim (CHL: the sender's loss or a draw; CHG: their
+  resignation or a draw I offered). The ladder sync CHZ still trusts any result: [[chess-ladder-sync-trusts-any-result]].
+  [[chess-results-need-both-sides]]
+
+No wire message changed; old and new clients interoperate (each card says how).
+
 ## 2026-11-12 - In-game update #1 (0.2.4) published; a startup error found; connected realms
 Update #1 reached a tester through `/dz update`; at login the boot loader reports one startup error that 0.2.3 does
 not have (a `HookScript` with a nil script in an event handler; trace in [[startup-error-after-in-game-update-0-2-4]]).
