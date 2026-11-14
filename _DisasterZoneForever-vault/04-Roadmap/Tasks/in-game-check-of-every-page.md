@@ -1,11 +1,12 @@
 ---
 title: "In-game check of every page"
 tags: [task]
-status: 1 - In progress
+status: 5 - Done
 due: 2026-11-12
 priority: p1
 effort: S
-updated: 2026-11-12
+completed: 2026-11-14
+updated: 2026-11-14
 ---
 
 # In-game check of every page
@@ -58,3 +59,6 @@ Open each DisasterZone page on the live Forever client and screenshot it (Print 
 ## 2026-11-09 (Forever-only build)
 Confirmed: build running, no Hall of Thanes error,
 raid creation (after PR #29).
+
+## Done 2026-11-14
+Owner confirmed: every page on the "Still to check" list (Roster after the fix, Teams, Strategies, loot council and rules, every Gear and Guild entry, Recipes re-check, Settings, `/dz perf`, tooltip) opens in game without errors.
