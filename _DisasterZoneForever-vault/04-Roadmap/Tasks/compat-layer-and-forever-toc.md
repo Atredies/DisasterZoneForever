@@ -1,11 +1,12 @@
 ---
 title: "Compat layer and Forever TOC"
 tags: [task]
-status: 1 - In progress
+status: 5 - Done
 due: 2026-11-12
 priority: p1
 effort: L
-updated: 2026-11-12
+completed: 2026-11-14
+updated: 2026-11-14
 ---
 
 # Compat layer and Forever TOC
@@ -34,3 +35,6 @@ Still to do: name normalisation for names with spaces (waits on probe round 2), 
 ## Done when
 
 The addon boots in the real Forever client with no Lua errors and syncs between two characters.
+
+## Done 2026-11-14
+Owner confirmed in the real client: since 0.2.5 the addon starts with no Lua errors (BugSack on).

@@ -7,6 +7,10 @@ updated: 2026-11-13
 
 Newest first.
 
+## 2026-11-14 - In-game checks confirmed
+
+Owner confirmed in the real client: 0.2.5 starts with no Lua errors, every page on the check list opens cleanly, and the Forever class talents map right. [[compat-layer-and-forever-toc]], [[in-game-check-of-every-page]] and [[talents-on-forever-class-talents]] are done. [[leader-features-for-10-20-40-raids]] due moved to 2026-12-12 (its Done-when needs the first guild raid, from 2026-12-09).
+
 ## 2026-11-13 - Chess: a ladder draw only from one of the two players
 Validation of the 2026-11-12 fixes: `handlers.CHL` took a draw from any sender, so a bystander could forge a draw
 between two members and move their ratings. The sender must now be one of the two players; the concede rule
