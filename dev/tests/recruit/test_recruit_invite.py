@@ -308,5 +308,23 @@ def forever_sends_the_invite_from_the_games_own_command():
     w.assert_no_errors()
 
 
+@case
+def the_invite_button_stays_on_the_dialog_and_a_fight_closes_it():
+    # the secure button is the dialog button's child (a click raising the dialog can't put it underneath); a fight
+    # starting closes the dialog and takes the secure button out of it before the lockdown
+    w, c = guild(forever=True)
+    gina = c["Gina"]
+    add(w, gina, "Kaelthorn", c="PALADIN", sp=1)
+    gina.eval("ns.RecruitUI:ConfirmInvite(...)", K("Kaelthorn"))
+    assert gina.eval("local b = ns.Popup.MacroButton() local _, f = ns.Popup:Visible('DISASTERZONE_PROMPT') "
+                     "return b:GetParent() == f.button1") is True
+    gina.eval("__MOCK.fire('PLAYER_REGEN_DISABLED')")
+    res = gina.eval_py("local b = ns.Popup.MacroButton() return { ns.Popup:Visible('DISASTERZONE_PROMPT') ~= nil, "
+                       "b:IsShown(), b:GetParent() == UIParent }")
+    res = list(res.values()) if isinstance(res, dict) else res
+    assert res == [False, False, True], res
+    w.assert_no_errors()
+
+
 if __name__ == "__main__":
     run_all(globals())

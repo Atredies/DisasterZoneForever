@@ -8,6 +8,13 @@ if DisasterZoneBoot and DisasterZoneBoot.Run("Data/Changelog.lua", ...) then ret
 local addonName, ns = ...
 
 ns.CHANGELOG = {
+    { version = "0.2.8", date = "15 November 2026", title = "The guild invite button, sturdier",
+      sections = {
+          { heading = "Recruitment", area = "other", kind = "fixed", lines = {
+              "The invite dialog's Invite button stays clickable after you click into the dialog.",
+              "A fight starting closes the invite dialog (the game locks its button in combat).",
+          } },
+      } },
     { version = "0.2.7", date = "15 November 2026", title = "Guild invites from Recruitment work again",
       sections = {
           { heading = "Recruitment", area = "other", kind = "fixed", hi = true,
