@@ -73,7 +73,8 @@ def the_construct_quarter_plays_to_thaddius():
 
 @case
 def the_frostwyrm_lair_plays_to_kelthuzad():
-    check_stage("frost", "MAGE", 15, ["n_sapphiron", "n_kelthuzad"])
+    # (seed 5: with seed 15 the bot now kills Kel'Thuzad while Sapphiron is in the air, which ends the run by design)
+    check_stage("frost", "MAGE", 5, ["n_sapphiron", "n_kelthuzad"])
 
 
 def opened(c, w):

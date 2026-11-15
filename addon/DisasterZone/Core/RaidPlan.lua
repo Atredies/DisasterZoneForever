@@ -4076,7 +4076,7 @@ end
 -- and had drifted; a Discord note over 40 characters was dropped silently): cancelled, over, status, the blocks, the
 -- character's class, the rev rules (newer than an answer the organizers removed, newer than my other characters'),
 -- spec and note. note: nil keeps the stored one, false clears it, too long refuses. opts carries what differs on
--- purpose: request (a member outside a locked raid may ask to join: the game; Discord does not), dc (given in
+-- purpose: request (a member outside a locked raid asks to join: both paths since 2026-11-13), dc (given in
 -- Discord), noClass (the refusal when the class is not known). Returns the clean record, or nil, err.
 local function BuildSignup(root, v, occId, key, status, spec, note, opts)
     if v.cancelled then return nil, "This raid was cancelled." end
@@ -4127,8 +4127,8 @@ end
 
 -- An answer a member gave in Discord, for their character `key` (Core/Bridge.lua, from a record the bot signed:
 -- every game that takes the record runs this, so nothing is broadcast; the guild sync carries it to the rest).
--- Same rules as their own sign-up (BuildSignup), except that a locked raid refuses instead of taking a request to
--- join. Returns ok, err.
+-- Same rules as their own sign-up (BuildSignup): outside a locked raid the answer is a request to join that the raid
+-- leader accepts, as in game (owner's call, 2026-11-13). Returns ok, err.
 function RaidPlan:SignUpFor(occId, key, status, spec, note)
     local root = Root(true)
     key = WireKey(key)
@@ -4136,7 +4136,7 @@ function RaidPlan:SignUpFor(occId, key, status, spec, note)
     local v = ResolveOcc(root, occId)
     if not v then return false, "unknown raid" end
     local clean, err = BuildSignup(root, v, occId, key, status, spec, note,
-        { dc = true, noClass = "That character is not in the guild roster." })
+        { dc = true, request = true, noClass = "That character is not in the guild roster." })
     if not clean then return false, err end
     if not MergeSignup(root, occId, key, clean) then return false, "could not save the sign-up" end
     Changed()

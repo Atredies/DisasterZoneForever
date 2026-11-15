@@ -4135,8 +4135,7 @@ function Board:HeaderMenu(owner)
         local host = st and st.host
         if host and not ns.Util.IsMe(host) and not made then
             rootDesc:CreateButton(Glyph(UI().ICON.whisper) .. "Whisper the host", function()
-                local fn = (ChatFrameUtil and ChatFrameUtil.OpenChat) or ChatFrame_OpenChat
-                if fn then fn("/w " .. ((Ambiguate and Ambiguate(host, "none")) or ns.Util.ShortName(host)) .. " ") end
+                ns.Util.Whisper(host)
             end)
         end
         local me = Me()

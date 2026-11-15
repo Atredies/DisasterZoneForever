@@ -251,7 +251,7 @@ local function PersonMenu(pin, key)
     UI():ContextMenu(pin, function(root)
         root:CreateTitle(ns.Util.ShortName(key))
         root:CreateButton(UI():AtlasIconText(UI().ICON.whisper, 13) .. " Whisper", function()
-            if ChatFrame_SendTell then ChatFrame_SendTell(Ambiguate and Ambiguate(key, "none") or key) end
+            ns.Util.Whisper(key)
         end)
         root:CreateButton(UI():AtlasIconText(19, 13) .. " Invite", function()
             local invite = (C_PartyInfo and C_PartyInfo.InviteUnit) or InviteUnit

@@ -462,7 +462,8 @@ def from_your_feedback_lists_what_shipped():
 
 @case
 def changelog_data_is_well_formed():
-    w, c = solo("Rai", guild_rank=3, tick=3)
+    # (a Forever client: the notes we ship, not the TBC fixture's)
+    w, c = solo("Rai", guild_rank=3, tick=3, forever=True)
     data = c.eval_py("return ns.CHANGELOG")
     assert data and len(data) >= 7, data
     seen = set()

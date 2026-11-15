@@ -479,9 +479,5 @@ function Shop:Whisper(group)
     local to = group and (group.reach or group.key)
     local text = self:WhisperText(group)
     if not (to and text) then return false end
-    local open = (ChatFrameUtil and ChatFrameUtil.OpenChat) or ChatFrame_OpenChat
-    if not open then return false end
-    local name = (Ambiguate and Ambiguate(to, "none")) or Util.ShortName(to) or to
-    open("/w " .. name .. " " .. text)
-    return true
+    return Util.Whisper(to, text)
 end

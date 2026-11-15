@@ -90,7 +90,10 @@ end)
 
 
 def strip_volatile(db):
-    return copy.deepcopy(db)
+    # (db.launcher is the launcher's Home, rewritten with a new stamp at every logout on purpose: Core/Bridge.lua)
+    d = copy.deepcopy(db)
+    d.pop("launcher", None)
+    return d
 
 
 @case

@@ -7,6 +7,44 @@ updated: 2026-11-15
 
 Newest first.
 
+## 2026-11-15 - 0.2.6: recruitment shared, markers, a message per place, whispers into Talking
+
+Owner's reports (2026-11-15, Guild > People): whispering from the page didn't work on Forever, recruitment posts
+showed no icons, people who whispered after a post never showed up, and each officer had their own messages.
+- **Whisper:** `Util.Whisper` hands the whole name to Blizzard's `ChatFrameUtil.SendTellWithMessage`; typing
+  "/w Arakis War " through OpenChat parsed at the first space (a whisper to "Arakis" saying "War"). Every whisper
+  button and menu uses it (Recruit, guest book, members, groups, attendance, event board, guild map, shopping list).
+- **Whispers after a post:** CHAT_MSG_WHISPER from someone outside the guild within 2 hours of any recruiter's post
+  adds them to Recruitment (Talking, source "Whispers", their first words as "their words").
+- **Text markers:** an icon part sends a marker (`>>`, `~*~` ...; `tx`) where icons aren't drawn: chat channels, and
+  every chat on Forever (`NO_ICONS_ANYWHERE`). The preview shows the Trade line.
+- **Shared:** messages and places sync between the recruiters (RCM on a change, RCMQ at login; newer rev wins). A
+  store never shared before keeps its own messages, added as "(mine)". Posts and the reminders switch stay per
+  person. `RCM` is allowed large (a raid leader can be a recruiter).
+- **A message per place:** `place.msg` (Posting: the line under the place's name); deleting a message puts its places
+  back on the one in use.
+- Tests: `test_recruit_message` (markers, Forever, per place, sharing, whispers), `test_connected_realms`
+  (`a_whisper_keeps_a_forever_surname`).
+
+## 2026-11-15 - 0.2.6: connected realms, Discord join requests, Chess catch-up, a green test suite
+
+- **Connected realms:** `Guild:GetGuildKey` uses the guild's realm (GetGuildInfo's 4th return), so a member from
+  another realm of the group shares the guild's buckets and the bot's records (`ns.BridgeKeys`). The mock returns the
+  guild's home realm the same way. New `tests/forever/test_connected_realms.py`. Card [[connected-realms-guild-key]].
+- **Discord, locked raid:** an answer from Discord to a locked (not private) raid is a request to join, as in game
+  (`RaidPlan:SignUpFor`). The bot's reply says so (`launcher/server/src/signup.rs`). Card
+  [[discord-requests-to-join-a-locked-raid]].
+- **Chess:** ladder catch-up lists (CHZ) only from the one asked with CHY, for 120 s. Card
+  [[chess-ladder-sync-trusts-any-result]].
+- **Tests, all green on Linux (327 suites):** `test_boot` ignores `db.launcher` (rewritten at every logout);
+  `test_changelog` checks the Forever notes; `ui_audit.py` falls back to Liberation Sans / Noto Sans for Segoe UI;
+  `ui_audit_states.py` had the dev-scenario entries merged into the relic-coffer entry; the Goldshire trainer cases pin
+  noon (the mock's realm clock followed the machine's zone); `test_naxx` frost stage on seed 5 (seed 15 now kills
+  Kel'Thuzad with Sapphiron airborne, which ends the run by design); `test_mixed_versions` falls back to the "Release
+  1.4.0" commit and allows 0.2.2's `gmr`. `Core/Guild.lua` stays under Lua 5.1's 200 locals (the guild-key cache
+  went: the key is one concatenation).
+- Version 0.2.6 in the six TOCs; What's New entry in `Data/Changelog.lua`.
+
 ## 2026-11-15 - Raid times in server or local time, busy calendar days in pages, other raiders' Bingo cards
 
 - **Local | Server switch** for raid days and times (`settings.serverClock`, off = my clock). On the Home calendar's

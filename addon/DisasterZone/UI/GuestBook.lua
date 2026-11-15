@@ -124,11 +124,7 @@ end
 
 local function plural(n, one, many) return n == 1 and ("1 " .. one) or (n .. " " .. (many or (one .. "s"))) end
 
-local function whisper(key)
-    local name = (Ambiguate and Ambiguate(key, "none")) or H.Short(key)
-    local open = (ChatFrameUtil and ChatFrameUtil.OpenChat) or ChatFrame_OpenChat
-    if open then open("/w " .. name .. " ") end
-end
+local function whisper(key) ns.Util.Whisper(key) end
 
 -- The same, measured in a text style (for a component that sets the text itself).
 function H.PickVariant(variants, room, style)

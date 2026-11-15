@@ -20,6 +20,13 @@ if DisasterZoneBoot and DisasterZoneBoot.Run("Core/RecruitMessage.lua", ...) the
 -- Saved messages (1.5.5, feedback #51): msgs = { { id, name, parts, sep }, ... } in the order made, cur = the id in
 -- use. The one in use keeps its parts and separator at the top (parts, sep: everything above works on those); the
 -- others hold their own (parts, sep) until they're put in use. Places and posts belong to the guild, not a message.
+-- 0.2.6: each place sends its own message (place.msg = a message id; nil = the one in use). An icon part has a text
+-- marker (tx: ">>", "~*~" ...) sent where the game doesn't draw icons: chat channels, and every chat on WoW Forever.
+-- The messages and places are shared by the recruiters (the GM, the officers, the raid leaders the rules allow):
+-- rev / by on the store; RCM { v, by, d = the messages and places } to the recruiters online on a change, RCMQ { v }
+-- at login (whoever has newer answers with RCM; newer rev wins, the same rev keeps the larger by). Posts (RCP) and
+-- the reminders switch stay as they were. Someone who whispers a recruiter within 2 hours of a recruitment post is
+-- added to Recruitment (Talking, "Whispers", their first words kept).
 local addonName, ns = ...
 
 local Msg = ns:NewModule("RecruitMessage")
@@ -63,6 +70,15 @@ Msg.ICONS = { { m = 1, name = "Star" }, { m = 2, name = "Circle" }, { m = 3, nam
               { m = 7, name = "Cross" }, { m = 8, name = "Skull" } }
 local ICON_BY_NAME = { x = 7, rt1 = 1, rt2 = 2, rt3 = 3, rt4 = 4, rt5 = 5, rt6 = 6, rt7 = 7, rt8 = 8 }
 for _, i in ipairs(Msg.ICONS) do ICON_BY_NAME[i.name:lower()] = i.m end
+
+-- What an icon part sends where icons aren't drawn (a plain-text marker the officers pick; "|" can't be sent).
+Msg.MARKERS = { ">>", "<<", "~*~", "**", "<>", "::", "=>", "<=", "-=", "=-" }
+Msg.DEFAULT_MARKER = ">>"
+local MARKER_OK = {}
+for _, m in ipairs(Msg.MARKERS) do MARKER_OK[m] = true end
+-- WoW Forever draws no raid icons in chat at all (the server's arg17 also in Say and Yell, owner 2026-11-15).
+local NO_ICONS_ANYWHERE = (ns.Compat and ns.Compat.isForever) and true or false
+Msg.NO_ICONS_ANYWHERE = NO_ICONS_ANYWHERE
 
 function Msg:IconTexture(m) return "Interface\\TargetingFrame\\UI-RaidTargetingIcon_" .. m end
 function Msg:IconCode(m) return "{rt" .. m .. "}" end
@@ -179,6 +195,17 @@ local function DB()
     return d
 end
 
+-- A change to what the recruiters share (messages, places): a new rev, sent to the recruiters online (soon, once).
+local function Changed()
+    if not Util.DemoOn() then
+        local d = DB()
+        d.rev = max((tonumber(d.rev) or 0) + 1, Now())
+        d.by = Util.PlayerKey()
+        if Msg.ScheduleShare then Msg:ScheduleShare() end
+    end
+    ns:Fire("RECRUIT_MSG_CHANGED")
+end
+
 ---------------------------------------------------------------------------
 -- Saved messages (feedback #51): several, one in use
 ---------------------------------------------------------------------------
@@ -253,6 +280,7 @@ function Msg:NewMessage(name, copy)
     end
     d.msgs[#d.msgs + 1] = m
     self:Use(m.id)
+    Changed()
     return true, m.id
 end
 
@@ -262,7 +290,7 @@ function Msg:RenameMessage(id, name)
     if not m then return false, "no such message" end
     if not name then return false, "give it a name" end
     m.name = name
-    ns:Fire("RECRUIT_MSG_CHANGED")
+    Changed()
     return true
 end
 
@@ -277,7 +305,8 @@ function Msg:DeleteMessage(id)
         self:Use(next.id)
     end
     table.remove(d.msgs, (select(2, FindMsg(d, id))))
-    ns:Fire("RECRUIT_MSG_CHANGED")
+    for _, p in ipairs(d.places) do if p.msg == id then p.msg = nil end end
+    Changed()
     return true
 end
 
@@ -355,8 +384,9 @@ local function GuildName()
     return name
 end
 
--- What one part says now (nil: nothing, e.g. a team without nights or without open places).
-function Msg:PartText(p)
+-- What one part says now (nil: nothing, e.g. a team without nights or without open places). plain: where icons aren't
+-- drawn (an icon part says its text marker).
+function Msg:PartText(p, plain)
     if p.k == "text" then
         local t = Util.Trim(p.t or "")
         return (t and t ~= "") and t or nil
@@ -364,6 +394,7 @@ function Msg:PartText(p)
         local g = GuildName()
         return g and ("<" .. g .. ">") or nil
     elseif p.k == "icon" then
+        if plain then return MARKER_OK[p.tx] and p.tx or Msg.DEFAULT_MARKER end
         return self:IconCode(p.m or 1)
     elseif p.k == "nights" then
         return self:NightsText(R():GetTeam(p.team))
@@ -391,7 +422,8 @@ function Msg:GetParts()
     for _, p in ipairs(DB().parts) do
         local skip = {}
         for k in pairs(p.skip or {}) do skip[k] = true end
-        out[#out + 1] = { id = p.id, k = p.k, t = p.t, m = p.m, team = p.team, by = p.by or "spec", skip = skip,
+        out[#out + 1] = { id = p.id, k = p.k, t = p.t, m = p.m, tx = MARKER_OK[p.tx] and p.tx or Msg.DEFAULT_MARKER,
+                          team = p.team, by = p.by or "spec", skip = skip,
                           on = not p.off, label = Msg.KINDS[p.k] and Msg.KINDS[p.k].label or p.k,
                           teamName = self:PartTeamName(p), text = self:PartText(p) }
     end
@@ -411,7 +443,9 @@ function Msg:AddPart(kind, opts)
     opts = opts or {}
     local p = { k = kind }
     if kind == "text" then p.t = Words(opts.t)
-    elseif kind == "icon" then p.m = Util.IsInt(opts.m, 1, 8) and opts.m or 1
+    elseif kind == "icon" then
+        p.m = Util.IsInt(opts.m, 1, 8) and opts.m or 1
+        p.tx = MARKER_OK[opts.tx] and opts.tx or nil
     elseif kind == "need" or kind == "nights" then
         local team = opts.team
         if kind == "need" and team == "all" then p.team = "all"
@@ -428,16 +462,18 @@ function Msg:AddPart(kind, opts)
     local at
     if opts.after then at = select(2, self:GetPart(opts.after)) end
     table.insert(d.parts, at and (at + 1) or (#d.parts + 1), p)
-    ns:Fire("RECRUIT_MSG_CHANGED")
+    Changed()
     return true, p.id
 end
 
--- Changes a part: t (words), m (an icon's 1..8), team, by, on, skip = entry (switches that entry).
+-- Changes a part: t (words), m (an icon's 1..8), tx (an icon's text marker, Msg.MARKERS), team, by, on, skip = entry
+-- (switches that entry).
 function Msg:SetPart(id, f)
     local p = self:GetPart(id)
     if not p then return false end
     if f.t ~= nil and p.k == "text" then p.t = Words(f.t) end
     if f.m ~= nil and p.k == "icon" and Util.IsInt(f.m, 1, 8) then p.m = f.m end
+    if f.tx ~= nil and p.k == "icon" and MARKER_OK[f.tx] then p.tx = f.tx ~= Msg.DEFAULT_MARKER and f.tx or nil end
     if f.team ~= nil and (p.k == "need" or p.k == "nights") then
         if (f.team == "all" and p.k == "need") or R():GetTeam(f.team) then
             if p.team ~= f.team then p.skip = nil end
@@ -455,7 +491,7 @@ function Msg:SetPart(id, f)
         p.skip[f.skip] = (not p.skip[f.skip]) or nil
         if not next(p.skip) then p.skip = nil end
     end
-    ns:Fire("RECRUIT_MSG_CHANGED")
+    Changed()
     return true
 end
 
@@ -463,7 +499,7 @@ function Msg:RemovePart(id)
     local _, i = self:GetPart(id)
     if not i then return false end
     table.remove(DB().parts, i)
-    ns:Fire("RECRUIT_MSG_CHANGED")
+    Changed()
     return true
 end
 
@@ -475,7 +511,7 @@ function Msg:MovePart(id, to)
     table.remove(d.parts, i)
     to = max(1, min(#d.parts + 1, floor(tonumber(to) or i)))
     table.insert(d.parts, to, p)
-    ns:Fire("RECRUIT_MSG_CHANGED")
+    Changed()
     return true
 end
 
@@ -483,7 +519,7 @@ function Msg:GetSep() return DB().sep end
 function Msg:SetSep(sep)
     if not SEP_OK[sep] then return false end
     DB().sep = sep
-    ns:Fire("RECRUIT_MSG_CHANGED")
+    Changed()
     return true
 end
 
@@ -493,21 +529,30 @@ local function NoIcons(text)
     return Util.Trim((text:gsub("  +", " "))) or nil
 end
 
--- The message: text (nil when nothing is said), its length in bytes, too long? noIcons: without the raid icons (icon
--- parts left out, codes taken out of the words), for chat channels: on Forever the server tells every client not to
--- draw icons in Trade, General and the other channels, so they'd show as "{rt1}" (Blizzard's ChatFrameOverrides.lua,
--- CHAT_MSG arg17).
-function Msg:Compose(noIcons)
+-- The parts and separator of a saved message (nil or the one in use: the parts being edited).
+local function PartsOf(d, msgId)
+    if msgId == nil or msgId == d.cur then return d.parts, d.sep end
+    local m = FindMsg(d, msgId)
+    if not m then return d.parts, d.sep end
+    return m.parts or {}, SEP_OK[m.sep] and m.sep or " "
+end
+
+-- The message: text (nil when nothing is said), its length in bytes, too long? noIcons: where the game draws no raid
+-- icons (icon parts say their text marker, codes are taken out of the words): chat channels, where the server tells
+-- every client not to draw them (Blizzard's ChatFrameOverrides.lua, CHAT_MSG arg17), and all chat on Forever. msgId:
+-- a saved message (nil: the one in use).
+function Msg:Compose(noIcons, msgId)
+    local parts, sep = PartsOf(DB(), msgId)
     local bits = {}
-    for _, p in ipairs(DB().parts) do
-        if not p.off and not (noIcons and p.k == "icon") then
-            local t = self:PartText(p)
-            if t and noIcons then t = NoIcons(t) end
+    for _, p in ipairs(parts) do
+        if not p.off then
+            local t = self:PartText(p, noIcons)
+            if t and noIcons and p.k ~= "icon" then t = NoIcons(t) end
             if t and t ~= "" then bits[#bits + 1] = t end
         end
     end
     if #bits == 0 then return nil, 0, false end
-    local text = tconcat(bits, DB().sep)
+    local text = tconcat(bits, sep)
     return text, #text, #text > MAX_LEN
 end
 
@@ -519,8 +564,10 @@ end
 function Msg:GetPlaces()
     local out = {}
     for _, p in ipairs(DB().places) do
+        local m = p.msg and FindMsg(DB(), p.msg)
         out[#out + 1] = { id = p.id, kind = p.kind, name = p.name, every = p.every, u = p.u or "m",
-                          on = p.on and true or false, city = p.city and true or false }
+                          on = p.on and true or false, city = p.city and true or false,
+                          msg = m and p.msg or nil, msgName = m and m.name or nil }
     end
     return out
 end
@@ -552,7 +599,7 @@ function Msg:AddPlace(kind, name, every)
     every = self:CleanEvery(every or 3600)
     d.places[#d.places + 1] = { id = id, kind = kind, name = name, every = every, u = every % 60 == 0 and "m" or "s",
                                 on = true, city = kind ~= "CHANNEL" or lower == "trade" or lower == "guildrecruitment" }
-    ns:Fire("RECRUIT_MSG_CHANGED")
+    Changed()
     return true, id
 end
 
@@ -561,14 +608,15 @@ function Msg:RemovePlace(id)
     for i, p in ipairs(d.places) do
         if p.id == id then
             table.remove(d.places, i)
-            ns:Fire("RECRUIT_MSG_CHANGED")
+            Changed()
             return true
         end
     end
     return false
 end
 
--- Changes a place: fields on, city, every (seconds), u (the unit it's shown in: "s" | "m").
+-- Changes a place: fields on, city, every (seconds), u (the unit it's shown in: "s" | "m"), msg (the saved message
+-- it sends: an id, or false = the one in use).
 function Msg:SetPlace(id, f)
     local p = self:GetPlace(id)
     if not p then return false end
@@ -576,7 +624,12 @@ function Msg:SetPlace(id, f)
     if f.city ~= nil then p.city = f.city and true or false end
     if f.every ~= nil then p.every = self:CleanEvery(f.every) end
     if f.u == "s" or f.u == "m" then p.u = f.u end
-    ns:Fire("RECRUIT_MSG_CHANGED")
+    if f.msg == false then p.msg = nil
+    elseif f.msg ~= nil then
+        if not FindMsg(DB(), f.msg) then return false end
+        p.msg = f.msg
+    end
+    Changed()
     return true
 end
 
@@ -660,10 +713,11 @@ function Msg:NextUp()
     return best, at
 end
 
--- What a place gets: channels without the raid icons (see Compose), Say and Yell all of it.
+-- What a place gets: its message, with text markers for the icons in channels (see Compose) and everywhere on
+-- Forever; Say and Yell elsewhere draw the icons. Returns the text, too long?
 function Msg:TextFor(p)
-    if p.kind == "CHANNEL" then return (self:Compose(true)) end
-    return (self:Compose())
+    local text, _, long = self:Compose(NO_ICONS_ANYWHERE or p.kind == "CHANNEL", p.msg)
+    return text, long
 end
 
 local function SendTo(p, text)
@@ -680,17 +734,16 @@ end
 -- names, the ones skipped ("Trade: only in major cities").
 function Msg:Post(ids)
     if not (R() and R():CanUse()) then return false, "only the Guild Master and officers post it" end
-    local text, _, long = self:Compose()
-    if not text then return false, "Build the message first." end
-    if long then return false, "The message is longer than 255: shorten it first." end
     local want = {}
     for _, id in ipairs(ids or {}) do want[id] = true end
     local sent, skipped = {}, {}
     for _, p in ipairs(DB().places) do
         if (ids and want[p.id]) or (not ids and p.on) then
             local why = self:Blocker(p)
-            local out = not why and self:TextFor(p)
-            if not why and not out then why = "only icons, and channels don't show them" end
+            local out, long
+            if not why then out, long = self:TextFor(p) end
+            if not why and not out then why = "its message is empty" end
+            if not why and long then why = "its message is longer than 255: shorten it" end
             if why then
                 skipped[#skipped + 1] = p.name .. ": " .. why
             else
@@ -786,10 +839,251 @@ function Msg:Lately()
     return { week = week, last = all[1], came = came, joined = joined }
 end
 
+---------------------------------------------------------------------------
+-- Shared by the recruiters (0.2.6): the messages and the places
+---------------------------------------------------------------------------
+
+local SHARE_DELAY, LOGIN_ASK = 2, 35        -- seconds: a burst of edits goes out once; the login ask waits for the roster
+local PART_KINDS = { text = true, tag = true, need = true, nights = true, icon = true }
+local NEED_BY = { spec = true, short = true, class = true }
+
+local function CleanPart(p)
+    if type(p) ~= "table" or not PART_KINDS[p.k] or not Util.IsInt(p.id, 1, 1e6) then return nil end
+    local q = { id = p.id, k = p.k, off = p.off and true or nil }
+    if p.k == "text" then q.t = Words(p.t)
+    elseif p.k == "icon" then
+        q.m = Util.IsInt(p.m, 1, 8) and p.m or 1
+        q.tx = MARKER_OK[p.tx] and p.tx or nil
+    elseif p.k == "need" or p.k == "nights" then
+        if type(p.team) ~= "string" or #p.team > 40 then return nil end
+        q.team = p.team
+        if p.k == "need" then
+            q.by = NEED_BY[p.by] and p.by or "spec"
+            if type(p.skip) == "table" then
+                local n = 0
+                for k, v in pairs(p.skip) do
+                    if type(k) == "string" and #k <= 40 and v == true and n < 40 then
+                        q.skip = q.skip or {}
+                        q.skip[k], n = true, n + 1
+                    end
+                end
+            end
+        end
+    end
+    return q
+end
+
+local function CleanParts(list)
+    local out = {}
+    for _, p in ipairs(type(list) == "table" and list or {}) do
+        local q = #out < MAX_PARTS and CleanPart(p)
+        if q then out[#out + 1] = q end
+    end
+    return out
+end
+
+-- What the recruiters share, from my store: { msgs = { { id, name, sep, parts } ... }, places, mid, nid } (the one in
+-- use with the parts being edited).
+local function ShareDoc(d)
+    local msgs = {}
+    for _, m in ipairs(d.msgs) do
+        local parts, sep = PartsOf(d, m.id)
+        msgs[#msgs + 1] = { id = m.id, name = m.name, sep = sep, parts = parts }
+    end
+    local places = {}
+    for _, p in ipairs(d.places) do
+        places[#places + 1] = { id = p.id, kind = p.kind, name = p.name, every = p.every, u = p.u, on = p.on,
+                                city = p.city, msg = p.msg }
+    end
+    return { msgs = msgs, places = places, mid = d.mid, nid = d.nid }
+end
+
+-- A shared doc made safe (nil: unusable).
+local function CleanDoc(doc)
+    if type(doc) ~= "table" or type(doc.msgs) ~= "table" or type(doc.places) ~= "table" then return nil end
+    local out = { msgs = {}, places = {}, mid = 0, nid = 0 }
+    local ids = {}
+    for _, m in ipairs(doc.msgs) do
+        if type(m) == "table" and Util.IsInt(m.id, 1, 1e6) and not ids[m.id] and #out.msgs < MAX_MESSAGES then
+            local name = Named(m.name)
+            if name then
+                ids[m.id] = true
+                local parts = CleanParts(m.parts)
+                for _, q in ipairs(parts) do out.nid = max(out.nid, q.id) end
+                out.msgs[#out.msgs + 1] = { id = m.id, name = name, sep = SEP_OK[m.sep] and m.sep or " ", parts = parts }
+                out.mid = max(out.mid, m.id)
+            end
+        end
+    end
+    if #out.msgs == 0 then return nil end
+    local seen = {}
+    for _, p in ipairs(doc.places) do
+        if type(p) == "table" and (p.kind == "SAY" or p.kind == "YELL" or p.kind == "CHANNEL") and #out.places < MAX_PLACES then
+            local name = p.kind == "CHANNEL" and Util.Trim((tostring(p.name or ""):gsub("[%c|]", ""))) or
+                (p.kind == "YELL" and "Yell" or "Say")
+            local id = name and name ~= "" and #name <= 32 and PlaceId(p.kind, name)
+            if id and not seen[id] then
+                seen[id] = true
+                out.places[#out.places + 1] = { id = id, kind = p.kind, name = name, every = Msg:CleanEvery(p.every),
+                    u = p.u == "s" and "s" or "m", on = p.on and true or false, city = p.city and true or false,
+                    msg = (Util.IsInt(p.msg, 1, 1e6) and ids[p.msg]) and p.msg or nil }
+            end
+        end
+    end
+    out.mid = max(out.mid, Util.IsInt(doc.mid, 0, 1e6) and doc.mid or 0)
+    out.nid = max(out.nid, Util.IsInt(doc.nid, 0, 1e6) and doc.nid or 0)
+    return out
+end
+
+-- Takes a shared doc into my store (my message in use stays in use when it's still there; posts are mine).
+local function ApplyDoc(d, doc, rev, by)
+    -- (a store never shared before keeps its own messages that have words: added after the shared ones, room allowing)
+    local keep = {}
+    if not d.rev then
+        for _, m in ipairs(d.msgs) do
+            local parts = PartsOf(d, m.id)
+            if #parts > 0 then keep[#keep + 1] = { name = m.name, sep = (select(2, PartsOf(d, m.id))), parts = parts } end
+        end
+    end
+    local cur = d.cur
+    d.msgs, d.places, d.mid, d.nid = doc.msgs, doc.places, max(d.mid or 0, doc.mid), max(d.nid or 0, doc.nid)
+    local mine = false
+    for _, k in ipairs(keep) do
+        local same = false
+        for _, m in ipairs(d.msgs) do
+            if Util.Hash(m.parts) == Util.Hash(CleanParts(k.parts)) then same = true end
+        end
+        if not same and #d.msgs < MAX_MESSAGES then
+            d.mid = d.mid + 1
+            local parts = CleanParts(k.parts)
+            for _, q in ipairs(parts) do d.nid = d.nid + 1; q.id = d.nid end
+            d.msgs[#d.msgs + 1] = { id = d.mid, name = Named(k.name .. " (mine)") or k.name, sep = k.sep, parts = parts }
+            mine = true
+        end
+    end
+    local found = FindMsg(d, cur) and cur or d.msgs[1].id
+    local m = FindMsg(d, found)
+    d.cur, d.parts, d.sep = found, m.parts or {}, SEP_OK[m.sep] and m.sep or " "
+    m.parts, m.sep = nil, nil
+    d.rev, d.by = rev, by
+    if mine then Changed() else ns:Fire("RECRUIT_MSG_CHANGED") end
+end
+
+-- Am I really a recruiter (not a pretend role from /dz role, which stays on this PC)?
+local function RealRecruiter()
+    return R() and R():CanUse() and R():IsRecruiter(Util.PlayerKey()) and not Util.DemoOn()
+end
+
+local function Recruiters()
+    local out = {}
+    local G = ns.Guild
+    for _, k in ipairs(G and G.GetOnlineMembers and G:GetOnlineMembers() or {}) do
+        if not Util.IsMe(k) and R():IsRecruiter(k) then out[#out + 1] = k end
+    end
+    return out
+end
+
+local function SendDoc(to)
+    local d = DB()
+    if not d.rev then return end
+    local msg = { t = "RCM", v = d.rev, by = d.by, d = ShareDoc(d) }
+    for _, k in ipairs(to) do ns.Comm:Send(msg, "WHISPER", k, "data") end
+end
+
+function Msg:ScheduleShare()
+    if self.sharePending or not (ns.Comm and ns.Comm.Send) then return end
+    self.sharePending = true
+    Util.After(SHARE_DELAY, function()
+        Msg.sharePending = nil
+        if RealRecruiter() then SendDoc(Recruiters()) end
+    end)
+end
+
+-- Is (v, by) newer than what I have?
+local function Newer(d, v, by)
+    local mine = tonumber(d.rev) or 0
+    if v ~= mine then return v > mine end
+    return tostring(by or "") > tostring(d.by or "")
+end
+
+local function OnDoc(sender, msg, dist)
+    if dist ~= "WHISPER" or not (RealRecruiter() and R():IsRecruiter(sender)) then return end
+    local v = tonumber(msg.v)
+    if not Util.IsInt(v, 1, Now() + 86400 * 365) or type(msg.by) ~= "string" or #msg.by > 64 then return end
+    local d = DB()
+    if not Newer(d, v, msg.by) then return end
+    local doc = CleanDoc(msg.d)
+    if doc then ApplyDoc(d, doc, v, msg.by) end
+end
+
+local function OnAsk(sender, msg, dist)
+    if dist ~= "WHISPER" or not (RealRecruiter() and R():IsRecruiter(sender)) then return end
+    local d = DB()
+    local v = tonumber(msg.v) or 0
+    local mine = tonumber(d.rev) or 0
+    if mine > v then SendDoc({ sender })
+    elseif v > mine and not msg.r then ns.Comm:Send({ t = "RCMQ", v = mine, r = true }, "WHISPER", sender, "data") end
+end
+
+-- (login) asks the recruiters online whether anyone has newer messages.
+function Msg:AskShared()
+    if not RealRecruiter() then return end
+    local v = tonumber(DB().rev) or 0
+    for _, k in ipairs(Recruiters()) do ns.Comm:Send({ t = "RCMQ", v = v }, "WHISPER", k, "data") end
+end
+
+---------------------------------------------------------------------------
+-- Whispers after a post: into Recruitment (0.2.6)
+---------------------------------------------------------------------------
+
+local WHISPER_WINDOW = 2 * 3600
+
+function Msg:LastAnyPost()
+    local best
+    for _, list in pairs(DB().posts) do
+        for _, at in ipairs(list) do if not best or at > best then best = at end end
+    end
+    return best
+end
+
+-- A whisper to me: someone outside the guild, within 2 hours of a recruitment post (by any recruiter), not in
+-- Recruitment yet -> added, talking with me, their first words kept. Returns the key added, or nil.
+function Msg:OnWhisper(text, sender)
+    local C = ns.Compat
+    if C and C.IsSecret and (C.IsSecret(text) or C.IsSecret(sender)) then return nil end
+    if type(sender) ~= "string" or sender == "" or Util.DemoOn() then return nil end
+    if not (R() and R():CanUse()) then return nil end
+    local last = self:LastAnyPost()
+    if not last or Now() - last > WHISPER_WINDOW then return nil end
+    local key = Util.NormalizeName(sender)
+    if not key or Util.IsMe(key) then return nil end
+    local G = ns.Guild
+    if G and G.IsInGuild and G:IsInGuild(key, true) then return nil end
+    if R():Get(key) then return nil end
+    local ok = R():Add(key, { src = "whisper" })
+    if not ok then return nil end
+    local said = type(text) == "string" and Util.Trim((text:gsub("|", ""))) or nil
+    if said and said ~= "" and R().Update then R():Update(key, { said = said }) end
+    ns:Print("%s whispered after a recruitment post: added to Guild > People > Talking.", Util.ShortName(key) or key)
+    ns:Fire("RECRUIT_WHISPER_ADDED", key)
+    return key
+end
+
 function Msg:OnInit()
     if ns.Comm and ns.Comm.Register then ns.Comm:Register("RCP", OnPost) end
+    if ns.Comm and ns.Comm.Register then
+        ns.Comm:Register("RCM", OnDoc)
+        ns.Comm:Register("RCMQ", OnAsk)
+        -- (a raid leader may be a recruiter: the whole set of messages passes the members' size cap)
+        if ns.Comm.AllowLarge then ns.Comm:AllowLarge("RCM", "data") end
+    end
+    ns:RegisterEvent("CHAT_MSG_WHISPER", function(_, text, sender) Msg:OnWhisper(text, sender) end)
     if C_Timer and C_Timer.NewTicker then C_Timer.NewTicker(1, Tick) end
     ns:On("DEMO_TOGGLED", function() demoStore = nil; Msg.ready, Msg.readyKey = nil, nil end)
+end
+
+function Msg:OnLogin()
+    Util.After(LOGIN_ASK, function() Msg:AskShared() end)
 end
 
 -- (tests) check now

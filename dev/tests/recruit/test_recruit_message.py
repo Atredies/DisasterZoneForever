@@ -24,11 +24,11 @@ GetRealZoneText = function() return __zone or 'Orgrimmar' end
 C_Map.GetBestMapForUnit = function() return nil end"""
 
 
-def guild():
+def guild(forever=False):
     w = World()
     c = {}
     for name, rank, cls in (("Gina", 0, "PALADIN"), ("Bob", 1, "MAGE"), ("Cora", 3, "PRIEST")):
-        c[name] = Client(w, name, guild_rank=rank, class_file=cls)
+        c[name] = Client(w, name, guild_rank=rank, class_file=cls, forever=forever)
     for x in c.values():
         x.load_addon()
     w.tick(SETTLE)
@@ -198,7 +198,8 @@ def raid_icons_are_parts_as_many_as_you_like():
     # the preview draws them; {star} written by hand too
     shown = gina.eval("return ns.RecruitMessage:Render('{rt8} {Star} {nope}')")
     assert shown.count("UI-RaidTargetingIcon_8") == 1 and "UI-RaidTargetingIcon_1" in shown and "{nope}" in shown, shown
-    assert "RaidTargetingIcon_8" in gina.eval("return ns.RecruitUI:GetPanel().message.prevText:GetText()")
+    # the preview is a Trade line: the icon parts say their text markers there
+    assert "LF healers >> >> >> >>" in gina.eval("return ns.RecruitUI:GetPanel().message.prevText:GetText()")
     w.assert_no_errors()
 
 
@@ -261,28 +262,129 @@ def post_goes_where_it_can_and_says_where_it_couldnt():
 
 
 @case
-def channels_get_the_message_without_icons():
-    # Forever's server tells clients not to draw raid icons in Trade and other channels ("{rt1}" shows as text), so
-    # channels get the words only; Say and Yell keep the icons
+def channels_get_text_markers_for_icons():
+    # The server tells clients not to draw raid icons in Trade and other channels ("{rt1}" shows as text): there an
+    # icon part says its text marker and icon codes in the words are taken out; Say and Yell keep the icons
     w, c = guild()
     gina = c["Gina"]
     gina.eval("ns.RecruitMessage:AddPart('icon', { m = 1 })")
     say(gina, "<CD> {star} chill guild {nope}")
-    gina.eval("ns.RecruitMessage:AddPart('icon', { m = 8 })")
-    gina.eval("ns.RecruitMessage:SetSep(' - ')")
-    assert compose(gina)[0] == "{rt1} - <CD> {star} chill guild {nope} - {rt8}", compose(gina)
+    gina.eval("ns.RecruitMessage:AddPart('icon', { m = 8, tx = '<<' })")
+    gina.eval("ns.RecruitMessage:SetSep(' ')")
+    assert compose(gina)[0] == "{rt1} <CD> {star} chill guild {nope} {rt8}", compose(gina)
     gina.eval("ns.RecruitMessage:AddPlace('SAY')")
     res = post(gina)
     assert res["ok"] is True and lst(res["a"]) == ["Trade", "Say"], res
     w.tick(3)
     got = {e["chat_type"]: e["text"] for e in w.chat_log if e["sender"].startswith("Gina")}
-    assert got == {"CHANNEL": "<CD> chill guild {nope}", "SAY": "{rt1} - <CD> {star} chill guild {nope} - {rt8}"}, got
-    # a message of icons only says nothing in a channel: skipped, with why
-    gina.eval("local M = ns.RecruitMessage for _, p in ipairs(M:GetParts()) do if p.k == 'text' then M:RemovePart(p.id) end end")
-    w.tick(3601)
+    assert got == {"CHANNEL": ">> <CD> chill guild {nope} <<", "SAY": "{rt1} <CD> {star} chill guild {nope} {rt8}"}, got
+    # the marker is picked per icon part
+    pid = gina.eval("for _, p in ipairs(ns.RecruitMessage:GetParts()) do if p.k == 'icon' then return p.id end end")
+    assert gina.eval("return ns.RecruitMessage:SetPart(..., { tx = '~*~' })", pid) is True
+    assert gina.eval("return ns.RecruitMessage:SetPart(..., { tx = '|cff' })", pid) is True   # (ignored)
+    assert gina.eval("return (ns.RecruitMessage:Compose(true))") == "~*~ <CD> chill guild {nope} <<"
+    w.assert_no_errors()
+
+
+@case
+def forever_sends_text_markers_everywhere():
+    # WoW Forever draws no raid icons in chat at all: Say gets the markers too
+    w, c = guild(forever=True)
+    gina = c["Gina"]
+    gina.eval("ns.RecruitMessage:AddPart('icon', { m = 1 })")
+    say(gina, "Casual guild")
+    gina.eval("ns.RecruitMessage:AddPlace('SAY')")
     res = post(gina)
-    assert lst(res["a"]) == ["Say"], res
-    assert lst(res["b"]) == ["Trade: only icons, and channels don't show them"], res
+    assert res["ok"] is True, res
+    w.tick(3)
+    got = {e["chat_type"]: e["text"] for e in w.chat_log if e["sender"].startswith("Gina")}
+    assert got == {"CHANNEL": ">> Casual guild", "SAY": ">> Casual guild"}, got
+    w.assert_no_errors()
+
+
+@case
+def each_place_sends_its_own_message():
+    w, c = guild()
+    gina = c["Gina"]
+    say(gina, "Raiders wanted")
+    assert gina.eval("return (ns.RecruitMessage:NewMessage('Levellers'))") is True
+    say(gina, "Levellers welcome")
+    first = gina.eval("return ns.RecruitMessage:GetMessages()[1].id")
+    gina.eval("ns.RecruitMessage:AddPlace('SAY')")
+    # Trade: the raiders' message; Say: the one in use (Levellers)
+    assert gina.eval("return ns.RecruitMessage:SetPlace('ch:trade', { msg = ... })", first) is True
+    assert gina.eval("return ns.RecruitMessage:SetPlace('ch:trade', { msg = 99 })") is False
+    pl = {p["id"]: p for p in lst(gina.eval_py("return ns.RecruitMessage:GetPlaces()"))}
+    assert pl["ch:trade"]["msgName"] == "Message 1" and pl["say"].get("msg") is None, pl
+    res = post(gina)
+    assert res["ok"] is True, res
+    w.tick(3)
+    got = {e["chat_type"]: e["text"] for e in w.chat_log if e["sender"].startswith("Gina")}
+    assert got == {"CHANNEL": "Raiders wanted", "SAY": "Levellers welcome"}, got
+    # deleting a message puts its places back on the one in use
+    gina.eval("ns.RecruitMessage:DeleteMessage(...)", first)
+    pl = {p["id"]: p for p in lst(gina.eval_py("return ns.RecruitMessage:GetPlaces()"))}
+    assert pl["ch:trade"].get("msg") is None, pl
+    w.assert_no_errors()
+
+
+@case
+def the_recruiters_share_the_messages_and_places():
+    w, c = guild()
+    gina, bob, cora = c["Gina"], c["Bob"], c["Cora"]
+    say(gina, "Chill guild, /w me")
+    gina.eval("ns.RecruitMessage:NewMessage('Levellers')")
+    say(gina, "Levellers welcome")
+    gina.eval("ns.RecruitMessage:AddPlace('YELL', nil, 90)")
+    w.tick(5)
+    names = lambda cl: [m["name"] for m in lst(cl.eval_py("return ns.RecruitMessage:GetMessages()"))]
+    texts = lambda cl: [m["text"] for m in lst(cl.eval_py("return ns.RecruitMessage:GetMessages()"))]
+    assert names(bob) == ["Message 1", "Levellers"], names(bob)
+    assert texts(bob) == ["Chill guild, /w me", "Levellers welcome"], texts(bob)
+    assert "yell" in [p["id"] for p in lst(bob.eval_py("return ns.RecruitMessage:GetPlaces()"))]
+    # Bob edits: Gina gets it; Bob's own choice of the message in use stays his
+    bob.eval("ns.RecruitMessage:Use(ns.RecruitMessage:GetMessages()[1].id)")
+    say(bob, "Raids Thu + Sun")
+    w.tick(5)
+    assert texts(gina) == ["Chill guild, /w me Raids Thu + Sun", "Levellers welcome"], texts(gina)
+    assert gina.eval("return (ns.RecruitMessage:Current())") == gina.eval("return ns.RecruitMessage:GetMessages()[2].id")
+    # a member who is not a recruiter has none of it
+    assert lst(cora.eval_py("return ns.RecruitMessage:GetMessages()"))[0]["text"] == "", "Cora has only the empty default"
+    # someone who logs in later asks and catches up
+    bob.logout()
+    say(gina, "and Onyxia")
+    w.tick(5)
+    bob.login()
+    w.tick(60)
+    assert texts(bob)[1] == "Levellers welcome and Onyxia", texts(bob)
+    w.assert_no_errors()
+
+
+@case
+def a_whisper_after_a_post_adds_them_to_recruitment():
+    w, c = guild()
+    gina = c["Gina"]
+    say(gina, "Chill guild, /w me")
+    # before any post: a whisper is just a whisper
+    gina.eval("ns.RecruitMessage:OnWhisper('hi', 'Stranger-Thunderstrike')")
+    assert gina.eval("return ns.Recruit:Get('Stranger-Thunderstrike')") is None
+    assert post(gina)["ok"] is True
+    w.tick(60)
+    key = gina.eval("return ns.RecruitMessage:OnWhisper('hey, saw your post, still recruiting?', 'Newbie-Thunderstrike')")
+    assert key == "Newbie-Thunderstrike", key
+    r = gina.eval_py("return ns.Recruit:Get('Newbie-Thunderstrike')")
+    assert r["st"] == "talk" and r["src"] == "whisper" and r["sd"] == "hey, saw your post, still recruiting?", r
+    # guildmates, people already there, and whispers long after the post are left alone
+    assert gina.eval("return ns.RecruitMessage:OnWhisper('yo', ...)", c["Cora"].full_name) is None
+    assert gina.eval("return ns.RecruitMessage:OnWhisper('again', 'Newbie-Thunderstrike')") is None
+    w.tick(2 * 3600 + 10)
+    assert gina.eval("return ns.RecruitMessage:OnWhisper('late', 'Later-Thunderstrike')") is None
+    # the real event path
+    assert post(gina)["ok"] is True
+    gina.fire("CHAT_MSG_WHISPER", "hello", "Viaevent-Thunderstrike", "", "", "Viaevent-Thunderstrike", "", 0, 0, "",
+              0, 1, "")
+    w.tick(1)
+    assert gina.eval("return ns.Recruit:Get('Viaevent-Thunderstrike') ~= nil") is True
     w.assert_no_errors()
 
 

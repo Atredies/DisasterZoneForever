@@ -90,9 +90,7 @@ local function Contains(list, v) return H().Contains(list, v) end
 local function Short(key) return ns.Util.ShortName(key) end
 
 local function Whisper(key)
-    if type(key) ~= "string" then return end
-    local fn = (ChatFrameUtil and ChatFrameUtil.OpenChat) or ChatFrame_OpenChat
-    if fn then fn("/w " .. Short(key) .. " ") end
+    ns.Util.Whisper(key)
 end
 
 ---------------------------------------------------------------------------

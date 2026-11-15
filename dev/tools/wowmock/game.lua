@@ -1488,7 +1488,13 @@ function IsInGuild() return me().guild ~= nil end
 function GetGuildInfo(unit)
   local m = unit_rec(unit)
   if not m or not m.guild then return nil end
-  return m.guild, m.guild_rank_name, m.guild_rank, (not same_realm(m)) and norm_realm(m.realm) or nil
+  -- (the 4th return is the GUILD's realm when it is not the unit's own: a connected-realm member gets the guild's
+  -- home realm: the world's realm here)
+  return m.guild, m.guild_rank_name, m.guild_rank, (function()
+    local G = guild()
+    local home = norm_realm((G and G.realm) or M.W.realm)
+    return home ~= norm_realm(m.realm or M.W.realm) and home or nil
+  end)()
 end
 function GetNumGuildMembers()
   local G = guild()

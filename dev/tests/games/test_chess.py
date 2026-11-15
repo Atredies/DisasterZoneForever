@@ -435,6 +435,31 @@ def a_bystander_cannot_forge_a_ladder_draw():
 
 
 @case
+def ladder_catch_up_comes_only_from_the_one_asked():
+    """CHZ (the ladder's catch-up lists) is taken only from the one I sent CHY to, for a short while: Bob whispering a
+    forged win over Alice to Carol unasked does nothing (card chess-ladder-sync-trusts-any-result)."""
+    w, a, b, carol = trio()
+    forged = "ns.Chess:Whisper('Carol-Thunderstrike', { t = 'CHZ', list = { { 'forged-2', ns.Util.PlayerKey()," \
+             " 'Alice-Thunderstrike', '1-0', GetServerTime(), 40 } } })"
+    b.eval(forged)
+    w.tick(2)
+    assert ratings(carol) == [], ratings(carol)
+    # Carol asks Alice (Alice says she has more): Bob's list is still not taken, Alice's answer is
+    carol.eval("ns.Chess.askedLadder = nil")
+    a.eval("ns.Chess:Whisper('Carol-Thunderstrike', { t = 'CHN', n = 5 })")
+    w.tick(1)
+    assert carol.eval("return ns.Chess.ladderFrom") == "Alice-Thunderstrike"
+    b.eval(forged)
+    w.tick(2)
+    assert ratings(carol) == [], ratings(carol)
+    a.eval("ns.Chess:Whisper('Carol-Thunderstrike', { t = 'CHZ', list = { { 'kept-1', 'Alice-Thunderstrike',"
+           " 'Bob-Thunderstrike', '1-0', GetServerTime(), 40 } } })")
+    w.tick(2)
+    assert sorted(r.split("=")[0] for r in ratings(carol)) == ["Alice", "Bob"], ratings(carol)
+    no_errors(w)
+
+
+@case
 def the_opponent_cannot_resign_for_me():
     """A CHG whose result is my resignation, or a draw I never offered, does not end my game; the opponent's own
     resignation and a draw I offered (their accept missed) do."""

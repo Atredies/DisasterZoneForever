@@ -247,8 +247,7 @@ local function UpdateStrip(p, width)
         local chip = strip.chips[i]
         if not chip then
             chip = NewPersonChip(strip, function(self)
-                local open = (ChatFrameUtil and ChatFrameUtil.OpenChat) or ChatFrame_OpenChat
-                if self.key and open then open("/w " .. ((Ambiguate and Ambiguate(self.key, "none")) or self.key) .. " ") end
+                if self.key then ns.Util.Whisper(self.key) end
             end)
             strip.chips[i] = chip
         end
