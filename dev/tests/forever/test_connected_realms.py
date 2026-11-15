@@ -34,5 +34,19 @@ def a_member_from_another_realm_has_the_guilds_key():
     w.assert_no_errors()
 
 
+@case
+def a_whisper_keeps_a_forever_surname():
+    """Util.Whisper hands the whole "First Last" name to Blizzard's SendTell (typing "/w Arakis War " in parsed at the
+    first space: a whisper to "Arakis" saying "War"). Every Whisper button and menu uses it."""
+    w, gm, zed = guild_of_two_realms()
+    gm.eval("_G.__tells = {}; ChatFrameUtil = ChatFrameUtil or {}; "
+            "ChatFrameUtil.SendTellWithMessage = function(name, text) table.insert(__tells, name .. '|' .. text) end")
+    gm.eval("ns.Util.Whisper('Arakis War-Thunderstrike')")
+    gm.eval("ns.Util.Whisper('Zed-OtherRealm', 'hi ')")
+    assert gm.eval_py("return __tells") in (["Arakis War|", "Zed-OtherRealm|hi "], {1: "Arakis War|", 2: "Zed-OtherRealm|hi "}), \
+        gm.eval_py("return __tells")
+    w.assert_no_errors()
+
+
 if __name__ == "__main__":
     run_all("forever / connected realms")

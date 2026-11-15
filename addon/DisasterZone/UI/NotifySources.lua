@@ -419,11 +419,7 @@ end
 -- Recruitment (Core/Recruit.lua, Core/RecruitIntro.lua; the page is UI/Recruit.lua's Guild > Recruitment)
 local function openRecruit(key) if ns.RecruitUI then ns.RecruitUI:Open(key) end end
 
-local function whisper(key)
-    local name = (Ambiguate and Ambiguate(key, "none")) or Short(key)
-    local open = (ChatFrameUtil and ChatFrameUtil.OpenChat) or ChatFrame_OpenChat
-    if open then open("/w " .. name .. " ") end
-end
+local function whisper(key) ns.Util.Whisper(key) end
 
 -- (the milestone keys 58 / 70 are kept; the level each means: Core/Recruit.lua MILESTONE_LEVEL, Forever 40 / 60)
 local MILESTONE = (ns.Compat and ns.Compat.isForever)

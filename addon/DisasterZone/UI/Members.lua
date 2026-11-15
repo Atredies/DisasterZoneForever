@@ -200,10 +200,7 @@ local function onlineCharacter(key)
 end
 
 local function whisper(key, recipe)
-    local name = (Ambiguate and Ambiguate(key, "none")) or ns.Util.ShortName(key)
-    local open = (ChatFrameUtil and ChatFrameUtil.OpenChat) or ChatFrame_OpenChat
-    if not open then return end
-    open("/w " .. name .. " " .. (recipe and (P():GetRecipeLink(recipe) .. " ") or ""))
+    ns.Util.Whisper(key, recipe and (P():GetRecipeLink(recipe) .. " ") or "")
 end
 
 local function linkRecipe(recipe)

@@ -7,6 +7,25 @@ updated: 2026-11-15
 
 Newest first.
 
+## 2026-11-15 - 0.2.6: recruitment shared, markers, a message per place, whispers into Talking
+
+Owner's reports (2026-11-15, Guild > People): whispering from the page didn't work on Forever, recruitment posts
+showed no icons, people who whispered after a post never showed up, and each officer had their own messages.
+- **Whisper:** `Util.Whisper` hands the whole name to Blizzard's `ChatFrameUtil.SendTellWithMessage`; typing
+  "/w Arakis War " through OpenChat parsed at the first space (a whisper to "Arakis" saying "War"). Every whisper
+  button and menu uses it (Recruit, guest book, members, groups, attendance, event board, guild map, shopping list).
+- **Whispers after a post:** CHAT_MSG_WHISPER from someone outside the guild within 2 hours of any recruiter's post
+  adds them to Recruitment (Talking, source "Whispers", their first words as "their words").
+- **Text markers:** an icon part sends a marker (`>>`, `~*~` ...; `tx`) where icons aren't drawn: chat channels, and
+  every chat on Forever (`NO_ICONS_ANYWHERE`). The preview shows the Trade line.
+- **Shared:** messages and places sync between the recruiters (RCM on a change, RCMQ at login; newer rev wins). A
+  store never shared before keeps its own messages, added as "(mine)". Posts and the reminders switch stay per
+  person. `RCM` is allowed large (a raid leader can be a recruiter).
+- **A message per place:** `place.msg` (Posting: the line under the place's name); deleting a message puts its places
+  back on the one in use.
+- Tests: `test_recruit_message` (markers, Forever, per place, sharing, whispers), `test_connected_realms`
+  (`a_whisper_keeps_a_forever_surname`).
+
 ## 2026-11-15 - 0.2.6: connected realms, Discord join requests, Chess catch-up, a green test suite
 
 - **Connected realms:** `Guild:GetGuildKey` uses the guild's realm (GetGuildInfo's 4th return), so a member from

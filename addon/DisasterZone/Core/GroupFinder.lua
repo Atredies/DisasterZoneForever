@@ -449,8 +449,7 @@ end
 
 -- Starts a whisper to somebody in the chat box.
 function GF:Whisper(key)
-    local open = (ChatFrameUtil and ChatFrameUtil.OpenChat) or ChatFrame_OpenChat
-    if open and type(key) == "string" then open("/w " .. ((Ambiguate and Ambiguate(key, "none")) or key) .. " ") end
+    ns.Util.Whisper(key)
 end
 
 ---------------------------------------------------------------------------

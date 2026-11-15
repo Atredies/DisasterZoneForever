@@ -139,11 +139,7 @@ function AUI:LineupLabel(n)
     return tconcat(parts, ", ")
 end
 
-local function whisper(key)
-    local nm = (Ambiguate and Ambiguate(key, "none")) or short(key)
-    local open = (ChatFrameUtil and ChatFrameUtil.OpenChat) or ChatFrame_OpenChat
-    if open then open("/w " .. nm .. " ") end
-end
+local function whisper(key) ns.Util.Whisper(key) end
 AUI.Whisper = whisper
 
 -- A note and two actions (buttons = { first, second }): onButton(1 | 2, text). Escape, the X and Cancel do nothing

@@ -8,7 +8,7 @@ if DisasterZoneBoot and DisasterZoneBoot.Run("Data/Changelog.lua", ...) then ret
 local addonName, ns = ...
 
 ns.CHANGELOG = {
-    { version = "0.2.6", date = "15 November 2026", title = "Raid times your way, busy days, everyone's Bingo card",
+    { version = "0.2.6", date = "15 November 2026", title = "Raid times your way, shared recruiting, everyone's Bingo card",
       sections = {
           { heading = "Raid times", area = "raids", kind = "new", hi = true,
             lead = "Show raid days and times in server time or your own clock.", lines = {
@@ -20,6 +20,14 @@ ns.CHANGELOG = {
           } },
           { heading = "Council Bingo", area = "other", kind = "new", lines = {
               "Click a raider in the race to see their card; My card takes you back.",
+          } },
+          { heading = "Recruitment", area = "other", kind = "new", hi = true,
+            lead = "Recruiters share the recruitment messages, and every place picks its own.", lines = {
+              "The GM, officers and allowed raid leaders all see and edit the same messages.",
+              "Under each place's name on Posting: click to pick which message it sends.",
+              "Raid icon parts send a text marker (>> ~*~ ...): Forever's chat draws no icons.",
+              "Whispers within 2 hours of a post add the player to People > Talking.",
+              "Whisper buttons work with Forever's two-part names.",
           } },
           { heading = "Guild and Discord", area = "other", kind = "fixed", lines = {
               "Members from the guild's other realms now share its data and Discord sign-ups.",

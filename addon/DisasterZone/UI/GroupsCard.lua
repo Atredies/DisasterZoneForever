@@ -1076,10 +1076,7 @@ local function NewOpen(c)
     o.join:SetScript("OnEnter", function(self) if self.tip then UI():SetTextTooltip(self, self.tip, "ANCHOR_TOP") end end)
     o.join:SetScript("OnLeave", HideTip)
     o.whisper = UI():CreateTipIconButton(o, 26, UI().ICON.whisper, "Whisper", "Opens a whisper to the leader.",
-        function() if o.leader then
-            local open = (ChatFrameUtil and ChatFrameUtil.OpenChat) or ChatFrame_OpenChat
-            if open then open("/w " .. ((Ambiguate and Ambiguate(o.leader, "none")) or o.leader) .. " ") end
-        end end)
+        function() if o.leader then ns.Util.Whisper(o.leader) end end)
     if ns.Share and ns.Share.CreateButton then
         o.share = ns.Share:CreateButton(o, 26, function() return o.runId and ns.Share:RunRef(o.runId) or nil end,
             "Share this group")
