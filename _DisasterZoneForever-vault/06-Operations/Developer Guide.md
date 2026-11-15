@@ -135,8 +135,13 @@ What is different today:
   go-live 1.0.0); never use 1.5.5 (`Util.PRE_FOREVER_VERSION`, the label of every pre-0.1.0 Forever copy).
   `dev/releases/` holds only our records; the TBC original's (0.10.0 ... 1.5.5, its update and publish logs) are kept
   for reference in `dev/fixtures/tbc/releases/`. `full` refuses a version that already has a record.
-- **In-game updates are off.** `Core/PatchKey.lua` holds no key, so releases ship with in-game updates off. The addon
-  and `release.py` refuse the TBC original's keys.
+- **In-game updates are on since 0.2.3** (this project's key in `Core/PatchKey.lua`; the addon and `release.py`
+  refuse the TBC original's keys). Members on the base release get each update in game (`/dz update`).
+- **Every version is on GitHub too.** After `release.py patch`, `release.py update-zip` writes
+  `dist/DisasterZone-<update version>.zip`: the base release's zip with the update's files in place and every TOC's
+  Version raised, but the base's build id kept, so later in-game updates still reach whoever installs it. It refuses
+  when the source no longer matches the update. Attach it to a GitHub release `v<version>` (notes in
+  `dev/releases/<version>.md`), marked Latest. The base zip must be in `dist/` (it is on the base's GitHub release).
 - Before any release: `tf_e/run_all.py --all`, plus the patch suites with `DZ_FORK=0`.
 
 ## Launcher

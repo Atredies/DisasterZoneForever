@@ -7,6 +7,13 @@ updated: 2026-11-15
 
 Newest first.
 
+## 2026-11-15 - 0.2.6 on GitHub: `release.py update-zip`
+
+Every version now gets a download, in-game updates included. `release.py update-zip` builds
+`dist/DisasterZone-0.2.6.zip` from the 0.2.3 zip with update #3's 33 files in place and the TOCs' Version at 0.2.6;
+BuildInfo keeps 0.2.3's build id (`20b0acb6fbbcd27a`), so update #3 applied on top changes nothing and later updates
+still apply. It checks each file against the update's hashes and runs `verify_zip`. Notes: `dev/releases/0.2.6.md`.
+
 ## 2026-11-15 - 0.2.6: recruitment shared, markers, a message per place, whispers into Talking
 
 Owner's reports (2026-11-15, Guild > People): whispering from the page didn't work on Forever, recruitment posts
