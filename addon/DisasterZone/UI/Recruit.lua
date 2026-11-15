@@ -1871,7 +1871,10 @@ function RU:AskMemberMenu(root, key)
 end
 
 -- Invite to the guild: one dialog (the welcome line can be changed or emptied); the game's invite goes out on its
--- button (a click: the game wants one). What happens when they accept is listed in it.
+-- button. That button is a secure macro (/ginvite, Recruit:InviteMacro): WoW Forever blocks an addon's own guild
+-- invite, so the click runs the game's command and OnAccept only keeps the welcome / note / team for when they join.
+-- Someone known to be offline gets the plain button (queued for when they come online). What happens when they accept
+-- is listed in it.
 function RU:Invite()
     if state.sel then RU:ConfirmInvite(state.sel) end
 end
@@ -1881,6 +1884,14 @@ function RU:ConfirmInvite(key, queued)
     local r = Rc:Get(key)
     if not r then return end
     local d = queued or Rc:InviteDefaults(r.key)
+    local live = Rc:Live(r.key)
+    local offline = live and live.online == false
+    local macro, why
+    if not offline and not ns.Util.DemoOn() then
+        macro, why = Rc:InviteMacro(r.key)
+        if not macro then ns:Print("%s", tostring(why)) return end
+        if InCombatLockdown and InCombatLockdown() then ns:Print("Guild invites wait until the fight is over.") return end
+    end
     local guild = (GetGuildInfo and GetGuildInfo("player")) or "the guild"
     local lines = { "The guild invite goes out now. When they accept:",
         "- the welcome line below goes to guild chat (empty: none)",
@@ -1890,10 +1901,10 @@ function RU:ConfirmInvite(key, queued)
     end
     lines[#lines + 1] = "- check-ins after a week and a month, for you"
     ns.Popup:Prompt({ title = "Invite " .. Short(r.key) .. " to " .. guild .. "?", text = tconcat(lines, "\n"),
-        default = d.welcome or "", ok = "Invite", maxLetters = 255, width = 420,
+        default = d.welcome or "", ok = "Invite", maxLetters = 255, width = 420, macro = macro,
         onAccept = function(v)
             d.welcome = v or ""
-            local ok, res = Rc:Invite(r.key, d)
+            local ok, res = Rc:Invite(r.key, d, macro ~= nil)
             if not ok then ns:Print("%s", tostring(res))
             elseif res == "queued" then ns:Print("%s is offline: you'll get a reminder to invite them when they come online.", Short(r.key)) end
         end })
@@ -1907,9 +1918,8 @@ function RU:InviteReady(key)
     UI:Toast({ key = "recruit-invite-" .. key, title = Short(key) .. " is online",
         text = "Click to send the guild invite you prepared.", keepTime = 60,
         onClick = function()
-            local opts = Rc:QueuedOpts(key)
-            local ok, err = Rc:Invite(key, opts)
-            if not ok then ns:Print("%s", tostring(err)) end
+            -- (the invite dialog: its button is the game's /ginvite, which an addon's own click can't send)
+            RU:ConfirmInvite(key, Rc:QueuedOpts(key))
         end })
 end
 

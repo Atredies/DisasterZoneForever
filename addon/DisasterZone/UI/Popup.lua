@@ -107,6 +107,8 @@ local function New(i)
         local def = defs[f.which]
         if def and def.EditBoxOnEnterPressed then
             safe(f.which .. " EditBoxOnEnterPressed", def.EditBoxOnEnterPressed, eb, f.data)
+        elseif type(f.data) == "table" and f.data.macro then
+            eb:ClearFocus()                 -- (a macro dialog: only a click on its button runs the macro)
         else
             Popup:Click(f, 1)
         end
@@ -163,6 +165,7 @@ local function New(i)
         self.expires = nil
         local which = self.which
         local def = which and defs[which]
+        Popup:ReleaseMacro(self)
         if def and def.OnHide and not self.silent then safe(which .. " OnHide", def.OnHide, self, self.data) end
         self.silent = nil
     end)
@@ -351,6 +354,73 @@ end
 
 function Popup:Get(which) return defs[which] end
 
+-- A dialog whose first button runs a macro (data.macro): the game lets only its own code do some things (WoW
+-- Forever: a guild invite), and a SecureActionButton's macro on a click counts as the game's. One secure button,
+-- laid over the shown dialog's first button: the click runs the macro, then the dialog's OnAccept as usual. Placed
+-- and taken away out of combat only (a secure frame can't be moved or hidden in a fight; it is hidden after it).
+local macroBtn
+local function MacroButton()
+    if macroBtn then return macroBtn end
+    if InCombatLockdown() then return nil end
+    local b = CreateFrame("Button", "DisasterZonePopupMacroButton", UIParent, "SecureActionButtonTemplate")
+    b:SetAttribute("type", "macro")
+    b:SetAttribute("useOnKeyDown", false)
+    b:RegisterForClicks("AnyUp")
+    b:Hide()
+    b:SetScript("PostClick", function(self)
+        local f = self.dlg
+        if f and f:IsShown() then Popup:Click(f, 1) end
+    end)
+    local function Forward(script)
+        return function(self)
+            local x = self.dlg and self.dlg.button1
+            local h = x and x:GetScript(script)
+            if h then h(x) end
+        end
+    end
+    b:SetScript("OnEnter", Forward("OnEnter"))
+    b:SetScript("OnLeave", Forward("OnLeave"))
+    b:RegisterEvent("PLAYER_REGEN_ENABLED")
+    b:SetScript("OnEvent", function(self)
+        if not self.dlg and self:IsShown() then
+            self:SetAttribute("macrotext", nil)
+            self:Hide()
+        end
+    end)
+    macroBtn = b
+    return b
+end
+Popup.MacroButton = function() return macroBtn end
+
+-- Lays the macro button over dialog f's first button (macro text m), or takes it away (m nil). False when it can't
+-- be placed now (in combat).
+function Popup:PlaceMacro(f, m)
+    if not m then
+        self:ReleaseMacro(f)
+        return true
+    end
+    local b = MacroButton()
+    if not b or InCombatLockdown() then return false end
+    b.dlg = f
+    b:SetAttribute("macrotext", m)
+    b:ClearAllPoints()
+    b:SetAllPoints(f.button1)
+    b:SetFrameStrata(f:GetFrameStrata())
+    b:SetFrameLevel(f.button1:GetFrameLevel() + 5)
+    b:Show()
+    return true
+end
+
+function Popup:ReleaseMacro(f)
+    local b = macroBtn
+    if not (b and b.dlg == f) then return end
+    b.dlg = nil
+    if not InCombatLockdown() then
+        b:SetAttribute("macrotext", nil)
+        b:Hide()
+    end
+end
+
 -- Shows dialog `which` (text1 / text2 fill the text's %s, data goes to the callbacks). A shown one of the same kind
 -- is used again (its OnCancel(dialog, data, "override") first, unless noCancelOnReuse). Returns the dialog, nil
 -- when none is free (OnCancel(nil, data) then, as the game does).
@@ -392,6 +462,7 @@ function Popup:Show(which, text1, text2, data)
     f.expires = (def.timeout and def.timeout > 0) and (GetTime() + def.timeout) or nil
     f:Show()
     f:Raise()
+    Popup:PlaceMacro(f, type(data) == "table" and data.macro or nil)
     if def.OnShow then safe(which .. " OnShow", def.OnShow, f, data) end
     if def.hasEditBox and not f.editBox:HasFocus() then f.editBox:SetFocus() end
     if def.multiline and f.multi and not f.multi:HasFocus() then f.multi:SetFocus() end

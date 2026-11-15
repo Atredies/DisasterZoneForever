@@ -8,6 +8,14 @@ if DisasterZoneBoot and DisasterZoneBoot.Run("Data/Changelog.lua", ...) then ret
 local addonName, ns = ...
 
 ns.CHANGELOG = {
+    { version = "0.2.7", date = "15 November 2026", title = "Guild invites from Recruitment work again",
+      sections = {
+          { heading = "Recruitment", area = "other", kind = "fixed", hi = true,
+            lead = "Invite to the guild no longer gets DisasterZone blocked.", lines = {
+              "The dialog's Invite button sends the game's own /ginvite: Forever blocks addon invites.",
+              "An invite reminder for someone who came online opens the same dialog.",
+          } },
+      } },
     { version = "0.2.6", date = "15 November 2026", title = "Raid times your way, shared recruiting, everyone's Bingo card",
       sections = {
           { heading = "Raid times", area = "raids", kind = "new", hi = true,

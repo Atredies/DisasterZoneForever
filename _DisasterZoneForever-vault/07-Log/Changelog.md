@@ -7,6 +7,18 @@ updated: 2026-11-15
 
 Newest first.
 
+## 2026-11-15 - 0.2.7: guild invites through the game's /ginvite
+
+Owner's report (2026-11-15): Invite to the guild on a Recruitment card raised "DisasterZone has been blocked from an
+action only available to the Blizzard UI". Forever (12.x) blocks `C_GuildInfo.Invite` from addon code.
+- The invite dialog's button is now a secure macro (`/ginvite <name>`, `Recruit:InviteMacro`), laid over the
+  dialog's first button by `Popup:PlaceMacro` (`data.macro`; one `SecureActionButtonTemplate` button, placed and
+  hidden out of combat; Enter in the field doesn't accept a macro dialog). Its PostClick runs the dialog's OnAccept,
+  which calls `Recruit:Invite(key, opts, true)`: only the bookkeeping (welcome, note, team when they join).
+- `Recruit:Invite` without `sent` refuses on Forever instead of calling the blocked function. A known-offline
+  person keeps the plain button (queued); the came-online toast opens the invite dialog.
+- Test: `test_recruit_invite` `forever_sends_the_invite_from_the_games_own_command`.
+
 ## 2026-11-15 - 0.2.6 on GitHub: `release.py update-zip`
 
 Every version now gets a download, in-game updates included. `release.py update-zip` builds
