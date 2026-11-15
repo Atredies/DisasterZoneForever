@@ -38,6 +38,20 @@ from PIL import Image, ImageDraw, ImageFont  # noqa: E402
 _FONTS = "C:/Windows/Fonts" if os.name == "nt" else "/mnt/c/Windows/Fonts"  # (the same files under WSL)
 PROXY = _FONTS + "/segoeui.ttf"
 PROXY_BOLD = _FONTS + "/segoeuib.ttf"
+# Linux without Windows fonts: a sans that measures close enough (DZ_PROXY_FONT / DZ_PROXY_FONT_BOLD pick another)
+_LINUX_PROXIES = [("/usr/share/fonts/liberation/LiberationSans-Regular.ttf", "/usr/share/fonts/liberation/LiberationSans-Bold.ttf"),
+                  ("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+                   "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"),
+                  ("/usr/share/fonts/noto/NotoSans-Regular.ttf", "/usr/share/fonts/noto/NotoSans-Bold.ttf"),
+                  ("/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf", "/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf")]
+if os.environ.get("DZ_PROXY_FONT"):
+    PROXY = os.environ["DZ_PROXY_FONT"]
+    PROXY_BOLD = os.environ.get("DZ_PROXY_FONT_BOLD", PROXY)
+elif not os.path.exists(PROXY):
+    for _reg, _bold in _LINUX_PROXIES:
+        if os.path.exists(_reg):
+            PROXY, PROXY_BOLD = _reg, (_bold if os.path.exists(_bold) else _reg)
+            break
 # Friz Quadrata advance width = Segoe UI advance x K_FRIZ, from text measured in an in-game screenshot at UI scale
 # 2.24 px per unit (window 800 units wide): (text, size, px).
 CALIBRATION = [("Attumen the Huntsman", 12, 306), ("Karazhan", 12, 113), ("Solo tanking", 12, 163),

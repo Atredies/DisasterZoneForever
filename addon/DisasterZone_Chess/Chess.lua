@@ -761,6 +761,8 @@ function Chess:Digest()
     return n, s
 end
 
+local LADDER_ANSWER_TIME = 120      -- seconds a CHY asked stays open for its CHZ answers
+
 handlers.CHQ = function(sender, msg)
     local n, s = Chess:Digest()
     if n > (tonumber(msg.n) or 0) or (n == tonumber(msg.n) and s ~= tonumber(msg.s)) then
@@ -772,6 +774,8 @@ handlers.CHN = function(sender, msg)
     -- the first who has more is asked for theirs (once a session)
     if Chess.askedLadder or (tonumber(msg.n) or 0) <= (Chess:Digest()) then return end
     Chess.askedLadder = true
+    -- (only the one asked may answer, for a short while: CHZ from anyone else is ignored)
+    Chess.ladderFrom, Chess.ladderUntil = sender, GetTime() + LADDER_ANSWER_TIME
     Chess:Whisper(sender, { t = "CHY" })
 end
 
@@ -787,7 +791,10 @@ handlers.CHY = function(sender)
     end
 end
 
-handlers.CHZ = function(_, msg)
+-- The results of the one I asked with CHY (a forged list whispered by anyone else, or long after, is ignored).
+-- Residual risk, accepted (07-Log/Decision Log.md, 2026-11-15): the one asked could lie; the ladder is for fun.
+handlers.CHZ = function(sender, msg)
+    if sender ~= Chess.ladderFrom or GetTime() > (Chess.ladderUntil or 0) then return end
     local added = false
     for _, e in ipairs(type(msg.list) == "table" and msg.list or {}) do
         if type(e) == "table" and AddResult(e[1], { w = e[2], b = e[3], r = e[4], at = e[5], n = e[6] }) then

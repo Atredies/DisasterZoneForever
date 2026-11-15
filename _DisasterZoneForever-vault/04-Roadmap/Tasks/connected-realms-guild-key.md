@@ -1,11 +1,12 @@
 ---
 title: "Connected realms: one guild key for members of every realm"
 tags: [task]
-status: "2 - Next up"
+status: "5 - Done"
 due: 2026-11-12
+completed: 2026-11-15
 priority: p1
 effort: M
-updated: 2026-11-12
+updated: 2026-11-15
 ---
 
 # Connected realms: one guild key for members of every realm
@@ -22,3 +23,12 @@ member keys always with the character's own realm. Test with members on two real
 ## Done when
 
 A member from another realm of the guild computes the same guild key as the GM, and takes the bot's records.
+
+## Done (2026-11-15)
+
+`Core/Guild.lua` builds the key from the guild's realm (GetGuildInfo's 4th return; the player's realm when it is
+nil). Member keys were already right: a name without a realm means the viewer's own realm on every client. The mock's
+GetGuildInfo now returns the guild's home realm (the world's) for a member of another realm, as the client does;
+`tests/cdl_council.py` seeds the council list under that key. Test: `tests/forever/test_connected_realms.py`;
+`test_sync_flows` `j_cross_realm_member_sync_and_restore` covers the sync. Ships in 0.2.6. To confirm in game: a Realm 8 member's Discord sign-ups apply, and
+their raids and BiS list reach the GM.

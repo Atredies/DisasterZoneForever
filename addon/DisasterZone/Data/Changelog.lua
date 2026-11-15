@@ -8,6 +8,25 @@ if DisasterZoneBoot and DisasterZoneBoot.Run("Data/Changelog.lua", ...) then ret
 local addonName, ns = ...
 
 ns.CHANGELOG = {
+    { version = "0.2.6", date = "15 November 2026", title = "Raid times your way, busy days, everyone's Bingo card",
+      sections = {
+          { heading = "Raid times", area = "raids", kind = "new", hi = true,
+            lead = "Show raid days and times in server time or your own clock.", lines = {
+              "The Local | Server switch is on the Home calendar, the Raids tab and Settings.",
+              "Hover it to see both clocks' time now.",
+          } },
+          { heading = "Calendar", area = "raids", kind = "fixed", lines = {
+              "A busy day turns in pages: the arrows by its title, or the mouse wheel.",
+          } },
+          { heading = "Council Bingo", area = "other", kind = "new", lines = {
+              "Click a raider in the race to see their card; My card takes you back.",
+          } },
+          { heading = "Guild and Discord", area = "other", kind = "fixed", lines = {
+              "Members from the guild's other realms now share its data and Discord sign-ups.",
+              "Answering a locked raid in Discord asks the raid leader to let you join, as in game.",
+              "Chess ladder results are only taken from the guildmate you asked.",
+          } },
+      } },
     { version = "0.2.5", date = "13 November 2026", title = "Guest book menu, and a clean start after updates",
       sections = {
           { heading = "Guest book", area = "other", kind = "fixed", hi = true,

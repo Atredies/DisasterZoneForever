@@ -1,10 +1,10 @@
 ---
 title: "Discord: requests to join a locked raid"
 tags: [task]
-status: 3 - To do
+status: "1 - In progress"
 priority: p3
 effort: S
-updated: 2026-11-13
+updated: 2026-11-15
 ---
 
 # Discord: requests to join a locked raid
@@ -32,3 +32,11 @@ If requests: pass `request = true` in `SignUpFor`'s `opts`, and flip the lock ro
 
 - [[one-sign-up-path-for-game-and-discord]]
 - [[Implicit State Machines]]
+
+## Progress (2026-11-15)
+
+- Addon: `RaidPlan:SignUpFor` passes `request = true`; `both_paths_apply_the_same_rules` expects a request on both
+  paths (and a refusal on both for a private raid). Ships in 0.2.6.
+- Bot: `launcher/server/src/signup.rs` answers "asked to join ... locked to its teams and invited players: if you are
+  not one of them, the raid leader accepts the request first" for a locked raid (the snapshot has no team members, so
+  it says both). `cargo test` green. Left: deploy the bot.

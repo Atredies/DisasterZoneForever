@@ -508,13 +508,20 @@ fn queue(raid: &str, c: &Char, sp: Option<u32>, st: &str, user: &str, name: &str
     if let Err(e) = bridge::push(r) {
         return format!("Could not save it: {e}");
     }
-    let t = lua_list(snap.get("raids"))
-        .into_iter()
-        .find(|r| r.get("id").and_then(|x| x.as_str()) == Some(raid))
-        .and_then(|r| r.get("t").and_then(|x| x.as_i64()));
+    let found = lua_list(snap.get("raids")).into_iter().find(|r| r.get("id").and_then(|x| x.as_str()) == Some(raid));
+    let t = found.as_ref().and_then(|r| r.get("t").and_then(|x| x.as_i64()));
+    // (a locked raid: outside its teams and invites, an answer is a request to join the raid leader accepts)
+    let locked = found.as_ref().and_then(|r| r.get("locked").and_then(|x| x.as_bool())).unwrap_or(false);
     let when = t.map(|t| format!(", <t:{t}:f>")).unwrap_or_default();
     let who = format!("{}**{}**", crate::emoji::class_tag(&c.class), c.name);
     match st {
+        "A" if locked => format!(
+            "{}{who} asked to join **{}**{when}, as {}. It is locked to its teams and invited players: if you are not \
+             one of them, the raid leader accepts the request first.",
+            crate::emoji::tag("dz_waiting"),
+            raid_name(snap, raid),
+            spec_name(&c.class, sp)
+        ),
         "A" => format!(
             "{}{who} is in for **{}**{when}, as {}. It shows as *pending* on the post until the raid leader's next sync.",
             crate::emoji::tag("dz_ready"),

@@ -1,10 +1,11 @@
 ---
 title: "Chess: ladder sync trusts any result"
 tags: [task]
-status: 3 - To do
+status: "5 - Done"
+completed: 2026-11-15
 priority: p3
 effort: S
-updated: 2026-11-12
+updated: 2026-11-15
 ---
 
 # Chess: ladder sync trusts any result
@@ -34,3 +35,8 @@ Needs a call on how much catch-up the ladder should keep.
 
 - [[chess-results-need-both-sides]]
 - [[Implicit State Machines]]
+
+## Done (2026-11-15)
+
+First option taken: CHZ is accepted only from the one I sent CHY to, for 120 s (`Chess.ladderFrom` / `ladderUntil`).
+A lying answerer is the accepted residual risk (Decision Log). Test: `ladder_catch_up_comes_only_from_the_one_asked`.

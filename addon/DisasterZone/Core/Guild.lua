@@ -248,22 +248,24 @@ end
 -- Roster
 ---------------------------------------------------------------------------
 
-local guildKeyName, guildKeyCache   -- GuildKey() is read on every award-log query: cached per guild name
+-- The guild's own realm (normalised, no spaces or hyphens) when it is not mine: GetGuildInfo's 4th return, which a
+-- member from another realm of a connected group gets. nil = the guild is on my realm.
+local guildRealm
 
+-- "Guild Name-Realm" with the GUILD's realm: every member computes the same key, whichever realm of the connected
+-- group their character is from (the bot's records, the synced buckets).
 local function GuildKey()
     if not guildName then return nil end
-    if guildKeyName == guildName then return guildKeyCache end
-    local realm = Util.GetPlayerRealm() or ""
-    local key = guildName .. "-" .. realm
-    if realm ~= "" then guildKeyName, guildKeyCache = guildName, key end
-    return key
+    return guildName .. "-" .. (guildRealm or Util.GetPlayerRealm() or "")
 end
 
 local function RefreshGuildName()
     if IsInGuild() and GetGuildInfo then
-        local name = GetGuildInfo("player")
+        local name, _, _, realm = GetGuildInfo("player")
         if type(name) == "string" and name ~= "" then
             guildName = name
+            realm = type(realm) == "string" and realm:gsub("[%s%-]", "") or ""
+            guildRealm = realm ~= "" and realm or nil
             -- GetGuildInfo("player") can stay nil for a few seconds after a login; modules that cached data
             -- scoped by the guild key (the award log view) rebuild when it arrives. Deferred: this runs inside
             -- GetGuildKey calls from those very modules.
@@ -951,6 +953,7 @@ local function ResetGuild()
     roster = {}
     ready = false
     guildName = nil
+    guildRealm = nil
     gmKey = nil
     guildList = nil
     if hadData then

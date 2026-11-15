@@ -7,6 +7,25 @@ updated: 2026-11-15
 
 Newest first.
 
+## 2026-11-15 - 0.2.6: connected realms, Discord join requests, Chess catch-up, a green test suite
+
+- **Connected realms:** `Guild:GetGuildKey` uses the guild's realm (GetGuildInfo's 4th return), so a member from
+  another realm of the group shares the guild's buckets and the bot's records (`ns.BridgeKeys`). The mock returns the
+  guild's home realm the same way. New `tests/forever/test_connected_realms.py`. Card [[connected-realms-guild-key]].
+- **Discord, locked raid:** an answer from Discord to a locked (not private) raid is a request to join, as in game
+  (`RaidPlan:SignUpFor`). The bot's reply says so (`launcher/server/src/signup.rs`). Card
+  [[discord-requests-to-join-a-locked-raid]].
+- **Chess:** ladder catch-up lists (CHZ) only from the one asked with CHY, for 120 s. Card
+  [[chess-ladder-sync-trusts-any-result]].
+- **Tests, all green on Linux (327 suites):** `test_boot` ignores `db.launcher` (rewritten at every logout);
+  `test_changelog` checks the Forever notes; `ui_audit.py` falls back to Liberation Sans / Noto Sans for Segoe UI;
+  `ui_audit_states.py` had the dev-scenario entries merged into the relic-coffer entry; the Goldshire trainer cases pin
+  noon (the mock's realm clock followed the machine's zone); `test_naxx` frost stage on seed 5 (seed 15 now kills
+  Kel'Thuzad with Sapphiron airborne, which ends the run by design); `test_mixed_versions` falls back to the "Release
+  1.4.0" commit and allows 0.2.2's `gmr`. `Core/Guild.lua` stays under Lua 5.1's 200 locals (the guild-key cache
+  went: the key is one concatenation).
+- Version 0.2.6 in the six TOCs; What's New entry in `Data/Changelog.lua`.
+
 ## 2026-11-15 - Raid times in server or local time, busy calendar days in pages, other raiders' Bingo cards
 
 - **Local | Server switch** for raid days and times (`settings.serverClock`, off = my clock). On the Home calendar's

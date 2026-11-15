@@ -72,7 +72,9 @@ def old_addon():
     return OLD_DIR
 
 
-OLD_140 = "release-1.4.0"
+# (the tag, or the "Release 1.4.0" commit when this clone lacks it: tags are not carried by every fork)
+OLD_140 = "release-1.4.0" if subprocess.call(["git", "-C", REPO, "rev-parse", "-q", "--verify", "release-1.4.0^{commit}"],
+                                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0 else "1209b80d"
 OLD_140_DIR = os.path.join(OLD_ROOT, "v140", "DisasterZone")
 
 
@@ -479,6 +481,8 @@ def the_hello_is_the_same_as_140s():
     # (1.4.2 adds dcr, the Discord links' rev: Core/Bridge.lua)
     assert "dcr" in new and "dcr" not in old
     new.pop("dcr")
+    # (0.2.2 adds gmr, the GM's record)
+    new.pop("gmr", None)
     assert set(old) == set(new), (sorted(old), sorted(new))
     assert {"rlr", "av", "pd", "blr", "gnr", "sd", "ed", "od", "zd"} <= set(new), sorted(new)
     # (the digest hashes are over records with ids made from each world's clock: each is its own client's hash)

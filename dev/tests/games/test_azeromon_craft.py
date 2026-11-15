@@ -27,7 +27,8 @@ def game(seed=7, ui=False):
     w, c = solo("Alice", tick=2)
     c.eval(BOT)
     c.eval("T_AZ.seed(%d)" % seed)
-    c.eval("ns.Azero:NewGame()")
+    # (noon: the Goldshire routines move people by the hour, and the mock's realm clock follows the machine's zone)
+    c.eval("ns.Azero:NewGame() ns.Azero.clockHour = 12")
     c.eval("ns.AzeroCraft.clock = %d" % CLOCK)
     c.eval("ns.Azero:AddMon(ns.AzeroMon.New('murkling', 12, ns.Azero.rng), 'caught')")
     if ui:

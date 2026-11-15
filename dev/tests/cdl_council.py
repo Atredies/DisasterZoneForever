@@ -84,7 +84,8 @@ def _seed_client(c):
     s = seeds.get(c.guild) if c.guild else None
     if not s or c.runtime is None:
         return False
-    gk = "%s-%s" % (c.guild, harness.normalize_realm(c.realm))
+    # (the guild key takes the GUILD's realm, the world's: a connected-realm member shares it)
+    gk = "%s-%s" % (c.guild, harness.normalize_realm(c.world.realm))
     fn = c.runtime.eval("function(src, ...) return loadstring(src)(...) end")
     return bool(fn(SEED_LUA, c.runtime.table(*s["members"]), s["phase"], s["by"], s["rev"], s["recvAt"], gk))
 

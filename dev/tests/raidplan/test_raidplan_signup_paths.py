@@ -91,15 +91,19 @@ def both_paths_apply_the_same_rules():
     w.tick(3)
     refused_alike(both(sam, occ, "A"), "You can't sign up for raids. Contact an officer.")
 
-    # a locked raid: the deliberate difference (in game a request to join, Discord refuses)
+    # a locked raid: from either path a request to join, which the raid leader accepts (owner's call, 2026-11-13)
     tid = team(bob, "Kara A", ["Rita", "Gina"])
     occ = create(bob, i="kara", t=t0 + DAY, tm=[tid], lk=True)
     w.tick(2)
     res = both(lee, occ, "A")
-    assert res["game"]["ok"] is True, res
-    assert res["discord"] == {"ok": False, "e": "This raid is locked to its teams and invited players."}, res
+    assert res["game"]["ok"] is True and res["discord"]["ok"] is True, res
     reqs = lee.eval_py("return ns.RaidPlan:GetRequests(...)", occ)
     assert [r["key"] for r in reqs] == [K("Lee")], reqs
+    # a private raid still refuses both (invite only)
+    occ_p = create(bob, i="kara", t=t0 + DAY + 3600, tm=[tid], lk=True, pv=True)
+    w.tick(2)
+    res = both(lee, occ_p, "A")
+    assert res["game"]["ok"] is False and res["discord"]["ok"] is False, res
 
     # removed by an organizer: a new answer, from either path, is newer than the removal
     for name, fn in PATHS:

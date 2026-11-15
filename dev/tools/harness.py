@@ -1678,7 +1678,8 @@ class World:
             roster = [self._base_record(m) for m in self._guild_members(c.guild)]
             roster.sort(key=lambda r: (not r["online"], r["name"].lower()))
             guild = {"name": c.guild, "ranks": self.ranks_for(c.guild), "roster": roster,
-                     "info_text": self.guild_texts.get(c.guild, ""), "officer_rank": self.officer_rank, "motd": ""}
+                     "info_text": self.guild_texts.get(c.guild, ""), "officer_rank": self.officer_rank, "motd": "",
+                     "realm": normalize_realm(self.realm)}
         inst = self.instance if (self.instance and c.full_name in self.instance_members) else None
         players = [self._base_record(x) for x in self.clients if x is not c and x.online and x.runtime is not None]
         return {"self": me, "realm": normalize_realm(c.realm), "realm_display": c.realm, "guild": guild,
