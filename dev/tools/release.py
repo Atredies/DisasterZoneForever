@@ -23,6 +23,9 @@ Run from C:\\Users\\emilo\\CDLoot-dev\\dev with luaenv\\Scripts\\python.exe:
                                       this copy (the changed files are put back from the release zip; the versions
                                       you had are kept in dev\\releases\\undone\\). --keep-source leaves this
                                       copy alone, for when you want to fix the change and send it again.
+  tools\\release.py update-zip         the newest in-game update as dist\\DisasterZone-<version>.zip (the base zip
+                                      with the update's files in place, same build id) for a GitHub release, so
+                                      every version can also be downloaded; in-game updates keep reaching it
   tools\\release.py status             base release, last update, what changed since the base
   tools\\release.py selftest [--part N] an update that carries every patchable file, addressed to no real build, to
                                       try the whole mechanism in the real client on the development copy. In game:
@@ -1146,6 +1149,64 @@ def human_time(seconds):
     return "%d minutes" % round(seconds / 60.0)
 
 
+def cmd_update_zip(args):
+    """'update-zip': the newest in-game update as a zip to download, for members who cannot get it in game. It is
+    the base release's zip with the update's files already in place and every TOC's Version raised to the update's.
+    BuildInfo keeps the base's build id, so the next in-game updates still reach whoever installs it (and the
+    update itself, applied on top, changes nothing). Refuses when the source no longer matches the update."""
+    base = load_base()
+    last = last_update_for(patch_log(), base)
+    if not last or last.get("revoke"):
+        raise ReleaseError("release %s has no in-game update to zip (or the last one was taken back)" % base["version"])
+    version = last["version"]
+    base_zip = os.path.join(DIST, "%s-%s.zip" % (ADDON_NAME, base["version"]))
+    if not os.path.exists(base_zip):
+        raise ReleaseError("%s is missing: download it from the GitHub release v%s into dist/" % (base_zip, base["version"]))
+    out = os.path.join(DIST, "%s-%s.zip" % (ADDON_NAME, version))
+    if os.path.exists(out) and not args.force:
+        raise ReleaseError("%s already exists (--force to rebuild it)" % out)
+
+    def source(path):     # an update path -> the file in this copy ("DisasterZone_Chess/x.lua" is a game pack's)
+        top = path.split("/", 1)[0]
+        if top.startswith(ADDON_NAME + "_") and os.path.isdir(os.path.join(os.path.dirname(ADDON_DIR), top)):
+            return os.path.join(os.path.dirname(ADDON_DIR), path), path
+        return os.path.join(ADDON_DIR, path), ADDON_NAME + "/" + path
+
+    replace, drop = {}, set()
+    for kind, path in last.get("files", []):
+        disk, name = source(path)
+        if kind == "D":
+            drop.add(name)
+            continue
+        raw = read(disk) if os.path.exists(disk) else None
+        if raw is None or hashlib.sha256(patchlib.normalize_source(raw)).hexdigest() != last["sha"].get(path):
+            raise ReleaseError("%s is not what update #%d carries: zip from the commit the update was made at (%s)"
+                               % (path, last["seq"], last.get("commit", "?")))
+        replace[name] = raw
+    version_re = re.compile(r"^(## Version:\s*)\S+", re.M)
+    with zipfile.ZipFile(base_zip) as zin, zipfile.ZipFile(out + ".tmp", "w", zipfile.ZIP_DEFLATED, compresslevel=9) as zout:
+        for info in zin.infolist():
+            n = info.filename
+            if n in drop or n in replace:
+                continue
+            data = zin.read(n)
+            if n.endswith(".toc") and n.count("/") == 1:
+                data = version_re.sub(lambda m: m.group(1) + version, data.decode("utf-8")).encode("utf-8")
+            elif n == README_NAME:
+                data = readme_text(version, base).replace("\n", "\r\n").encode("utf-8")
+            zout.writestr(info, data)
+        for n, raw in sorted(replace.items()):
+            zout.writestr(n, raw)
+    os.replace(out + ".tmp", out)
+    problems = verify_zip(out, version)
+    if problems:
+        os.remove(out)
+        raise ReleaseError("the zip failed its checks (removed):\n  " + "\n  ".join(problems))
+    print("%s: release %s (build %s) + update #%d, %d file(s) replaced, %d removed (%.1f MB)" % (
+        out, base["version"], base["build"], last["seq"], len(replace), len(drop), os.path.getsize(out) / 1048576.0))
+    print("  attach it to a GitHub release v%s (notes in dev/releases/%s.md). In-game updates keep reaching it." % (version, version))
+
+
 def cmd_status(args):
     key = patchlib.load_key(KEY_PATH) if os.path.exists(KEY_PATH) else None
     print("signing key: %s" % ("%d of %d updates used" % (key.get("next", 1) - 1, (1 << key["height"]) - 1) if key else "none (release.py keygen)"))
@@ -1494,6 +1555,7 @@ def main(argv=None):
     p.set_defaults(fn=cmd_full)
     p = sub.add_parser("patch"); p.add_argument("--revoke", action="store_true")
     p.add_argument("--keep-source", action="store_true"); p.set_defaults(fn=cmd_patch)
+    p = sub.add_parser("update-zip"); p.add_argument("--force", action="store_true"); p.set_defaults(fn=cmd_update_zip)
     p = sub.add_parser("status"); p.set_defaults(fn=cmd_status)
     p = sub.add_parser("selftest"); p.set_defaults(fn=cmd_selftest)
     p.add_argument("--part", type=int, default=1, help="which part (the addon no longer fits one update)")
