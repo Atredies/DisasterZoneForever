@@ -22,14 +22,14 @@ def K(name):
     return name + "-" + REALM
 
 
-def guild(pugs=(("Kaelthorn", "PALADIN"), ("Aurelith", "PALADIN"))):
+def guild(pugs=(("Kaelthorn", "PALADIN"), ("Aurelith", "PALADIN")), forever=False):
     """Gina GM, Bob officer, Lee raid leader (rank 2, listed), Cora member; pugs outside any guild."""
     w = World()
     c = {}
     for name, rank, cls in (("Gina", 0, "PALADIN"), ("Bob", 1, "MAGE"), ("Lee", 2, "WARRIOR"), ("Cora", 3, "PRIEST")):
-        c[name] = Client(w, name, guild_rank=rank, class_file=cls)
+        c[name] = Client(w, name, guild_rank=rank, class_file=cls, forever=forever)
     for name, cls in pugs:
-        c[name] = Client(w, name, guild=None, class_file=cls, level=68)
+        c[name] = Client(w, name, guild=None, class_file=cls, level=68, forever=forever)
     for x in c.values():
         x.load_addon()
     w.tick(SETTLE)
@@ -278,6 +278,33 @@ def a_member_cant_invite_through_recruitment():
     gina, cora = c["Gina"], c["Cora"]
     add(w, gina, "Kaelthorn")
     assert invite(cora, "Kaelthorn")["ok"] is False
+    w.assert_no_errors()
+
+
+@case
+def forever_sends_the_invite_from_the_games_own_command():
+    # 2026-11-15 in game: "DisasterZone has been blocked from an action only available to the Blizzard UI" on
+    # Invite to the guild. Forever blocks C_GuildInfo.Invite from addon code: the dialog's button is a secure
+    # /ginvite macro, and the addon only keeps the welcome / note for when they join.
+    w, c = guild(forever=True)
+    gina, kael = c["Gina"], c["Kaelthorn"]
+    add(w, gina, "Kaelthorn", c="PALADIN", sp=1)
+    res = invite(gina, "Kaelthorn")
+    assert res["ok"] is False and "own button" in res["r"], res
+    assert not getattr(w, "guild_invite_log", []), w.guild_invite_log
+    gina.eval("ns.RecruitUI:ConfirmInvite(...)", K("Kaelthorn"))
+    b = gina.eval_py("local b = ns.Popup.MacroButton() return { b and b:IsShown(), b and b:GetAttribute('type'), "
+                     "b and b:GetAttribute('macrotext') }")
+    b = list(b.values()) if isinstance(b, dict) else b
+    assert b == [True, "macro", "/ginvite Kaelthorn"], b
+    # the click: the game runs the macro (its /ginvite), then the button's PostClick (the dialog's OnAccept)
+    gina.eval("local b = ns.Popup.MacroButton() C_GuildInfo.Invite('Kaelthorn') b:GetScript('PostClick')(b, 'LeftButton')")
+    w.tick(2)
+    assert [e["result"] for e in w.guild_invite_log] == ["invited"], w.guild_invite_log
+    assert gina.eval("return ns.Popup.MacroButton():IsShown()") is False
+    kael.eval("AcceptGuild()")
+    w.tick(10)
+    assert person(gina, "Kaelthorn")["st"] == "joined"
     w.assert_no_errors()
 
 

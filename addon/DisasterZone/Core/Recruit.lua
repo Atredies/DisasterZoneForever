@@ -1050,8 +1050,22 @@ function Recruit:InviteDefaults(key)
              teamName = best and best.team.name or nil }
 end
 
--- Sends the guild invite (opts: welcome text or "", note, team id). Returns ok, err | "queued".
-function Recruit:Invite(key, opts)
+-- The macro that sends the guild invite from a secure button (UI/Recruit.lua's invite dialog). WoW Forever (the 12.x
+-- engine) blocks C_GuildInfo.Invite from addon code ("blocked from an action only available to the Blizzard UI",
+-- 2026-11-15); the game's own /ginvite, run by a SecureActionButton's macro on a click, is allowed. nil, why when
+-- this player can't invite.
+function Recruit:InviteMacro(key)
+    if not self:CanUse() then return nil, "only the Guild Master and officers work on recruits" end
+    local r = self:Get(key)
+    if not r then return nil, "not in Recruitment" end
+    if CanGuildInvite and not CanGuildInvite() then return nil, "your guild rank can't invite" end
+    return "/ginvite " .. H.GameName(r.key)
+end
+
+-- Sends the guild invite (opts: welcome text or "", note, team id). Returns ok, err | "queued". sent: the invite
+-- already went out through InviteMacro's secure button (only the bookkeeping is left). Without it, WoW Forever
+-- refuses: the game blocks an addon's guild invite there.
+function Recruit:Invite(key, opts, sent)
     if not self:CanUse() then return false, "only the Guild Master and officers work on recruits" end
     local r = self:Get(key)
     if not r then return false, "not in Recruitment" end
@@ -1062,14 +1076,20 @@ function Recruit:Invite(key, opts)
     end
     if CanGuildInvite and not CanGuildInvite() then return false, "your guild rank can't invite" end
     local live = self:Live(r.key)
-    if live and live.online == false then
+    if live and live.online == false and not sent then
         H.Mine().queue[r.key] = opts
         self:Note(r.key, { iv = { at = Now(), r = "offline", by = Me() } })
         return true, "queued"
     end
     H.pending[r.key] = { at = Now(), opts = opts }
     H.Mine().queue[r.key] = nil
-    if GuildInvite then GuildInvite(H.GameName(r.key)) end      -- (Forever: C_GuildInfo.Invite, Core/Compat.lua)
+    if not sent then
+        if FOREVER then
+            H.pending[r.key] = nil
+            return false, "the game only lets its own button send a guild invite: use Invite to the guild on their card"
+        end
+        if GuildInvite then GuildInvite(H.GameName(r.key)) end
+    end
     Util.After(INVITE_WAIT, function()
         local p = H.pending[r.key]
         if p and p.at <= Now() - INVITE_WAIT + 1 then
