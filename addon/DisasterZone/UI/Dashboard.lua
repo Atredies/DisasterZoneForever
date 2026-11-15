@@ -16,6 +16,8 @@ if DisasterZoneBoot and DisasterZoneBoot.Run("UI/Dashboard.lua", ...) then retur
 -- Every block opens the tab with the details. Read-only apart from the answer buttons. The online count is in the
 -- sync icon's tooltip (UI/MainFrame.lua).
 local addonName, ns = ...
+-- date / time in the clock raid times are shown in (my own or the realm's: Settings serverClock, Util.Date)
+local date, time = ns.Util.Date, ns.Util.Time
 
 local Dashboard = ns:NewModule("Dashboard")
 
@@ -80,7 +82,8 @@ local REASON = {
 }
 
 local panel
-local cal = {}      -- the calendar: y, m = the month shown, day = the picked day (yyyymmdd); nil = today's
+local cal = {}      -- the calendar: y, m = the month shown, day = the picked day (yyyymmdd); nil = today's; page =
+                    -- the picked day's page of events (1 = the first) when they don't all fit
 
 local function UI() return ns.UI end
 local function RP() return ns.RaidPlan end
@@ -1731,6 +1734,7 @@ local function fillAgendaRow(r, d, width)
 end
 
 local function showDay(key)
+    if cal.day ~= key then cal.page = nil end
     cal.day = key
     cal.y, cal.m = floor(key / 10000), floor(key / 100) % 100
     Dashboard:Refresh()
@@ -1865,10 +1869,32 @@ local function refreshCalendar(card, ctx)
     -- the day's rows leave room for the coming-up header and one raid under it
     local headY = HEAD_H + 6
     local dayBottom = bottom - (#coming > 0 and (S.GAP + 18 + 4 + S.ROW.art) or 0)
-    local yy = layoutRows(card, card.agenda, items, headY + 24 + 4, dayBottom, width, function(i)
+    -- a busy day: its events in pages (the arrows by its title), as many picture rows a page as fit
+    local rowsTop = headY + 24 + 4
+    local perPage = max(1, floor((dayBottom - rowsTop + ROW_GAP) / (S.ROW.art + ROW_GAP)))
+    local pages = max(1, math.ceil(#items / perPage))
+    local page = min(max(tonumber(cal.page) or 1, 1), pages)
+    cal.page = page > 1 and page or nil
+    local shownItems = items
+    if pages > 1 then
+        shownItems = {}
+        for i = (page - 1) * perPage + 1, min(#items, page * perPage) do shownItems[#shownItems + 1] = items[i] end
+    end
+    card.dayPages = pages
+    card.dayPage = page
+    card.dayPrev:SetShown(pages > 1)
+    card.dayNext:SetShown(pages > 1)
+    card.dayPageText:SetShown(pages > 1)
+    card.dayPrev:SetEnabled(page > 1)
+    card.dayNext:SetEnabled(page < pages)
+    card.dayPrev:SetAlpha(page > 1 and 1 or 0.35)
+    card.dayNext:SetAlpha(page < pages and 1 or 0.35)
+    card.dayPageText:SetText(page .. "/" .. pages)
+    local yy = layoutRows(card, card.agenda, shownItems, rowsTop, dayBottom, width, function(i)
+        -- (a row taller than the page counted on, e.g. a long status on two lines: the rest of this page)
         local names = { "More that day" }
-        for j = i, #items do names[#names + 1] = items[j].plain or "" end
-        return { l1 = dim("+" .. (#items - i + 1) .. " more"), tip = names }
+        for j = i, #shownItems do names[#names + 1] = shownItems[j].plain or "" end
+        return { l1 = dim("+" .. (#shownItems - i + 1) .. " more"), tip = names }
     end)
 
     -- what's coming (its header links to the rest when they don't all fit)
@@ -1924,7 +1950,10 @@ local function createCalendar(p, body)
         cal = {}
         Dashboard:Refresh()
     end)
-    cc.todayBtn:SetPoint("RIGHT", cc.prevMonth, "LEFT", -10, 0)
+    -- the clock the raid times are in (Local | Server)
+    cc.clock = UI():CreateClockSwitch(cc.head)
+    cc.clock:SetPoint("RIGHT", cc.prevMonth, "LEFT", -10, 0)
+    cc.todayBtn:SetPoint("RIGHT", cc.clock, "LEFT", -10, 0)
     -- the line between the month and the day's list
     UI():Rule(cc, { vertical = true, left = RULE_X, top = HEAD_H + 10, bottom = S.PAD })
     for i, letter in ipairs(WEEKDAYS) do
@@ -1974,6 +2003,29 @@ local function createCalendar(p, body)
     cc.dayHead = UI():CreateSectionHeader(cc, "", { style = "title", width = AGENDA_W })
     cc.dayHead:SetPoint("TOPLEFT", AGENDA_X, -(HEAD_H + 6))
     cc.dayTitle = cc.dayHead.title
+    -- a busy day's pages: < 1/2 > at the title's right (the mouse wheel over the list turns them too)
+    local function turn(delta)
+        local n = (cc.dayPage or 1) + delta
+        if n < 1 or n > (cc.dayPages or 1) then return end
+        cal.page = n
+        Dashboard:Refresh()
+    end
+    cc.dayNext = UI():CreateArrowButton(cc.dayHead, true, 20, 20, function() turn(1) end)
+    cc.dayNext:SetPoint("RIGHT", cc.dayHead, "RIGHT", 0, 1)
+    UI():AttachTooltip(cc.dayNext, "More that day", nil, { anchor = "ANCHOR_TOP" })
+    cc.dayPrev = UI():CreateArrowButton(cc.dayHead, false, 20, 20, function() turn(-1) end)
+    cc.dayPrev:SetPoint("RIGHT", cc.dayNext, "LEFT", -24, 0)
+    UI():AttachTooltip(cc.dayPrev, "Back", nil, { anchor = "ANCHOR_TOP" })
+    cc.dayPageText = UI():Text(cc.dayHead, "small", "SUB", { justify = "CENTER", width = 24 })
+    cc.dayPageText:SetPoint("LEFT", cc.dayPrev, "RIGHT", 0, 0)
+    cc.dayPageText:SetPoint("RIGHT", cc.dayNext, "LEFT", 0, 0)
+    cc.dayPrev:Hide()
+    cc.dayNext:Hide()
+    cc.dayPageText:Hide()
+    cc:EnableMouseWheel(true)
+    cc:SetScript("OnMouseWheel", function(_, delta)
+        if (cc.dayPages or 1) > 1 then turn(delta > 0 and -1 or 1) end
+    end)
     cc.comingHead = UI():CreateSectionHeader(cc, "Coming up", { style = "caps", width = AGENDA_W })
     cc.comingHead:Hide()
 end

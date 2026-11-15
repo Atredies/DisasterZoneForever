@@ -12,6 +12,8 @@ if DisasterZoneBoot and DisasterZoneBoot.Run("UI/AttendanceUI.lua", ...) then re
 --   Prompts    - the raid leader's (an expected player left: their chat lines, Swap in / I benched them / Officers
 --                decide; who is not here yet) and the player's own (you left before the end: why?).
 local addonName, ns = ...
+-- date / time in the clock raid times are shown in (my own or the realm's: Settings serverClock, Util.Date)
+local date, time = ns.Util.Date, ns.Util.Time
 
 local AUI = ns:NewModule("AttendanceUI")
 

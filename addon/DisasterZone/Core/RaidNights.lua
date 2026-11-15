@@ -75,20 +75,20 @@ end
 -- How far my clock is ahead of realm time, in minutes (a multiple of 15, -720..720): my hour and minute against the
 -- realm's (GetGameTime). The same zone (most players): 0.
 function RaidNights:Offset()
-    if not GetGameTime then return 0 end
-    local h, m = GetGameTime()
-    if type(h) ~= "number" or type(m) ~= "number" then return 0 end
-    local t = date("*t", ns.Util.Now())
-    local d = (t.hour * 60 + t.min) - (h * 60 + m)
-    d = floor(d / self.STEP + 0.5) * self.STEP
-    d = (d + 720) % 1440 - 720
-    return d
+    return ns.Util.RealmOffset()
+end
+
+-- The offset the nights are shown with: my clock's (Offset), or 0 while raid times are shown in realm time
+-- (Settings serverClock).
+function RaidNights:ShownOffset()
+    if ns.Util.ServerClock() then return 0 end
+    return self:Offset()
 end
 
 -- A night in my clock: day (1 = Monday .. 7), start and end (minutes into the day; an end before the start runs
 -- past midnight), optional.
 function RaidNights:Local(n, offset)
-    local w = (n.w + (offset or self:Offset())) % WEEK_MIN
+    local w = (n.w + (offset or self:ShownOffset())) % WEEK_MIN
     local s = w % 1440
     return floor(w / 1440) + 1, s, (s + n.m) % 1440, n.o and true or false
 end
@@ -100,13 +100,13 @@ function RaidNights:FromLocal(d, s, e, o, offset)
     s = floor(s / step + 0.5) * step % 1440
     local m = (floor(e / step + 0.5) * step - s) % 1440
     if m == 0 then return nil end
-    local w = ((d - 1) * 1440 + s - (offset or self:Offset())) % WEEK_MIN
+    local w = ((d - 1) * 1440 + s - (offset or self:ShownOffset())) % WEEK_MIN
     return { w = w, m = m, o = o and true or nil }
 end
 
 -- The nights in my clock, in week order: { { d, s, e, o, n = the wire night }, ... }.
 function RaidNights:LocalList(list, offset)
-    offset = offset or self:Offset()
+    offset = offset or self:ShownOffset()
     local out = {}
     for _, n in ipairs(list or {}) do
         local d, s, e, o = self:Local(n, offset)

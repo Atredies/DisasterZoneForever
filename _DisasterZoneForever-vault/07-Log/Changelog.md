@@ -1,11 +1,30 @@
 ---
 tags: [log]
-updated: 2026-11-13
+updated: 2026-11-15
 ---
 
 # Changelog
 
 Newest first.
+
+## 2026-11-15 - Raid times in server or local time, busy calendar days in pages, other raiders' Bingo cards
+
+- **Local | Server switch** for raid days and times (`settings.serverClock`, off = my clock). On the Home calendar's
+  header, the Raids tab (Upcoming, Teams) and Settings > Window ("Raid times in server time"); its tooltip has both
+  clocks' time now. `Util.Date` / `Util.Time` are `date` / `time` in the chosen clock (shifted by the realm offset,
+  now `Util.RealmOffset`; `RaidNights:Offset` calls it), and the raid screens use them in place of the globals:
+  `UI/Dashboard.lua`, `RaidPlanUI.lua`, `RaidSheet.lua`, `RaidsTab.lua`, `NotifySources.lua`, `AttendanceUI.lua`.
+  Team nights follow it too (`RaidNights:ShownOffset`). The switch is `UI:CreateClockSwitch` (`UI/Comp/Controls.lua`).
+- **A busy calendar day turns in pages**: the "+N more" row (a tooltip, not clickable) is gone; `< 1/2 >` by the
+  day's title and the mouse wheel over the calendar turn the day's raids, as many picture rows a page as fit.
+- **Bingo: another raider's card.** A click on a raider in the race shows their card read-only, with a bar over it
+  (whose card, points, marked, BINGO) and "My card" to go back. Cards are dealt from the game's seed, so this needs
+  no message. The banner keeps my own numbers; slams and new-square stamps stay on my card only; a new game ends the
+  view (`BingoUI:ViewCard`, `GetViewedCard`).
+- Tests: `test_dashboard` `a_crowded_day_turns_its_events_in_pages` (was `a_crowded_day_ends_with_how_many_more`),
+  `raid_times_switch_between_local_and_server_time`; `test_bingo` `clicking_a_raider_in_the_race_shows_their_card`;
+  `test_boot` expects the new default. `run_all --all`: 326 suites, the same 8 failures as `main`, all known
+  (Linux Dev Setup). Card [[raid-times-busy-days-and-bingo-cards]].
 
 ## 2026-11-14 - In-game checks confirmed
 

@@ -40,6 +40,7 @@ EXPECTED_SETTINGS = {
               "scale": 1},
     "map": {"share": "unset", "blizzard": True},
     "minimap": {"hide": False},
+    "serverClock": False,
     "openOn": "home",
     "alerts": {"councilPanel": True, "personalToast": True, "sound": True, "glow": True, "chat": True,
                "lootBadges": True, "offspec": True},

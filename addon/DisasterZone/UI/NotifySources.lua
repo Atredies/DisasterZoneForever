@@ -3,6 +3,8 @@ if DisasterZoneBoot and DisasterZoneBoot.Run("UI/NotifySources.lua", ...) then r
 -- Each source reads the same Core data its page does, so the bell, Home's chips and the pages always agree. The
 -- order here is the order of Settings > Notifications.
 local addonName, ns = ...
+-- date / time in the clock raid times are shown in (my own or the realm's: Settings serverClock, Util.Date)
+local date, time = ns.Util.Date, ns.Util.Time
 
 local NotifySources = ns:NewModule("NotifySources")
 
