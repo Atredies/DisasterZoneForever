@@ -7,7 +7,8 @@ if DisasterZoneBoot and DisasterZoneBoot.Run("DisasterZone_Bingo/UI.lua", ...) t
 --   quality bar and wash, your legendary burning; your raid-marker dauber's ink and marker on marked squares; a gold
 --   thread through the gaps of a line one square short, broken where the square you need is, and glowing on a full
 --   line; 1 AWAY on that square) and a right column: your legendary, the race (everyone's card as a 5x5 dot map),
---   the moments of the game as quality-coloured links, your dauber.
+--   the moments of the game as quality-coloured links, your dauber. A click on a raider in the race shows their card
+--   (read-only: every card is dealt from the game's seed, so anyone's card is known here without asking them).
 --   Codex: the season ladder (points, bingos, legendaries), the legendaries this character has witnessed, and every
 --   square of the set: in its quality frame once seen, a silhouette until then.
 -- How a square arrives depends on its quality: a stamp (common), a green flash (uncommon), a toast (rare, on your
@@ -60,6 +61,9 @@ local codexGroups, codexCells
 local takeover
 local mini
 local view = "card"
+local viewing                   -- { key, g = the game id }: another raider's card shown read-only in the Card view
+local viewBar                   -- its bar over the card: whose card it is, the way back to mine
+local VIEW_H = 22
 
 ---------------------------------------------------------------------------
 -- Helpers
@@ -742,6 +746,11 @@ end
 -- A race row: + the BINGO pill and the raider's card as a 5x5 dot map.
 local function CreateRaceRow(parent)
     local r = CreateListRow(parent, 24, { rank = true, class = true })
+    r:SetScript("OnMouseUp", function(self, button)
+        if button ~= "LeftButton" or not self.key then return end
+        local mine = self.key == Util.PlayerKey() or (viewing and viewing.key == self.key)
+        BingoUI:ViewCard(not mine and self.key or nil)
+    end)
     r.map = CreateFrame("Frame", nil, r)
     r.map:SetSize(19, 19)
     r.map:SetPoint("RIGHT", -30, 0)
@@ -795,11 +804,16 @@ local function RefreshRace(g)
                 else d:SetColorTexture(0.17, 0.18, 0.2, 1) end
             end
             row:SetYou(r.key == me)
+            row.key = r.key
             local tip = { Util.ShortName(r.key, true), string.format("%d points  \194\183  %d/25 marked  \194\183  %d line%s",
                 r.points, r.marked, r.lines, r.lines == 1 and "" or "s") }
             if winnerAt[r.key] then
                 tip[#tip + 1] = { winnerAt[r.key] == 1 and "First BINGO of the game!" or ("BINGO #" .. winnerAt[r.key]),
                     GOLD[1], GOLD[2], GOLD[3] }
+            end
+            if r.key ~= me then
+                tip[#tip + 1] = { viewing and viewing.key == r.key and "Click to go back to your card"
+                    or "Click to see their card", 0.6, 0.6, 0.6 }
             end
             row.tip = tip
             row:Show()
@@ -1455,12 +1469,13 @@ local function Layout()
     card:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, -(HERO_H + PAD))
     card:SetSize(cardW, bodyH)
     local gw = cardW - 2 * CARD_PAD
-    local gh = bodyH - 2 * CARD_PAD - LETTER_H
+    local barH = viewing and VIEW_H or 0
+    local gh = bodyH - 2 * CARD_PAD - LETTER_H - barH
     local cw = floor((gw - 4 * CELL_GAP) / 5)
     local ch = floor((gh - 4 * CELL_GAP) / 5)
     gw, gh = 5 * cw + 4 * CELL_GAP, 5 * ch + 4 * CELL_GAP
     grid:ClearAllPoints()
-    grid:SetPoint("TOP", card, "TOP", 0, -(CARD_PAD + LETTER_H))
+    grid:SetPoint("TOP", card, "TOP", 0, -(CARD_PAD + LETTER_H + barH))
     grid:SetSize(gw, gh)
     for i, c in ipairs(cells) do
         local row, col = floor((i - 1) / 5), (i - 1) % 5
@@ -1563,14 +1578,16 @@ local function RefreshHero(g, active, marked, lines, nearLines)
     PlaceStats()
 end
 
-local function RefreshCard(g, active)
+local function RefreshCard(g, active, who)
     local Bingo = ns.Bingo
     local me = Util.PlayerKey()
-    local cardIds = g and Bingo:GetMyCard()
-    local marks = cardIds and Bingo:GetMarks(me) or {}
+    who = who or me
+    local mine = who == me
+    local cardIds = g and Bingo:GetCard(who)
+    local marks = cardIds and Bingo:GetMarks(who) or {}
     local lines, marked, onLine, _, away, count = 0, 0, {}, {}, {}, {}
     if cardIds then lines, marked, onLine, _, away, count = ns.BingoCard.Analyze(marks) end
-    local fated = g and Bingo:GetFated(me)
+    local fated = g and Bingo:GetFated(who)
     if card.logo then
         card.logo:SetShown(cardIds == nil)
         grid:SetAlpha(cardIds and 1 or 0.4)
@@ -1589,7 +1606,7 @@ local function RefreshCard(g, active)
         local st = { id = id, sq = id and Squares():Get(id), marked = marks[i] == true, onLine = onLine[i],
             away = away[i], active = active, fated = fated == i }
         if id and id ~= Squares().FREE and not st.sq then st.id = nil end
-        if st.sq and st.marked then
+        if mine and st.sq and st.marked then
             local key = st.fated and ("fated:" .. id) or id
             if not v.hits[key] then
                 v.hits[key] = true
@@ -1614,8 +1631,8 @@ local function RefreshCard(g, active)
         end
     end
 
-    -- the slam, once per new line / blackout (waits until the card is on screen)
-    if g and cardIds then
+    -- the slam, once per new line / blackout (waits until the card is on screen; my own card only)
+    if g and cardIds and mine then
         local delay = newCount > 0 and min(1.5, newCount * 0.12 + 0.2) or 0
         local function Celebrate(text, color, sub)
             if takeover and takeover:IsShown() then
@@ -1640,13 +1657,63 @@ local function RefreshCard(g, active)
     return marked, lines, nearLines
 end
 
+-- My own card's marked, lines and the lines one away (the hero's numbers while another raider's card is shown).
+local function MyNumbers(g)
+    local marks = g and ns.Bingo:GetMyCard() and ns.Bingo:GetMarks(Util.PlayerKey())
+    if not marks then return 0, 0, {} end
+    local lines, marked, _, _, _, count = ns.BingoCard.Analyze(marks)
+    local near = {}
+    for li in ipairs(ns.BingoCard.LINES) do
+        if (count[li] or 0) == 4 then near[#near + 1] = li end
+    end
+    return marked, lines, near
+end
+
+-- The raider whose card is shown, or nil for mine (a view from another game, or of a card not dealt, ends).
+local function ViewedKey(g)
+    if not viewing then return nil end
+    if not g or viewing.g ~= g.id or viewing.key == Util.PlayerKey() or not ns.Bingo:GetCard(viewing.key) then
+        viewing = nil
+        Layout()
+        return nil
+    end
+    return viewing.key
+end
+
+local function RefreshViewBar(who)
+    if not viewBar then return end
+    viewBar:SetShown(who ~= nil)
+    if not who then return end
+    local Bingo = ns.Bingo
+    local lines, marked = ns.BingoCard.Analyze(Bingo:GetMarks(who) or {})
+    local stat = string.format("'s card  \194\183  %d points  \194\183  %d/25 marked", Bingo:GetPoints(who) or 0, marked)
+    local text = KeyText(who) .. S:Wrap("SUB", stat)
+    if lines > 0 then text = text .. "  " .. S:Wrap("GOLD", lines > 1 and ("BINGO x" .. lines) or "BINGO") end
+    viewBar.text:SetText(text)
+end
+
+-- Shows another raider's card in the Card view (nil: mine again).
+function BingoUI:ViewCard(key)
+    local g = ns.Bingo:GetGame()
+    if key == Util.PlayerKey() then key = nil end
+    local was = viewing and viewing.key
+    viewing = (key and g) and { key = key, g = g.id } or nil
+    if (viewing and viewing.key) ~= was then Layout() end
+    if view ~= "card" then self:SetView("card") else self:Refresh() end
+end
+
+function BingoUI:GetViewedCard() return viewing and viewing.key or nil end
+
 function BingoUI:Refresh()
     if mini then mini:Update() end
     if not panel or not panel:IsVisible() then return end
     local Bingo = ns.Bingo
     local g = Bingo:GetGame()
     local active = Bingo:IsActive()
-    local marked, lines, nearLines = RefreshCard(g, active)
+    local who = ViewedKey(g)
+    local marked, lines, nearLines = RefreshCard(g, active, who)
+    if who then marked, lines, nearLines = MyNumbers(g) end
+    RefreshViewBar(who)
     RefreshHero(g, active, marked, lines, nearLines)
     if view == "codex" then
         RefreshCodex()
@@ -1751,6 +1818,18 @@ local function CreateCardView(parent)
     over:SetAllPoints()
     over:SetFrameLevel(grid:GetFrameLevel() + 20)
     slam = CreateSlam(over)
+    -- another raider's card: whose it is and the way back (shown while viewing)
+    viewBar = CreateFrame("Frame", nil, f)
+    viewBar:SetHeight(VIEW_H)
+    viewBar:SetPoint("TOPLEFT", CARD_PAD, -CARD_PAD + 2)
+    viewBar:SetPoint("TOPRIGHT", -CARD_PAD, -CARD_PAD + 2)
+    viewBar.back = ns.UI:CreateBackLink(viewBar, "My card", function() BingoUI:ViewCard(nil) end)
+    viewBar.back:SetPoint("RIGHT", viewBar, "RIGHT", 0, 0)
+    viewBar.text = ns.UI:Text(viewBar, "body")
+    viewBar.text:SetPoint("LEFT", viewBar, "LEFT", 2, 0)
+    viewBar.text:SetPoint("RIGHT", viewBar.back, "LEFT", -8, 0)
+    viewBar.text:SetWordWrap(false)
+    viewBar:Hide()
     return f
 end
 
@@ -1932,7 +2011,7 @@ function BingoUI:GetWidgets()
     return { panel = panel, cells = cells, threads = threads, slam = slam, race = raceRows, feed = feedRows,
         ladder = ladderRows, witnessed = witnessRows, codexCells = codexCells, dauber = dauberBtns, status = hero and hero.sub,
         card = card, hero = hero, side = side, codex = codex, takeover = takeover, seg = seg, yourLegendary = yourLeg,
-        stats = stats, start = startBtn, stop = stopBtn, mini = mini }
+        stats = stats, start = startBtn, stop = stopBtn, mini = mini, viewBar = viewBar }
 end
 
 function BingoUI:OnInit()

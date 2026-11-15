@@ -17,6 +17,8 @@ if DisasterZoneBoot and DisasterZoneBoot.Run("UI/RaidSheet.lua", ...) then retur
 --   line, Cancel and Create raid (a weekly raid being edited: This week only / Every week).
 -- What is saved, who may save it and the weekly rules are RaidPlan's, as before.
 local addonName, ns = ...
+-- date / time in the clock raid times are shown in (my own or the realm's: Settings serverClock, Util.Date)
+local date, time = ns.Util.Date, ns.Util.Time
 
 local PlanUI = ns.RaidPlanUI       -- (UI/RaidPlanUI.lua's module: this file adds OpenEditor / GetEditor to it)
 local S = ns.Style

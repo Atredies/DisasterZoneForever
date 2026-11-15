@@ -1,6 +1,6 @@
 ---
 tags: [log]
-updated: 2026-11-13
+updated: 2026-11-15
 ---
 
 # Decision Log
@@ -37,6 +37,7 @@ updated: 2026-11-13
 | 2026-11-12 | Chess CHL: a player can concede, not claim (sender's loss or a draw only) | Both clients report every finished game, so the loser's report carries it; one line, no extra state |
 | 2026-11-12 | A loot mark keeps `prized` (and `lootOther`); only Finish clears them | The master-loot hand-out finishes after its own loot message and reads the pending prized facts |
 | 2026-11-13 | A Discord answer to a locked (not private) raid becomes a request to join that the raid leader can accept, same as an in-game answer; no longer refused | One rule for both sign-up paths; the raid leader still decides who joins a locked raid |
+| 2026-11-15 | Raid times: one Local / Server switch (`settings.serverClock`, off) for every raid screen, not per page; a busy calendar day turns in pages (arrows, mouse wheel) instead of a "+N more" row; Bingo shows another raider's card from the race, worked out locally | The owner asked for both; one switch keeps what a leader types in the raid sheet and what the calendar shows in the same clock. Pages keep the raid pictures (owner's pick over compact rows). Every Bingo card is dealt from the game's seed, so no new message is needed |
 
 ## 2026-11-08 - Comm queues during encounters
 Addon messages return `AddOnMessageLockdown` for the whole of a boss pull on Forever (measured). Comm will queue

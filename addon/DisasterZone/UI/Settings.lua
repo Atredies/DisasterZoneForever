@@ -3491,6 +3491,11 @@ function SettingsUI:BuildWindow(sec)
         { value = "home", text = "Home (dashboard)" },
         { value = "last", text = "The tab used last" },
     })
+    local _, clockRow = self:Switch(sec, "Raid times in server time", "Raid days and times in the realm's clock "
+        .. "instead of yours. The calendar and the Raids tab have the same Local | Server switch.",
+        function() return Get("serverClock", false) and true or false end,
+        function(a, b) Set("serverClock", Bool(a, b)) end)
+    self:SetDefault(clockRow, false)
     local _, row = self:Switch(sec, "Minimap button", "Click opens this window, right-click Settings, Shift-click the boss drops.",
         function() return not Get("minimap.hide", false) end,
         function(a, b)

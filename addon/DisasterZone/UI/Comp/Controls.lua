@@ -897,6 +897,53 @@ function UI:CreateSegments(parent, items, onChange, opts)
     return s
 end
 
+-- UI:CreateClockSwitch(parent, opts) -> seg: "Local | Server", the clock raid days and times are shown in (Settings
+-- serverClock, Util.Date). Every switch follows the setting; a change refreshes the raid pages (Home, Raids, the raid
+-- planner, attendance). Its tooltip has both clocks' time now. opts: { h (18), anchor ("ANCHOR_TOP") }.
+local clockSwitches = {}
+local clockHooked = false
+
+local function ClockRefresh()
+    for _, name in ipairs({ "Dashboard", "RaidsUI", "RaidPlanUI", "AttendanceUI" }) do
+        local m = ns[name]
+        if m and m.Refresh then pcall(m.Refresh, m) end
+    end
+end
+
+function UI:CreateClockSwitch(parent, opts)
+    opts = type(opts) == "table" and opts or {}
+    local Util = ns.Util
+    local seg = UI:CreateSegments(parent, {
+        { key = "local", label = "Local" }, { key = "server", label = "Server" },
+    }, function(key)
+        Util.SetServerClock(key == "server")
+    end, { look = "pill", h = opts.h or 18, textSize = "small", selected = Util.ServerClock() and "server" or "local" })
+    UI:AttachTooltip(seg, "Raid times", function()
+        local now = Util.Now()
+        local off = Util.RealmOffset()
+        local lines = {
+            "Show raid days and times in your own clock or the realm's (server) clock.",
+            { "Your clock now: " .. date("%H:%M", now), "SUB" },
+            { "Server clock now: " .. date("%H:%M", now - off * 60), "SUB" },
+        }
+        if off == 0 then lines[#lines + 1] = { "Your clock matches the server's: both show the same.", "DIM" } end
+        return lines
+    end, { anchor = opts.anchor or "ANCHOR_TOP" })
+    clockSwitches[#clockSwitches + 1] = seg
+    if not clockHooked then
+        clockHooked = true
+        ns:On("SETTINGS_CHANGED", function(path)
+            if path ~= "serverClock" then return end
+            local key = Util.ServerClock() and "server" or "local"
+            for _, s in ipairs(clockSwitches) do
+                if s:GetSelected() ~= key then s:Select(key) end
+            end
+            ClockRefresh()
+        end)
+    end
+    return seg
+end
+
 ---------------------------------------------------------------------------
 -- Rail nav: the side menu of a rail page
 ---------------------------------------------------------------------------

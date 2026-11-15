@@ -18,6 +18,8 @@ if DisasterZoneBoot and DisasterZoneBoot.Run("UI/RaidsTab.lua", ...) then return
 -- 1.4: the tab's view row is a layout toolbar (UI:CreateLayout, its tabs and the controls at its right, the main
 -- action far right), the Raid log's Raids mode a list + detail layout (art rows, the detail's banner and block tabs).
 local addonName, ns = ...
+-- date / time in the clock raid times are shown in (my own or the realm's: Settings serverClock, Util.Date)
+local date, time = ns.Util.Date, ns.Util.Time
 
 local RaidsUI = ns:NewModule("RaidsUI")
 
@@ -634,6 +636,7 @@ function H.UpdateToolbar(p)
     -- (no teams yet: the Teams view's empty card has the New team button)
     p.newTeamBtn:SetShown(canTeams() and state.view == "teams" and RP ~= nil and #RP:GetTeams() > 0)
     p.leadersBtn:SetShown(state.view == "teams")
+    p.clockSwitch:SetShown(state.view == "upcoming" or state.view == "teams")
     bar:LayoutRight()
 end
 
@@ -871,7 +874,9 @@ function RaidsUI:CreatePanel(parent)
     end)
     p.newTeamBtn = UI:CreateSleekButton(bar, "New team", 90, S.BTN_H, function() ns.RaidPlanUI:NewTeam() end, "primary")
     p.newRaidBtn = UI:CreateSleekButton(bar, "New raid", 90, S.BTN_H, function() ns.RaidPlanUI:OpenEditor() end, "primary")
-    bar:SetFilters({ p.lineupBtn, p.rangeBtn, p.leadersBtn, p.sessionBtn, p.newTeamBtn, p.newRaidBtn })
+    -- the clock the raid times are in (Local | Server), on Upcoming and Teams
+    p.clockSwitch = UI:CreateClockSwitch(bar, { h = 20 })
+    bar:SetFilters({ p.clockSwitch, p.lineupBtn, p.rangeBtn, p.leadersBtn, p.sessionBtn, p.newTeamBtn, p.newRaidBtn })
 
     local PlanUI = ns.RaidPlanUI
     p.upcoming = PlanUI:CreateUpcoming(p)

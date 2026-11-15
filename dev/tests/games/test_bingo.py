@@ -392,5 +392,51 @@ def dauber_choice_changes_the_stamp_and_the_card_fits():
     no_errors(w)
 
 
+@case
+def clicking_a_raider_in_the_race_shows_their_card():
+    w, c = raid()
+    lee = start(w, c)
+    rita = c["Rita"]
+    open_card(w, rita)
+    # a square on Lee's card that Rita doesn't hold, hit
+    cell = lee.eval("""local L, R = ns.Bingo:GetCard(...), ns.Bingo:GetCard(select(2, ...))
+      local has = {}; for _, id in ipairs(R) do has[id] = true end
+      for i, id in ipairs(L) do if i ~= 13 and not has[id] then return i end end""", K("Lee"), K("Rita"))
+    lee.eval("local key, i = ...; ns.Bingo:Hit(ns.Bingo:GetCard(key)[i])", K("Lee"), cell)
+    w.tick(2)
+    assert not rita.eval(WS + "return W.cells[...].stamp:IsShown()", cell)
+    assert not rita.eval(WS + "return W.viewBar:IsShown()")
+    # a click on Lee in the race: his card, read-only, with whose it is over it
+    row = rita.eval(WS + "for _, r in ipairs(W.race) do if r:IsShown() and r.key == ... then return r end end", K("Lee"))
+    assert row is not None
+    rita.click(row)
+    w.tick(0.3)
+    assert rita.eval("return ns.BingoUI:GetViewedCard()") == K("Lee")
+    assert rita.eval(WS + "return W.viewBar:IsShown()")
+    bar = strip_codes(rita.eval(WS + "return W.viewBar.text:GetText()"))
+    assert "Lee" in bar and "'s card" in bar and "2/25 marked" in bar, bar
+    assert rita.eval(WS + "return W.cells[...].stamp:IsShown()", cell), "Lee's hit square shows on his card"
+    # the banner keeps Rita's own numbers (the free centre only)
+    assert strip_codes(rita.eval(WS + "return W.stats[3].value:GetText()")) == "1/25"
+    assert not rita.eval(WS + "return W.slam:IsShown()")
+    # back to her own card
+    rita.click(rita.eval(WS + "return W.viewBar.back"))
+    w.tick(0.3)
+    assert rita.eval("return ns.BingoUI:GetViewedCard()") is None
+    assert not rita.eval(WS + "return W.viewBar:IsShown()")
+    assert not rita.eval(WS + "return W.cells[...].stamp:IsShown()", cell)
+    # her own row does nothing; a new game ends a view of the old one
+    rita.click(row)
+    w.tick(0.3)
+    assert rita.eval("return ns.BingoUI:GetViewedCard()") == K("Lee")
+    lee.slash("/dz bingo stop")
+    w.tick(1)
+    start(w, c)
+    w.tick(1)
+    rita.eval("ns.BingoUI:Refresh()")
+    assert rita.eval("return ns.BingoUI:GetViewedCard()") is None
+    no_errors(w)
+
+
 if __name__ == "__main__":
     run_all("games / Council Bingo")

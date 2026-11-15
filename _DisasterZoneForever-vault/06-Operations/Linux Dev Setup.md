@@ -41,6 +41,9 @@ luaenv/bin/python tests/forever/test_forever_demos.py             # no TBC in de
 - Baseline 2026-11-08 (after PR #9): `run_all --all` = 307 suites, 17 failed, all the known ones above plus the
   `events` UI-QA suites (Segoe UI font) and the `patch/` suites under forking (run them with `DZ_FORK=0`: 2 left).
   More than that is a regression. Testing on Forever data: [[Testing with Forever Data]].
+- Baseline 2026-11-15: 326 suites, 8 failed: `boot-ui/test_boot` (1 case), `test_changelog`, `events/test_edge_tab`,
+  `events/test_kinds_ui_qa`, `games/test_azeromon_craft`, `games/test_azeromon_fix_side`, `games/test_naxx`,
+  `sync/test_mixed_versions`.
 
 ## Not in git
 

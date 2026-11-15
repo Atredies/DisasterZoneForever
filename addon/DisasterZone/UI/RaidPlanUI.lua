@@ -5,6 +5,8 @@ if DisasterZoneBoot and DisasterZoneBoot.Run("UI/RaidPlanUI.lua", ...) then retu
 -- guild members and guests from outside the guild). The blacklist lives in the Guests window (UI/GuestBook.lua). RaidsTab
 -- owns the tab and its toolbar and creates these views inside its panel.
 local addonName, ns = ...
+-- date / time in the clock raid times are shown in (my own or the realm's: Settings serverClock, Util.Date)
+local date, time = ns.Util.Date, ns.Util.Time
 
 local PlanUI = ns:NewModule("RaidPlanUI")
 local S = ns.Style

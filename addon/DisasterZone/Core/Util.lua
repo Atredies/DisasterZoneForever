@@ -561,6 +561,50 @@ end
 -- things on the session clock, GetTime, keep their own Now: the meters, My Log, the Azeromon net code.)
 Util.Now = Now
 
+-- Raid days and times in my clock or the realm's (Settings: serverClock). Util.ClockShift = the seconds to take off
+-- a time so date() prints it in the chosen clock (0 in my own clock, or when my clock matches the realm's).
+-- Util.Date(fmt, t) is date() in that clock (t nil = now); Util.Time(fields) is time() back from it (nil = now).
+-- The raid screens use these in place of date / time, so what they print and what they read back agree.
+function Util.ServerClock()
+    local DB = ns.DB
+    return (DB and DB.GetSetting and DB:GetSetting("serverClock")) and true or false
+end
+
+function Util.SetServerClock(on)
+    if ns.DB and ns.DB.SetSetting then ns.DB:SetSetting("serverClock", on and true or false) end
+end
+
+-- How far my clock is ahead of the realm's, in minutes (a multiple of 15, -720..720): my hour and minute against the
+-- realm's (GetGameTime). The same zone (most players): 0. (RaidNights:Offset is this.)
+function Util.RealmOffset()
+    if not GetGameTime then return 0 end
+    local h, m = GetGameTime()
+    if type(h) ~= "number" or type(m) ~= "number" then return 0 end
+    local t = date("*t", Now())
+    local d = (t.hour * 60 + t.min) - (h * 60 + m)
+    d = floor(d / 15 + 0.5) * 15
+    return (d + 720) % 1440 - 720
+end
+
+function Util.ClockShift()
+    if not Util.ServerClock() then return 0 end
+    return Util.RealmOffset() * 60
+end
+
+function Util.Date(fmt, t)
+    return date(fmt, (t or Now()) - Util.ClockShift())
+end
+
+function Util.Time(fields)
+    if fields == nil then return time() end
+    return time(fields) + Util.ClockShift()
+end
+
+-- "Server time" / "Local time": the clock raid times are shown in.
+function Util.ClockName()
+    return Util.ServerClock() and "Server time" or "Local time"
+end
+
 -- n is a whole number, within lo..hi when they are given (either may be nil = no bound). NaN never is; an infinity
 -- only passes without the bound on its side.
 function Util.IsInt(n, lo, hi)

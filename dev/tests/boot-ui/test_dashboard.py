@@ -554,22 +554,71 @@ def calendar_shows_planned_and_logged_raids_and_opens_them():
 
 
 @case
-def a_crowded_day_ends_with_how_many_more():
+def a_crowded_day_turns_its_events_in_pages():
     w, c = rp.world()
     bob, lee = c["Bob"], c["Lee"]
-    # (the day's list has room for a few art rows: 9 raids leave the ones that fit and a "+N more" row)
+    # (the day's list has room for a few art rows: 9 raids take pages, turned by the arrows by the day's title)
     for hour in range(12, 21):
         rp.create(bob, i="kara", t=bob.eval(AT_HOUR, 2, hour), sz=10)
     w.tick(2)
     install_helpers(lee)
     open_home(lee)
     pick_day(lee, lee.eval(AT_HOUR, 2, 12))
+    page = lambda: lee.eval_py("""local cc = ns.Dashboard:GetPanel().calCard
+      return { cc.dayPrev:IsShown(), cc.dayNext:IsShown(), cc.dayPageText:GetText(), cc.dayPrev:IsEnabled(),
+               cc.dayNext:IsEnabled() }""")
     rows = agenda(lee)
-    shown = len(rows) - 1
-    assert 3 <= shown < 9 and all(r.startswith("Karazhan | ") for r in rows[:shown]), rows
-    assert rows[shown] == "+%d more | " % (9 - shown), rows
-    tip = lee.eval_py("return ns.Dashboard:GetPanel().calCard.agenda[...].tip", shown + 1)
-    assert tip[0] == "More that day" and len(tip) == 10 - shown and tip[1].startswith("%d:00 Karazhan" % (12 + shown)), tip
+    per = len(rows)
+    assert 3 <= per < 9 and all(r.startswith("Karazhan | 12:00") or r.startswith("Karazhan | ") for r in rows), rows
+    pages = -(-9 // per)
+    assert page() == [True, True, "1/%d" % pages, False, True], page()
+    seen = list(rows)
+    for n in range(2, pages + 1):
+        lee.click(lee.eval("return ns.Dashboard:GetPanel().calCard.dayNext"))
+        w.tick(0.3)
+        assert page()[2] == "%d/%d" % (n, pages), page()
+        seen += agenda(lee)
+    assert len(seen) == 9 and not any("more" in r for r in seen), seen
+    assert page()[4] is False, "the last page"
+    # the mouse wheel turns back; another day starts on its first page (with no arrows when it all fits)
+    lee.eval("local cc = ns.Dashboard:GetPanel().calCard; cc:GetScript('OnMouseWheel')(cc, 1)")
+    w.tick(0.3)
+    assert page()[2] == "%d/%d" % (pages - 1, pages), page()
+    pick_day(lee, lee.eval(AT_HOUR, 3, 12))
+    assert page()[0] is False and page()[1] is False, page()
+    w.assert_no_errors()
+
+
+@case
+def raid_times_switch_between_local_and_server_time():
+    w, c = rp.world()
+    bob, lee = c["Bob"], c["Lee"]
+    # Lee's clock is two hours ahead of the realm
+    lee.eval("_G.__ggt = GetGameTime; GetGameTime = function() local h, m = __ggt(); return (h + 22) % 24, m end")
+    t = bob.eval(AT_HOUR, 2, 12)
+    rp.create(bob, i="kara", t=t, sz=10)
+    w.tick(2)
+    install_helpers(lee)
+    open_home(lee)
+    pick_day(lee, t)
+    local_hm = lee.eval("return date('%H:%M', ...)", t)
+    server_hm = lee.eval("return date('%H:%M', ... - 7200)", t)
+    assert any(local_hm in r for r in agenda(lee)), agenda(lee)
+    sw = "ns.Dashboard:GetPanel().calCard.clock"
+    assert lee.eval("return (" + sw + ":GetSelected())") == "local"
+    # the switch on the calendar: server time everywhere (the setting, the Raids tab's switch too)
+    lee.eval(sw + ":Select('server', true)")
+    w.tick(0.3)
+    assert lee.eval("return ns.DB:GetSetting('serverClock')") is True
+    assert any(server_hm in r for r in agenda(lee)), (server_hm, agenda(lee))
+    assert lee.eval("return ns.Util.Date('%H:%M', ...)", t) == server_hm
+    # read back the same way: a day and hour in server time is the same moment
+    assert lee.eval("local d = ns.Util.Date('*t', ...); return ns.Util.Time(d)", t) == t
+    # and back
+    lee.eval("ns.Util.SetServerClock(false)")
+    w.tick(0.3)
+    assert lee.eval("return (" + sw + ":GetSelected())") == "local"
+    assert any(local_hm in r for r in agenda(lee)), agenda(lee)
     w.assert_no_errors()
 
 
