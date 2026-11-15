@@ -356,8 +356,9 @@ function Popup:Get(which) return defs[which] end
 
 -- A dialog whose first button runs a macro (data.macro): the game lets only its own code do some things (WoW
 -- Forever: a guild invite), and a SecureActionButton's macro on a click counts as the game's. One secure button,
--- laid over the shown dialog's first button: the click runs the macro, then the dialog's OnAccept as usual. Placed
--- and taken away out of combat only (a secure frame can't be moved or hidden in a fight; it is hidden after it).
+-- made a child of the shown dialog's first button (so it stays on top when the dialog is raised by a click): the
+-- click runs the macro, then the dialog's OnAccept as usual. Placed and taken away out of combat only; a fight
+-- starting closes the dialog first (PLAYER_REGEN_DISABLED still allows it), so no secure child is left in it.
 local macroBtn
 local function MacroButton()
     if macroBtn then return macroBtn end
@@ -380,12 +381,11 @@ local function MacroButton()
     end
     b:SetScript("OnEnter", Forward("OnEnter"))
     b:SetScript("OnLeave", Forward("OnLeave"))
-    b:RegisterEvent("PLAYER_REGEN_ENABLED")
+    b:RegisterEvent("PLAYER_REGEN_DISABLED")
     b:SetScript("OnEvent", function(self)
-        if not self.dlg and self:IsShown() then
-            self:SetAttribute("macrotext", nil)
-            self:Hide()
-        end
+        local f = self.dlg
+        if f and f:IsShown() then Popup:Dismiss(f) end
+        if self.dlg then Popup:ReleaseMacro(self.dlg) end
     end)
     macroBtn = b
     return b
@@ -403,9 +403,9 @@ function Popup:PlaceMacro(f, m)
     if not b or InCombatLockdown() then return false end
     b.dlg = f
     b:SetAttribute("macrotext", m)
+    b:SetParent(f.button1)
     b:ClearAllPoints()
     b:SetAllPoints(f.button1)
-    b:SetFrameStrata(f:GetFrameStrata())
     b:SetFrameLevel(f.button1:GetFrameLevel() + 5)
     b:Show()
     return true
@@ -418,6 +418,7 @@ function Popup:ReleaseMacro(f)
     if not InCombatLockdown() then
         b:SetAttribute("macrotext", nil)
         b:Hide()
+        b:SetParent(UIParent)
     end
 end
 

@@ -7,6 +7,17 @@ updated: 2026-11-15
 
 Newest first.
 
+## 2026-11-15 - 0.2.8: the invite's secure button stays on top
+
+Owner (2026-11-15): Invite to the guild still did nothing; the game's own Add Member worked. Cause on that client:
+the stored in-game update #3 (`DisasterZonePatchDB.active`) still ran the old `Core/Recruit.lua` / `UI/Recruit.lua`
+over the new files on disk (the boot loader prefers a stored update for the same build), and the game shows the blocked
+popup once per session. Publishing and installing the new update replaces it. Hardened at the same time:
+- The macro button is now a child of the dialog's first button (`Popup:PlaceMacro`), so a click that raises the
+  toplevel dialog can't put the plain button over it (that click would run only the bookkeeping).
+- PLAYER_REGEN_DISABLED (before the lockdown) closes the dialog and takes the secure button out of it.
+- Test: `the_invite_button_stays_on_the_dialog_and_a_fight_closes_it`.
+
 ## 2026-11-15 - 0.2.7: guild invites through the game's /ginvite
 
 Owner's report (2026-11-15): Invite to the guild on a Recruitment card raised "DisasterZone has been blocked from an
