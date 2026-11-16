@@ -4,9 +4,15 @@
 use std::collections::HashSet;
 use std::sync::Mutex;
 
-/// Wowhead's WoW Forever tooltip data (the one dev/generators/forever_names.py reads): JSON with the item's icon.
+/// Wowhead's tooltip data in a section ("tbc", "forever": the one dev/generators/forever_names.py reads): JSON with the
+/// item's icon.
+pub fn tooltip_url_in(section: &str, id: u32) -> String {
+    format!("https://nether.wowhead.com/{section}/tooltip/item/{id}")
+}
+
+/// The tooltip data for this bot's game (Config.wowhead, env DZ_WOWHEAD).
 pub fn tooltip_url(id: u32) -> String {
-    format!("https://nether.wowhead.com/forever/tooltip/item/{id}")
+    tooltip_url_in(crate::config().wowhead_section(), id)
 }
 
 /// Items tried this session (found or not): never asked twice.
@@ -74,8 +80,13 @@ pub fn snapshot_items(snap: &serde_json::Value) -> Vec<u32> {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn icons_come_from_wowheads_forever_tooltips() {
-        assert_eq!(super::tooltip_url(19019), "https://nether.wowhead.com/forever/tooltip/item/19019");
-        assert_eq!(crate::signup::WOWHEAD_ITEM, "https://www.wowhead.com/forever/item=");
+    fn icons_and_links_follow_the_wowhead_section() {
+        assert_eq!(super::tooltip_url_in("forever", 19019), "https://nether.wowhead.com/forever/tooltip/item/19019");
+        assert_eq!(crate::signup::wowhead_item_in("forever"), "https://www.wowhead.com/forever/item=");
+        assert_eq!(super::tooltip_url_in("tbc", 19019), "https://nether.wowhead.com/tbc/tooltip/item/19019");
+        assert_eq!(crate::signup::wowhead_item_in("tbc"), "https://www.wowhead.com/tbc/item=");
+        // no DZ_WOWHEAD and no server.json: TBC's section, the upstream default
+        assert_eq!(super::tooltip_url(19019), "https://nether.wowhead.com/tbc/tooltip/item/19019");
+        assert_eq!(crate::signup::wowhead_item(), "https://www.wowhead.com/tbc/item=");
     }
 }
