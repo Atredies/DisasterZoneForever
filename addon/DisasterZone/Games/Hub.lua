@@ -73,7 +73,7 @@ local byId = {}
 for _, c in ipairs(CATALOG) do byId[c.id] = c end
 Games.CATALOG = CATALOG
 function Games:Catalog(id) return byId[id] end
-Games.RELEASES = "github.com/tsumilo/DisasterZone-releases"    -- where the launcher and the release zip are
+Games.RELEASES = ns.Util.DOWNLOAD_URL     -- where the release zip is (Core/Util.lua)
 
 local function AddOnInfo(folder)
     local get = (C_AddOns and C_AddOns.GetAddOnInfo) or GetAddOnInfo

@@ -419,6 +419,40 @@ function SettingsUI:OnInit()
                            "DISCORD_CHANGED", "RECRUIT_RULES_CHANGED", "OFFICER_RANKS_CHANGED" }) do
         ns:On(msg, changed)
     end
+    -- The download link, selected in a box to copy and paste to whoever needs DisasterZone (/dz download, /dz link,
+    -- Settings > About's "Copy link").
+    if ns.Popup then
+        ns.Popup:Register("DISASTERZONE_DOWNLOAD_LINK", {
+            title = "Download DisasterZone",
+            text = "Press Ctrl+C to copy the link, then paste it to whoever needs DisasterZone.",
+            button1 = "Close", hideOnEscape = true, hasEditBox = true, maxLetters = 120,
+            OnShow = function(d)
+                d.editBox:SetText(ns.Util.DOWNLOAD_URL)
+                d.editBox:HighlightText()
+                d.editBox:SetFocus()
+            end,
+            -- (typing can't change the link: it is put back and selected again)
+            EditBoxOnTextChanged = function(eb)
+                if eb:GetText() ~= ns.Util.DOWNLOAD_URL then
+                    eb:SetText(ns.Util.DOWNLOAD_URL)
+                    eb:HighlightText()
+                end
+            end,
+            EditBoxOnEnterPressed = function() ns.Popup:Hide("DISASTERZONE_DOWNLOAD_LINK") end,
+            EditBoxOnEscapePressed = function() ns.Popup:Hide("DISASTERZONE_DOWNLOAD_LINK") end,
+        })
+    end
+    local function showLink()
+        ns:Print("download: %s", ns.Util.DOWNLOAD_URL)
+        SettingsUI:ShowDownloadLink()
+    end
+    ns:RegisterSlash("download", showLink, "the DisasterZone download link, to copy and paste to others")
+    ns:RegisterSlash("link", showLink, "the same as /dz download")
+end
+
+-- Opens the box with the download link selected (DISASTERZONE_DOWNLOAD_LINK above).
+function SettingsUI:ShowDownloadLink()
+    if ns.Popup then return ns.Popup:Show("DISASTERZONE_DOWNLOAD_LINK") end
 end
 
 function SettingsUI:OnLogin()
@@ -3846,6 +3880,10 @@ function SettingsUI:BuildAbout(sec)
     local vrow = self:Row(sec, "", "")
     self.aboutText = vrow.title
     self.aboutPeers = vrow.desc
+    local lrow = self:Row(sec, "Download link", "The newest release, to paste to whoever needs DisasterZone.")
+    local linkBtn = ns.UI:CreateSleekButton(lrow, "Copy link", 112, 22, function() SettingsUI:ShowDownloadLink() end)
+    linkBtn:SetPoint("RIGHT", lrow, "RIGHT", 0, 0)
+    PlaceText(lrow, 112)
     local srow = self:Row(sec, "BiS list sharing", "")
     self.aboutSync = srow.desc
     local syncBtn = ns.UI:CreateSleekButton(srow, "Request sync", 112, 22, function()
