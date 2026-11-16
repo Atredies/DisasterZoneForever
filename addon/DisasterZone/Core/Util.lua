@@ -51,6 +51,10 @@ end
 -- (Core/Perf.lua compares the same key at file time, before Util's realm helpers are safe to call.)
 Util.DEV_KEY = "Arakis War-CAMWOWEU4Realm4PvP"
 
+-- Where members download DisasterZone: the newest release's page (/dz download and Settings > About copy it, the game
+-- hub's "Get the game" shows it).
+Util.DOWNLOAD_URL = "https://github.com/Atredies/DisasterZoneForever/releases/latest"
+
 function Util.IsDevKey(key)
     return type(key) == "string" and key == Util.DEV_KEY
 end

@@ -7,6 +7,14 @@ updated: 2026-11-15
 
 Newest first.
 
+## 2026-11-16 - The download link, easy to copy
+
+`/dz download` (and `/dz link`) print the download link and open a box with it selected (Ctrl+C, then paste it to
+whoever needs DisasterZone); Settings > About has a "Download link" row with a **Copy link** button for the same box.
+One address for all of them, `Util.DOWNLOAD_URL` (the newest release on Atredies/DisasterZoneForever). Fixes the game
+hub's "Get the game", which still showed the TBC original's releases address. Test:
+`tests/boot-ui/test_download_link.py`.
+
 ## 2026-11-15 - 0.2.8: the invite's secure button stays on top
 
 Owner (2026-11-15): Invite to the guild still did nothing; the game's own Add Member worked. Cause on that client:
