@@ -17,8 +17,15 @@ use twilight_model::channel::message::component::{
 };
 
 /// The guild's picture: members' snapshots merged (merge.rs, kept in merged.json).
-/// Wowhead's WoW Forever item page (its site has a /forever/ section: "<item> - Item - Forever", checked 2026-11-09).
-pub const WOWHEAD_ITEM: &str = "https://www.wowhead.com/forever/item=";
+/// Wowhead's item page in a section ("tbc", or "forever": "<item> - Item - Forever", checked 2026-11-09), id appended.
+pub fn wowhead_item_in(section: &str) -> String {
+    format!("https://www.wowhead.com/{section}/item=")
+}
+
+/// Wowhead's item page for this bot's game (Config.wowhead, env DZ_WOWHEAD), id appended.
+pub fn wowhead_item() -> String {
+    wowhead_item_in(crate::config().wowhead_section())
+}
 
 /// (read again after 5 s: another copy of the bot may have merged a newer one)
 static SNAP: crate::store::Cached<Value> = crate::store::Cached::new(SNAP_KEY, 5_000);
@@ -799,11 +806,12 @@ pub fn bis_text_from(snap: &Value, profiles: &bridge::Profiles, user: &str, who:
         lines.push("Nothing picked for this phase yet.".into());
     }
     // one line a slot: the main pick, then the alternative (as the addon's My BiS shows them)
+    let wowhead = wowhead_item();
     let pick = |s: &Value, id_k: &str, name_k: &str, got_k: &str| -> Option<String> {
         let id = s.get(id_k).and_then(|x| x.as_i64()).filter(|i| *i > 0)?;
         let item = s.get(name_k).and_then(|x| x.as_str()).map(str::to_string).unwrap_or_else(|| format!("Item {id}"));
         let got = if s.get(got_k).and_then(|x| x.as_bool()) == Some(true) { " ✓" } else { "" };
-        Some(format!("[{item}](<{WOWHEAD_ITEM}{id}>){got}"))
+        Some(format!("[{item}](<{wowhead}{id}>){got}"))
     };
     for s in slots {
         let main = pick(s, "id", "name", "got").unwrap_or_else(|| "—".into());
@@ -828,7 +836,7 @@ mod bis_tests {
         p.insert("9".into(), vec![Char { name: "Lee".into(), class: "WARRIOR".into(), spec: 3, by: String::new() }]);
         let t = bis_text_from(&snap, &p, "9", None, 160);
         assert!(t.starts_with("**Lee** · Protection · Phase 2"), "{t}");
-        assert!(t.contains("**Head**: [Warbringer Greathelm](<https://www.wowhead.com/forever/item=29011>) ✓ · *alt* [Item 29068]"), "{t}");
+        assert!(t.contains("**Head**: [Warbringer Greathelm](<https://www.wowhead.com/tbc/item=29011>) ✓ · *alt* [Item 29068]"), "{t}");
         assert!(t.contains("**Neck**: [Item 28244]"), "{t}");
         assert!(bis_text_from(&snap, &p, "9", Some("rita"), 160).contains("No BiS list for **Rita**"));
         assert!(bis_text_from(&snap, &p, "other", None, 160).contains("Whose list?"));
@@ -889,7 +897,7 @@ pub fn bis_set(user: &str, name: &str, sid: i64, item: &str, who: Option<&str>, 
         "emptied".to_string()
     } else {
         let n = crate::items::name_of(id).unwrap_or_else(|| format!("item {id}"));
-        format!("{} set to [{n}](<{WOWHEAD_ITEM}{id}>)", if alt { "alternative" } else { "main pick" })
+        format!("{} set to [{n}](<{}{id}>)", if alt { "alternative" } else { "main pick" }, wowhead_item())
     };
     let ph = if phase == 0 { "Pre-raid".to_string() } else { format!("phase {phase}") };
     format!(
