@@ -1,6 +1,6 @@
 ---
 tags: [log]
-updated: 2026-11-15
+updated: 2026-11-22
 ---
 
 # Decision Log
@@ -42,6 +42,7 @@ updated: 2026-11-15
 | 2026-11-15 | The guild key takes the guild's realm (GetGuildInfo's 4th return), member keys keep each character's realm | Members from the other realms of the connected group share the guild's data and the bot's records |
 | 2026-11-15 | Recruitment: icon parts send a text marker where icons don't draw (every chat on Forever); each place sends its own saved message; messages and places are shared by the recruiters; a whisper within 2 h of a post adds the player to Talking | Owner's picks (markers over dropping icons, per place over pick-at-post or rotate); Forever's chat shows no raid icons; recruiters were each keeping their own messages |
 | 2026-11-15 | Guild invites go out as a secure `/ginvite` macro on the invite dialog's button, on every client (one path) | Forever blocks `C_GuildInfo.Invite` from addon code; the game's slash command run by a SecureActionButton click is allowed. The addon keeps only the bookkeeping |
+| 2026-11-22 | When the client gives no realm, keys use the guild's realm "CAMWOWEU4Realm4PvP" (`Util.HIDDEN_REALM`) | Forever 1.60.1.71037 hides the realm (name "", ID 0); every saved key carries the realm, so a fixed stand-in keeps the old records and makes every client build the same keys again. A realm ID lookup is impossible (ID 0) |
 
 ## 2026-11-08 - Comm queues during encounters
 Addon messages return `AddOnMessageLockdown` for the whole of a boss pull on Forever (measured). Comm will queue

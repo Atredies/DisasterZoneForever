@@ -18,6 +18,14 @@ local tsort, tconcat = table.sort, table.concat
 
 local cachedRealm
 
+-- WoW Forever hides the realm from addons since build 1.60.1.71037 (2026-11-20): GetRealmName and
+-- GetNormalizedRealmName return "", GetRealmID 0, GetGuildInfo no realm (measured in game 2026-11-22; Blizzard's own
+-- UI moved to C_BattleNet.IsGameAccountOnSameRealm the same build). Every name key and the guild key carry the realm,
+-- so an empty one moved every saved record (members, professions, raids, recruits) out of reach and the clients stopped
+-- matching each other. The guild's home realm stands in: the realm every key used before. Every client then builds the
+-- same keys again (addon-message senders on the same realm come without a realm, as before).
+Util.HIDDEN_REALM = "CAMWOWEU4Realm4PvP"
+
 function Util.GetPlayerRealm()
     if cachedRealm then return cachedRealm end
     local realm = GetNormalizedRealmName and GetNormalizedRealmName()
@@ -26,8 +34,9 @@ function Util.GetPlayerRealm()
     end
     if realm ~= "" then
         cachedRealm = realm
+        return realm
     end
-    return realm
+    return Util.HIDDEN_REALM   -- (not cached: a realm the game tells later wins)
 end
 
 -- WoW Forever has regionally unique names: a character is "Arakis War", first name and surname. There UnitName(unit)

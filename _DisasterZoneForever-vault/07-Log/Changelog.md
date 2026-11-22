@@ -1,11 +1,27 @@
 ---
 tags: [log]
-updated: 2026-11-15
+updated: 2026-11-22
 ---
 
 # Changelog
 
 Newest first.
+
+## 2026-11-22 - Forever hides the realm: keys keep the guild's realm
+
+Owner's report (2026-11-22): guildmates no longer saw each other and the Professions page came up empty. Cause: since
+build 1.60.1.71037 (2026-11-20) the client gives addons no realm: `GetRealmName()` and `GetNormalizedRealmName()`
+return `""`, `GetRealmID()` 0, `GetGuildInfo("player")` no realm (measured in game). Blizzard's own UI moved to
+`C_BattleNet.IsGameAccountOnSameRealm` in the same build. Every name key and the guild key carry the realm, so
+"Arakis War-CAMWOWEU4Realm4PvP" became "Arakis War" and the guild "Casual Disaster-CAMWOWEU4Realm4PvP" became
+"Casual Disaster-": every saved record was out of reach.
+- `Util.GetPlayerRealm()` returns `Util.HIDDEN_REALM` ("CAMWOWEU4Realm4PvP", the guild's realm) when the game gives
+  none (not cached, so a realm the game tells later wins). The keys are the old ones again; no migration.
+- `Core/Perf.lua` (developer check and the page switch), `Core/SwingPractice.lua`, `Core/BossMod.lua` (break timer
+  sender) and `Core/BiSExport.lua` read the realm through it instead of `GetRealmName()`.
+- Records written on 2026-11-20..22 under the realm-less keys stay where they are (a few peers and today's guild
+  bucket); the old records are found again.
+- Test: `dev/tests/forever/test_forever_hidden_realm.py` (4 cases; 3 fail without the fix).
 
 ## 2026-11-16 - The download link, easy to copy
 
