@@ -195,7 +195,8 @@ local function Me()
     local name, realm
     name, realm = ns.Util.UnitNameRealm("player")   -- (WoW Forever: with the surname, Core/Util.lua)
     name = name or ""
-    if (realm == nil or realm == "") and GetRealmName then realm = GetRealmName() end
+    if realm == nil or realm == "" then realm = (GetRealmName and GetRealmName()) or "" end
+    if realm == "" then realm = ns.Util.GetPlayerRealm() end   -- (Forever hides the realm: Core/Util.lua)
     local _, raceFile = UnitRace("player")
     local _, classFile = UnitClass("player")
     return {

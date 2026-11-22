@@ -44,7 +44,7 @@ local function now() return GetTime and GetTime() or 0 end   -- (looked up each 
 -- This character, as the switch saves it: name-realm (the realm without spaces; known while files load).
 local function CharKey()
     local name = UnitName and UnitName("player") or "?"
-    local realm = (GetRealmName and GetRealmName() or ""):gsub("%s", "")
+    local realm = ns.Util.GetPlayerRealm()   -- (Core/Util.lua: the guild's realm while Forever hides it)
     return name .. "-" .. realm
 end
 Perf.CharKey = CharKey
@@ -58,7 +58,7 @@ end
 
 -- (one line on purpose: tools/harness.py TEMPLATE_NAME_CHECKS knows this line reads the player's name and realm.
 -- UnitName gives "Arakis", "War" on WoW Forever: the whole name is both parts)
-local isDev = UnitName ~= nil and (function(n, s) return ((s and s ~= "") and (tostring(n) .. " " .. s) or tostring(n)) .. "-" .. ((GetRealmName and GetRealmName()) or ""):gsub("%s", "") end)(UnitName("player")) == DEV
+local isDev = UnitName ~= nil and (function(n, s) return ((s and s ~= "") and (tostring(n) .. " " .. s) or tostring(n)) .. "-" .. ns.Util.GetPlayerRealm() end)(UnitName("player")) == DEV
 local isOn = isDev or SavedWanted()
 Perf.DEV = DEV
 function Perf:IsDev() return isDev end

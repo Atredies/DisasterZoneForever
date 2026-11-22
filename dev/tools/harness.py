@@ -645,7 +645,7 @@ def warm(addon_dir=None, addon_name=ADDON_NAME):
 TEMPLATE_NAME_CHECKS = {
     # Core/Perf.lua: the Performance page is on from the first file for the developer's character
     ("Core/Perf.lua", 'local isDev = UnitName ~= nil and (function(n, s) return ((s and s ~= "") and (tostring(n) .. " " .. s) '
-                      'or tostring(n)) .. "-" .. ((GetRealmName and GetRealmName()) or ""):gsub("%s", "") end)(UnitName("player")) '
+                      'or tostring(n)) .. "-" .. ns.Util.GetPlayerRealm() end)(UnitName("player")) '
                       '== DEV'): "Arakis War",
 }
 _TEMPLATES = {}          # Client.index -> pre-loaded Client (taken by the first client of that index to load)

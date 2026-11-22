@@ -76,7 +76,7 @@ local function Get(path, default)
 end
 
 local function CharKey()
-    return (UnitName and UnitName("player") or "?") .. "-" .. (GetRealmName and GetRealmName() or "?")
+    return (UnitName and UnitName("player") or "?") .. "-" .. ns.Util.GetPlayerRealm()
 end
 
 -- ---------------------------------------------------------------------------------------------------------------

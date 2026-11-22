@@ -978,7 +978,7 @@ function BM:SendBreak(minutes)
     self:StartBreak(secs, me)
     local ch = GroupChannel()
     if ch and C_ChatInfo and C_ChatInfo.SendAddonMessage and Get("dbm", true) then
-        local realm = (GetRealmName and GetRealmName() or ""):gsub("[%s%-]+", "")
+        local realm = ns.Util.GetPlayerRealm()   -- (Forever hides the realm: Core/Util.lua)
         local function send()
             pcall(C_ChatInfo.SendAddonMessage, DBM_PREFIX, ("%s-%s\t1\tBT\t%d"):format(me, realm, secs), ch)
             pcall(C_ChatInfo.SendAddonMessage, BW_PREFIX, "P^Break^" .. secs, ch)
