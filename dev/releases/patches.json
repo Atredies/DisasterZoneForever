@@ -618,5 +618,219 @@
   "time": "2026-11-15 23:12:28",
   "commit": "64dad155750b21312acc46fed8a5f035c66009d5",
   "revoke": false
+ },
+ {
+  "seq": 6,
+  "version": "0.2.9",
+  "base": "0.2.3",
+  "build": "20b0acb6fbbcd27a",
+  "pack": 17,
+  "files": [
+   [
+    "F",
+    "Core/Util.lua"
+   ],
+   [
+    "F",
+    "Core/Perf.lua"
+   ],
+   [
+    "F",
+    "Core/GroupRules.lua"
+   ],
+   [
+    "F",
+    "Data/Changelog.lua"
+   ],
+   [
+    "F",
+    "Core/DB.lua"
+   ],
+   [
+    "F",
+    "Core/Guild.lua"
+   ],
+   [
+    "F",
+    "Core/Sync.lua"
+   ],
+   [
+    "F",
+    "Core/BossMod.lua"
+   ],
+   [
+    "F",
+    "Core/SwingPractice.lua"
+   ],
+   [
+    "F",
+    "Core/RaidNights.lua"
+   ],
+   [
+    "F",
+    "Core/RaidPlan.lua"
+   ],
+   [
+    "F",
+    "Core/RaidInvite.lua"
+   ],
+   [
+    "F",
+    "Core/GroupFinder.lua"
+   ],
+   [
+    "F",
+    "Core/EventLive.lua"
+   ],
+   [
+    "F",
+    "Core/Recruit.lua"
+   ],
+   [
+    "F",
+    "Core/RecruitMessage.lua"
+   ],
+   [
+    "F",
+    "Core/Roll.lua"
+   ],
+   [
+    "F",
+    "Core/Reserves.lua"
+   ],
+   [
+    "F",
+    "Core/ShoppingList.lua"
+   ],
+   [
+    "F",
+    "Core/BiSExport.lua"
+   ],
+   [
+    "F",
+    "UI/Popup.lua"
+   ],
+   [
+    "F",
+    "UI/Comp/Controls.lua"
+   ],
+   [
+    "F",
+    "UI/Dashboard.lua"
+   ],
+   [
+    "F",
+    "UI/RaidPlanUI.lua"
+   ],
+   [
+    "F",
+    "UI/RaidSheet.lua"
+   ],
+   [
+    "F",
+    "UI/GuestBook.lua"
+   ],
+   [
+    "F",
+    "UI/AttendanceUI.lua"
+   ],
+   [
+    "F",
+    "UI/RaidsTab.lua"
+   ],
+   [
+    "F",
+    "UI/GroupsCard.lua"
+   ],
+   [
+    "F",
+    "UI/DungeonsTab.lua"
+   ],
+   [
+    "F",
+    "UI/EventBoard.lua"
+   ],
+   [
+    "F",
+    "UI/EventTracker.lua"
+   ],
+   [
+    "F",
+    "UI/Recruit.lua"
+   ],
+   [
+    "F",
+    "UI/Members.lua"
+   ],
+   [
+    "F",
+    "UI/GuildMapUI.lua"
+   ],
+   [
+    "F",
+    "UI/Settings.lua"
+   ],
+   [
+    "F",
+    "UI/NotifySources.lua"
+   ],
+   [
+    "F",
+    "Games/Hub.lua"
+   ],
+   [
+    "F",
+    "DisasterZone_Bingo/UI.lua"
+   ],
+   [
+    "F",
+    "DisasterZone_Chess/Chess.lua"
+   ]
+  ],
+  "sha": {
+   "Core/Util.lua": "f026f690cd6e55dc6e361c00b53c2fc6bd9b4679873ab239483852712ea7a128",
+   "Core/Perf.lua": "1034e7ba82e0a338a1a72154e744969f4fb4a1cdf525061545556a85af0e5c2d",
+   "Core/GroupRules.lua": "c9e4baf141ffd2e91fdda95948d7ca5bd480363994f54574ec2198744b5654e6",
+   "Data/Changelog.lua": "604a6fbc8b43ed0d1304c68e4c8a060c64917fd12e60ee1292d216c2678d595c",
+   "Core/DB.lua": "d90526e92252e1db82ec903c7a74b06a21f80308352d51d732bcdde4b0511e57",
+   "Core/Guild.lua": "fe5c435c5c1fe9885af2cf050e6179a62b74f20191bdb9a0d04d67c5352732ac",
+   "Core/Sync.lua": "71b3796e8b2ce763850beffcd5977f1f76220d91c125d224047ea37e2f1e0502",
+   "Core/BossMod.lua": "67b04496aafbfada4ec3731ec4cdc21562f2b99a7e68f0ce9fbb4da10a162bdb",
+   "Core/SwingPractice.lua": "2befb1b0cd9610f02954c2d1af47b2775bd130ee934ff694d3f6723bd4a8c1d5",
+   "Core/RaidNights.lua": "147dafaf72a3bf13528e4fa6a59bf955dac85e07dd14e3e4fce015f151aa2dcf",
+   "Core/RaidPlan.lua": "74d1dcf58cdcb9017bc023c079fa8d3ca4c76a831d88095ace0a87b641b9a126",
+   "Core/RaidInvite.lua": "8ce5c5aeea227132256d523ae86aa970c7fc741883fd1ddf8d545ccb94821b80",
+   "Core/GroupFinder.lua": "d07a2151520db1a5b16c604fa165ec1ad85a6616b35d416d2c69d8d294fe7eea",
+   "Core/EventLive.lua": "50edcf5de430865f4142dbe35fee909cbc2781066786ab45880d91d2636f68c4",
+   "Core/Recruit.lua": "4d6c0e46bab844aeea02fb7441ec5698d8de51437c04487242b0fdc26e7ebfa8",
+   "Core/RecruitMessage.lua": "e7a4f989522c853f80885a8674e17de8f1ee5ac14ce35af4e5deb6964ae7ccca",
+   "Core/Roll.lua": "6b97e2f2ac8f1393399b1ccfb8d6475c32e9df0e0d7d7d774f208a806232d834",
+   "Core/Reserves.lua": "d28807190ddd503a05fed373152c89d26f6b55fc5aeb4842b27355d975455732",
+   "Core/ShoppingList.lua": "1a9d72130a53ae9ed03bb9c2389edfe5b74d161a1d28c7d8a6af04faad5e8a95",
+   "Core/BiSExport.lua": "239a7243aeda1a5f417ffec0a0bc904c30ef2009e1b19eecffb75933fc001452",
+   "UI/Popup.lua": "5cdd49d70cf37005f8b542d8b47a2520184c797c15bfeccb509c11aab50d153b",
+   "UI/Comp/Controls.lua": "394528c81674de2df58fe0d142119bd895feab929714b2c3e52f6444223cd856",
+   "UI/Dashboard.lua": "e8de770491be4d90a4d349c60ee963736860458223b30935ecf95b471cf007ce",
+   "UI/RaidPlanUI.lua": "293f53234894cca5a82a0a86b9c046836cbc4eff70e811653fda2aa0cc5d7364",
+   "UI/RaidSheet.lua": "c2a2a412d440717a83e8df0a49f446887ee8b61f73b2e571241ae3dc1538dc65",
+   "UI/GuestBook.lua": "7de2b4ae97db86c9fcd2b7084a06004f6c20beac4ea3d8e41519818de83b5aa3",
+   "UI/AttendanceUI.lua": "48a97bf937a90b099df6eb51ac452212f91e2e6bb401356c1b75e7a1dd697ccf",
+   "UI/RaidsTab.lua": "092ef12088602616c98054351681f2d6a3645fa6f66fa0131079eb6d860353d6",
+   "UI/GroupsCard.lua": "143806d2c6072a7836bcc8245c8739861e2b4865cfd7861ce612b9cf8cdf8a45",
+   "UI/DungeonsTab.lua": "6ff8bb087a92bbfed1dfeaa4d315d1c5ad7bc1c6859d8a4351ac6030ea5e0ea9",
+   "UI/EventBoard.lua": "9a5111f783c64839053997771ceba995f06bb526a242876be1b9abb047b50769",
+   "UI/EventTracker.lua": "6a400c03324c052b3f544a826ec939835082a1cf03ae9c43db99cb43d656c60e",
+   "UI/Recruit.lua": "08b7def3991d564ed20c268a2e3479410a333ae004a18fed3b56fbc936e38b69",
+   "UI/Members.lua": "dcff15a1314667874613b3bac08cd3fecd46371d6801b9e0a6787e95ba10b331",
+   "UI/GuildMapUI.lua": "f511759f0f624152f3e6689e0927a171b4f33809086ec444cdc284af5bae0c08",
+   "UI/Settings.lua": "2f11a1cf72ac548a39f95b5f572633e5cedd0dbd999af92d774f05428d84111b",
+   "UI/NotifySources.lua": "bf5b67611c6076c407f3dc6f35effa70431543de99f1122852b484de216c8b16",
+   "Games/Hub.lua": "b9cc236f8fe8271a74635e9f0a687d225e827eaf5a12d10185d439075ed1bc5e",
+   "DisasterZone_Bingo/UI.lua": "dc748e21caaa1eeee9dd88f8b8b687c29ceafff1fac7ebef5602dbad84fd9786",
+   "DisasterZone_Chess/Chess.lua": "ddbb0352a03b3e9ac347938f06048f5749375b61171acd9e1d88163940b2c438"
+  },
+  "time": "2026-11-22 19:46:29",
+  "commit": "d3fa4b95029eb85ae86e658ded0b4258f4918884",
+  "revoke": false
  }
 ]

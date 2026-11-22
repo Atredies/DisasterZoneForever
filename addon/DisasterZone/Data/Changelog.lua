@@ -8,6 +8,17 @@ if DisasterZoneBoot and DisasterZoneBoot.Run("Data/Changelog.lua", ...) then ret
 local addonName, ns = ...
 
 ns.CHANGELOG = {
+    { version = "0.2.9", date = "22 November 2026", title = "Guildmates and professions are back",
+      sections = {
+          { heading = "Guild", area = "other", kind = "fixed", hi = true,
+            lead = "DisasterZone finds the guild's data again after the game's 20 November update.", lines = {
+              "Guildmates see each other again: members, raids, recruits and sign-ups are back.",
+              "The Professions page shows everyone's recipes again.",
+          } },
+          { heading = "Recruitment", area = "other", kind = "fixed", lines = {
+              "Only whispers about the guild add someone to Recruitment; dungeon group whispers stay out.",
+          } },
+      } },
     { version = "0.2.8", date = "15 November 2026", title = "The guild invite button, sturdier",
       sections = {
           { heading = "Recruitment", area = "other", kind = "fixed", lines = {
