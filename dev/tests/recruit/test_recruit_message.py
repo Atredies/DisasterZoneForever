@@ -374,14 +374,20 @@ def a_whisper_after_a_post_adds_them_to_recruitment():
     assert key == "Newbie-Thunderstrike", key
     r = gina.eval_py("return ns.Recruit:Get('Newbie-Thunderstrike')")
     assert r["st"] == "talk" and r["src"] == "whisper" and r["sd"] == "hey, saw your post, still recruiting?", r
+    # whispers about something else (a dungeon group) are left alone (owner, 2026-11-16)
+    for text in ("inv pls", "can I join for deadmines?", "lf tank?", "hi"):
+        assert gina.eval("return ns.RecruitMessage:OnWhisper(..., 'Dungeoneer-Thunderstrike')", text) is None, text
+    assert gina.eval("return ns.Recruit:Get('Dungeoneer-Thunderstrike')") is None
+    for text, who in (("gi pls", "Gi-Thunderstrike"), ("can I apply?", "Apply-Thunderstrike"), ("g inv?", "Ginv-Thunderstrike")):
+        assert gina.eval("return ns.RecruitMessage:OnWhisper(...)", text, who) == who, text
     # guildmates, people already there, and whispers long after the post are left alone
-    assert gina.eval("return ns.RecruitMessage:OnWhisper('yo', ...)", c["Cora"].full_name) is None
-    assert gina.eval("return ns.RecruitMessage:OnWhisper('again', 'Newbie-Thunderstrike')") is None
+    assert gina.eval("return ns.RecruitMessage:OnWhisper('yo guild?', ...)", c["Cora"].full_name) is None
+    assert gina.eval("return ns.RecruitMessage:OnWhisper('again, the guild', 'Newbie-Thunderstrike')") is None
     w.tick(2 * 3600 + 10)
-    assert gina.eval("return ns.RecruitMessage:OnWhisper('late', 'Later-Thunderstrike')") is None
+    assert gina.eval("return ns.RecruitMessage:OnWhisper('late, guild?', 'Later-Thunderstrike')") is None
     # the real event path
     assert post(gina)["ok"] is True
-    gina.fire("CHAT_MSG_WHISPER", "hello", "Viaevent-Thunderstrike", "", "", "Viaevent-Thunderstrike", "", 0, 0, "",
+    gina.fire("CHAT_MSG_WHISPER", "hello, is the guild recruiting?", "Viaevent-Thunderstrike", "", "", "Viaevent-Thunderstrike", "", 0, 0, "",
               0, 1, "")
     w.tick(1)
     assert gina.eval("return ns.Recruit:Get('Viaevent-Thunderstrike') ~= nil") is True
