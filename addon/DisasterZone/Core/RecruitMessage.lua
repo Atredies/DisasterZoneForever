@@ -1046,8 +1046,24 @@ function Msg:LastAnyPost()
     return best
 end
 
--- A whisper to me: someone outside the guild, within 2 hours of a recruitment post (by any recruiter), not in
--- Recruitment yet -> added, talking with me, their first words kept. Returns the key added, or nil.
+-- Is a whisper about the guild? Only those add the sender: a recruiter who runs dungeons gets whispered for groups
+-- too ("inv", "can I join?"), and those stay out of Recruitment (owner, 2026-11-16). The words: guild, recruit,
+-- apply / application, ginv / g inv / gi, or the guild's name.
+local GUILD_WORDS = { "guild", "recruit", "apply", "applica", "ginv", "g inv", "g%-inv", "%f[%a]gi%f[%A]" }
+function Msg.IsAboutGuild(text)
+    if type(text) ~= "string" then return false end
+    local t = " " .. text:lower() .. " "
+    for _, w in ipairs(GUILD_WORDS) do
+        if t:find(w) then return true end
+    end
+    local name = GetGuildInfo and GetGuildInfo("player")
+    if type(name) == "string" and name ~= "" and t:find(name:lower(), 1, true) then return true end
+    return false
+end
+
+-- A whisper to me about the guild (IsAboutGuild): someone outside the guild, within 2 hours of a recruitment post
+-- (by any recruiter), not in Recruitment yet -> added, talking with me, their first words kept. Returns the key
+-- added, or nil.
 function Msg:OnWhisper(text, sender)
     local C = ns.Compat
     if C and C.IsSecret and (C.IsSecret(text) or C.IsSecret(sender)) then return nil end
@@ -1055,6 +1071,7 @@ function Msg:OnWhisper(text, sender)
     if not (R() and R():CanUse()) then return nil end
     local last = self:LastAnyPost()
     if not last or Now() - last > WHISPER_WINDOW then return nil end
+    if not Msg.IsAboutGuild(text) then return nil end
     local key = Util.NormalizeName(sender)
     if not key or Util.IsMe(key) then return nil end
     local G = ns.Guild

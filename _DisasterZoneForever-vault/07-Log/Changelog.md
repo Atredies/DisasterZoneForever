@@ -23,6 +23,13 @@ return `""`, `GetRealmID()` 0, `GetGuildInfo("player")` no realm (measured in ga
   bucket); the old records are found again.
 - Test: `dev/tests/forever/test_forever_hidden_realm.py` (4 cases; 3 fail without the fix).
 
+## 2026-11-16 - Recruitment: only whispers about the guild
+
+Owner (2026-11-16): a recruiter who runs dungeons gets whispered for groups too ("inv", "can I join?"), and those
+landed in Recruitment after a post. `RecruitMessage.IsAboutGuild(text)`: a whisper adds its sender only when it says
+guild, recruit, apply / application, ginv / g inv / gi, or the guild's name. Test: `tests/recruit/test_recruit_message.py`
+(`a_whisper_after_a_post_adds_them_to_recruitment`).
+
 ## 2026-11-16 - The download link, easy to copy
 
 `/dz download` (and `/dz link`) print the download link and open a box with it selected (Ctrl+C, then paste it to
