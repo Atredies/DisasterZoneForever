@@ -64,11 +64,13 @@ pub struct Config {
     pub phases: u8,
     /// What a phase is called (TBC: "Phase"; WoW Forever: "Season"). Empty = "Phase".
     pub phase_word: String,
+    /// Wowhead's section for item links and icon lookups (TBC: "tbc"; WoW Forever: "forever"). Empty = "tbc".
+    pub wowhead: String,
 }
 
 impl Config {
     /// Settings from the environment win over server.json (the bot on AWS has no data folder to keep them in):
-    /// DZ_APP_ID, DZ_GUILD_ID, DZ_LISTEN, DZ_GUILD, DZ_PUBLIC_KEY, DZ_PHASES, DZ_PHASE_WORD.
+    /// DZ_APP_ID, DZ_GUILD_ID, DZ_LISTEN, DZ_GUILD, DZ_PUBLIC_KEY, DZ_PHASES, DZ_PHASE_WORD, DZ_WOWHEAD.
     fn with_env(mut self) -> Config {
         let env = |k: &str| std::env::var(k).ok().filter(|v| !v.trim().is_empty());
         if let Some(v) = env("DZ_APP_ID") {
@@ -92,12 +94,21 @@ impl Config {
         if let Some(v) = env("DZ_PHASE_WORD") {
             self.phase_word = v;
         }
+        if let Some(v) = env("DZ_WOWHEAD") {
+            self.wowhead = v;
+        }
         self
     }
 
     /// The last phase (1-5).
     pub fn last_phase(&self) -> u8 {
         if self.phases == 0 { 5 } else { self.phases.min(5) }
+    }
+
+    /// Wowhead's section ("tbc", "forever"): the path part of its item pages and tooltip data.
+    pub fn wowhead_section(&self) -> &str {
+        let w = self.wowhead.trim().trim_matches('/');
+        if w.is_empty() { "tbc" } else { w }
     }
 
     /// "Phase 2", "Season 1"; 0 is "Pre-raid".
@@ -298,6 +309,12 @@ mod tests {
         assert_eq!((tbc.last_phase(), tbc.phase_name(0), tbc.phase_name(5)), (5, "Pre-raid".into(), "Phase 5".into()));
         let forever = Config { phases: 1, phase_word: "Season".into(), ..Config::default() };
         assert_eq!((forever.last_phase(), forever.phase_name(1)), (1, "Season 1".into()));
+    }
+
+    #[test]
+    fn wowhead_section_defaults_to_tbc() {
+        assert_eq!(Config::default().wowhead_section(), "tbc");
+        assert_eq!(Config { wowhead: " forever ".into(), ..Config::default() }.wowhead_section(), "forever");
     }
 
     #[test]
